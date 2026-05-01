@@ -57,6 +57,12 @@ jobs:
 
       - name: Build web assets
         run: pnpm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_WS_URL: ${{ secrets.VITE_WS_URL }}
+          VITE_ENABLE_OFFLINE: ${{ secrets.VITE_ENABLE_OFFLINE }}
+          VITE_ENABLE_LIVE_UPDATES: ${{ secrets.VITE_ENABLE_LIVE_UPDATES }}
+          VITE_LIVE_UPDATE_CHANNEL: ${{ secrets.VITE_LIVE_UPDATE_CHANNEL }}
 
       - name: Sync Capacitor to Android
         run: pnpm exec cap sync android
