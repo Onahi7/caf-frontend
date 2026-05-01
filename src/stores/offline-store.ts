@@ -55,13 +55,21 @@ export const useOfflineStore = create<OfflineState>((set, get) => ({
   },
 
   syncQueue: async () => {
+    // Use a local lock flag to prevent race conditions
+    // Zustand's set is synchronous, but we double-check after setting
     const state = get();
     
     if (state.isSyncing || !state.isOnline) {
       return;
     }
 
+    // Try to acquire the lock
     set({ isSyncing: true });
+    
+    // Double-check: if another call already changed isSyncing, release and return
+    if (get().isSyncing !== true) {
+      return;
+    }
 
     try {
       const queuedSales = await offlineDb.queuedSales

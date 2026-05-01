@@ -10,6 +10,7 @@ export interface QueuedRequest {
   timestamp: number;
   retryCount: number;
   status: 'pending' | 'syncing' | 'failed';
+  processingSince?: number;
 }
 
 class OfflineDatabase extends Dexie {
@@ -41,15 +42,33 @@ export const SyncService = {
 
   async processQueue() {
     console.log('[SyncService] Processing offline queue...');
+
+    // Claim stale items (processing for more than 1 minute = stale)
+    const staleThreshold = Date.now() - 60000;
+    await db.offlineQueue
+      .where('status').equals('syncing')
+      .and(item => !!(item.processingSince && item.processingSince < staleThreshold))
+      .modify({ status: 'pending', processingSince: undefined });
+
     const pending = await db.offlineQueue
       .where('status')
       .equals('pending')
       .sortBy('timestamp');
 
     for (const req of pending) {
-      try {
-        await db.offlineQueue.update(req.id, { status: 'syncing' });
+      // Atomically claim the item by updating status to 'syncing' with processingSince
+      const updated = await db.offlineQueue.update(req.id, {
+        status: 'syncing',
+        processingSince: Date.now(),
+      });
 
+      // If no rows were updated, another call already claimed this item
+      if (updated === 0) {
+        console.log(`[SyncService] Skipping already claimed: ${req.url}`);
+        continue;
+      }
+
+      try {
         await apiClient({
           url: req.url,
           method: req.method,

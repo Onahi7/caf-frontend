@@ -1,0 +1,46 @@
+name: Deploy Live Update to Capgo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'caf-frontend/**'
+
+jobs:
+  deploy-live-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        working-directory: ./caf-frontend
+        run: pnpm install
+
+      - name: Build web assets
+        working-directory: ./caf-frontend
+        run: pnpm run build
+
+      - name: Deploy to Capgo
+        working-directory: ./caf-frontend
+        run: |
+          npx @capgo/cli bundle upload \
+            --appId com.caf.pharmacy \
+            --path dist \
+            --channel production \
+            --no-key-validate
+        env:
+          CAPGO_API_KEY: ${{ secrets.CAPGO_API_KEY }}

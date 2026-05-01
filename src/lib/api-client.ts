@@ -12,9 +12,34 @@ function generateUUID(): string {
   });
 }
 
-// Local cache to map request fingerprints to idempotency keys
+// SessionStorage-based cache to map request fingerprints to idempotency keys
+// Persists across page reloads (unlike Map which is cleared)
 // Key: JSON.stringify({ method, url, payload }) -> Value: UUID
-const requestKeyCache = new Map<string, string>();
+const IDEMPOTENCY_KEY_PREFIX = 'idempotency_key_';
+
+function getStoredKey(fingerprint: string): string | null {
+  try {
+    return sessionStorage.getItem(IDEMPOTENCY_KEY_PREFIX + fingerprint);
+  } catch {
+    return null;
+  }
+}
+
+function storeKey(fingerprint: string, key: string): void {
+  try {
+    sessionStorage.setItem(IDEMPOTENCY_KEY_PREFIX + fingerprint, key);
+  } catch {
+    // sessionStorage might be unavailable (e.g., SSR)
+  }
+}
+
+function removeStoredKey(fingerprint: string): void {
+  try {
+    sessionStorage.removeItem(IDEMPOTENCY_KEY_PREFIX + fingerprint);
+  } catch {
+    // sessionStorage might be unavailable
+  }
+}
 
 // Create axios instance
 const apiClient: AxiosInstance = axios.create({
@@ -56,10 +81,11 @@ apiClient.interceptors.request.use(
         data: config.data,
       });
 
-      let idempotencyKey = requestKeyCache.get(fingerprint);
+      // Check sessionStorage for existing key (persists across page reloads)
+      let idempotencyKey = getStoredKey(fingerprint);
       if (!idempotencyKey) {
         idempotencyKey = generateUUID();
-        requestKeyCache.set(fingerprint, idempotencyKey);
+        storeKey(fingerprint, idempotencyKey);
       }
 
       if (config.headers) {
@@ -85,7 +111,7 @@ apiClient.interceptors.response.use(
         url: config.url,
         data: config.data,
       });
-      requestKeyCache.delete(fingerprint);
+      removeStoredKey(fingerprint);
     }
     return response;
   },
