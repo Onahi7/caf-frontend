@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Input } from '../ui/Input';
+import { Modal } from '../ui/Modal';
 import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
 import { useCurrency } from '../../hooks/useCurrency';
+import { AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 interface OpenShiftModalProps {
   isOpen: boolean;
@@ -15,9 +16,13 @@ export const OpenShiftModal = ({ isOpen, onClose, onSubmit, isLoading }: OpenShi
   const { symbol } = useCurrency();
   const [openingCash, setOpeningCash] = useState('');
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    setOpeningCash('');
+    onClose();
+  };
 
-  const handleSubmit = () => {
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
     const parsed = parseFloat(openingCash);
     if (isNaN(parsed) || parsed < 0) return;
     onSubmit(parsed);
@@ -25,40 +30,56 @@ export const OpenShiftModal = ({ isOpen, onClose, onSubmit, isLoading }: OpenShi
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="open-shift-title">
-      <div className="absolute inset-0 bg-black/75" onClick={onClose} />
-      <div className="relative bg-primary-dark rounded-2xl p-6 w-full max-w-md mx-4 border border-gray-700">
-        <h2 id="open-shift-title" className="text-xl font-bold text-white mb-4">Open Shift</h2>
-        <p className="text-gray-400 mb-4">Enter the opening cash amount in the register.</p>
+    <Modal isOpen={isOpen} onClose={handleClose} title="Open Register Shift" size="sm">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Count the starting cash in your physical register drawer before accepting transactions.
+        </p>
 
-        <div className="mb-4">
-          <label className="block text-gray-400 text-sm mb-2">Opening Cash Amount</label>
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            Opening Cash Float ({symbol})
+          </label>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-accent-green font-bold">{symbol}</span>
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-sm select-none">
+              {symbol}
+            </span>
             <input
               type="number"
+              step="0.01"
+              min="0"
               value={openingCash}
               onChange={(e) => setOpeningCash(e.target.value)}
-              placeholder={`${symbol} 0.00`}
-              className="w-full pl-10 pr-4 py-3 bg-primary-darker border border-gray-600 rounded-xl text-white focus:outline-none focus:border-accent-green"
+              placeholder="0.00"
+              required
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-white/10 bg-slate-950/60 text-white placeholder-slate-500 text-sm focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              autoFocus
             />
           </div>
         </div>
 
-        <div className="flex space-x-3">
-          <Button variant="secondary" onClick={onClose} className="flex-1">
+        <div className="flex gap-3 pt-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleClose}
+            className="flex-1"
+            disabled={isLoading}
+          >
             Cancel
           </Button>
           <Button
-            onClick={handleSubmit}
+            type="submit"
+            variant="primary"
             disabled={isLoading || !openingCash.trim()}
+            isLoading={isLoading}
             className="flex-1"
           >
-            {isLoading ? 'Opening...' : 'Open Shift'}
+            Open Shift
           </Button>
         </div>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 };
 
@@ -87,9 +108,14 @@ export const CloseShiftModal = ({
   const [closingCash, setClosingCash] = useState('');
   const [notes, setNotes] = useState('');
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    setClosingCash('');
+    setNotes('');
+    onClose();
+  };
 
-  const handleSubmit = () => {
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
     const parsed = parseFloat(closingCash);
     if (isNaN(parsed) || parsed < 0) return;
     onSubmit(parsed, notes.trim());
@@ -97,70 +123,114 @@ export const CloseShiftModal = ({
     setNotes('');
   };
 
+  const parsedClosing = parseFloat(closingCash);
+  const hasEnteredCash = !isNaN(parsedClosing);
+  const discrepancy = hasEnteredCash ? parsedClosing - expectedCash : 0;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="close-shift-title">
-      <div className="absolute inset-0 bg-black/75" onClick={onClose} />
-      <div className="relative bg-primary-dark rounded-2xl p-6 w-full max-w-md mx-4 border border-gray-700">
-        <h2 id="close-shift-title" className="text-xl font-bold text-white mb-4">Close Shift</h2>
-        <p className="text-gray-400 mb-4">Count the cash in the register and confirm shift closure.</p>
-
-        <div className="bg-primary-darker rounded-xl p-4 mb-4 space-y-2 border border-gray-700">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Opening Cash</span>
-            <span className="text-white">{format(openingCash)}</span>
+    <Modal isOpen={isOpen} onClose={handleClose} title="Close Register Shift" size="sm">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Shift Cash Reconciliation Summary */}
+        <div className="rounded-2xl border border-white/[0.08] bg-slate-950/50 p-4 space-y-2.5">
+          <div className="flex justify-between text-xs text-slate-400">
+            <span>Opening Cash</span>
+            <span className="font-mono text-slate-200">{format(openingCash)}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Total Sales</span>
-            <span className="text-white">{format(totalSales)}</span>
+          <div className="flex justify-between text-xs text-slate-400">
+            <span>Cash Sales Total</span>
+            <span className="font-mono text-slate-200">{format(totalSales)}</span>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Expenses</span>
-            <span className="text-red-300">- {format(totalExpenses)}</span>
-          </div>
-          <div className="flex justify-between text-base pt-2 border-t border-gray-700">
-            <span className="text-white font-medium">Expected Cash</span>
-            <span className="text-accent-green font-bold">{format(expectedCash)}</span>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-gray-400 text-sm mb-2">Actual Closing Cash Amount</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-accent-green font-bold">{symbol}</span>
-              <input
-                type="number"
-                value={closingCash}
-                onChange={(e) => setClosingCash(e.target.value)}
-                placeholder={`${symbol} 0.00`}
-                className="w-full pl-10 pr-4 py-3 bg-primary-darker border border-gray-600 rounded-xl text-white focus:outline-none focus:border-accent-green"
-              />
+          {totalExpenses > 0 && (
+            <div className="flex justify-between text-xs text-rose-400">
+              <span>Expenses Disbursed</span>
+              <span className="font-mono">- {format(totalExpenses)}</span>
             </div>
+          )}
+          <div className="flex justify-between text-sm font-semibold pt-2 border-t border-white/[0.08]">
+            <span className="text-white">Expected in Drawer</span>
+            <span className="font-mono text-emerald-400 font-bold">{format(expectedCash)}</span>
           </div>
-
-          <Textarea
-            label="Notes (Optional)"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Any discrepancy or handover note..."
-            rows={3}
-          />
         </div>
 
-        <div className="flex space-x-3 mt-6">
-          <Button variant="secondary" onClick={onClose} className="flex-1">
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            Actual Cash Counted ({symbol})
+          </label>
+          <div className="relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-sm select-none">
+              {symbol}
+            </span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={closingCash}
+              onChange={(e) => setClosingCash(e.target.value)}
+              placeholder="0.00"
+              required
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-white/10 bg-slate-950/60 text-white placeholder-slate-500 text-sm focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              autoFocus
+            />
+          </div>
+        </div>
+
+        {/* Discrepancy indicator */}
+        {hasEnteredCash && (
+          <div
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border ${
+              Math.abs(discrepancy) < 0.01
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300'
+                : discrepancy > 0
+                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                  : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+            }`}
+          >
+            {Math.abs(discrepancy) < 0.01 ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                <span>Cash perfectly balanced with register.</span>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>
+                  {discrepancy > 0 ? 'Surplus:' : 'Shortage:'}{' '}
+                  <strong>{format(Math.abs(discrepancy))}</strong>
+                </span>
+              </>
+            )}
+          </div>
+        )}
+
+        <Textarea
+          label="Handover / Discrepancy Notes (Optional)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Note any reasons for discrepancy or shift comments..."
+          rows={2}
+        />
+
+        <div className="flex gap-3 pt-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleClose}
+            className="flex-1"
+            disabled={isLoading}
+          >
             Cancel
           </Button>
           <Button
+            type="submit"
             variant="danger"
-            onClick={handleSubmit}
             disabled={isLoading || !closingCash.trim()}
+            isLoading={isLoading}
             className="flex-1"
           >
-            {isLoading ? 'Closing...' : 'Close Shift'}
+            Close & Reconcile
           </Button>
         </div>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 };

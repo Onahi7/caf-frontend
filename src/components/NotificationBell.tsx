@@ -1,15 +1,48 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import {
+  Bell,
+  CheckCheck,
+  BellOff,
+  X,
+  AlertTriangle,
+  AlertCircle,
+  Info,
+  ShieldAlert,
+} from 'lucide-react';
 import { useNotificationStore } from '../stores/notification-store';
 import { useAuthStore } from '../stores/auth-store';
 import { notificationsApi, type AppNotification } from '../lib/notifications-api';
 
-const severityStyles: Record<string, { bg: string; ring: string; icon: string; label: string }> = {
-  info: { bg: 'bg-blue-500/10', ring: 'ring-blue-500/30', icon: 'text-blue-400', label: 'Info' },
-  warning: { bg: 'bg-yellow-500/10', ring: 'ring-yellow-500/30', icon: 'text-yellow-400', label: 'Warning' },
-  error: { bg: 'bg-orange-500/10', ring: 'ring-orange-500/30', icon: 'text-orange-400', label: 'Error' },
-  critical: { bg: 'bg-red-500/10', ring: 'ring-red-500/30', icon: 'text-red-400', label: 'Critical' },
+const severityConfig: Record<
+  string,
+  { bg: string; border: string; text: string; Icon: typeof Info }
+> = {
+  info: {
+    bg: 'bg-sky-500/15',
+    border: 'border-sky-500/30',
+    text: 'text-sky-400',
+    Icon: Info,
+  },
+  warning: {
+    bg: 'bg-amber-500/15',
+    border: 'border-amber-500/30',
+    text: 'text-amber-400',
+    Icon: AlertTriangle,
+  },
+  error: {
+    bg: 'bg-rose-500/15',
+    border: 'border-rose-500/30',
+    text: 'text-rose-400',
+    Icon: AlertCircle,
+  },
+  critical: {
+    bg: 'bg-red-500/20',
+    border: 'border-red-500/40',
+    text: 'text-red-400',
+    Icon: ShieldAlert,
+  },
 };
 
 function timeAgo(iso: string): string {
@@ -128,19 +161,17 @@ export const NotificationBell = () => {
           setOpen((o) => !o);
           if (!open) clearHasNew();
         }}
-        className="relative w-12 h-12 rounded-xl bg-primary-dark border border-gray-700 flex items-center justify-center text-gray-300 hover:border-accent-green/50 hover:text-accent-green transition-colors"
+        className={`relative flex h-10 w-10 items-center justify-center rounded-xl border bg-slate-800/80 backdrop-blur-md transition-all shadow-sm ${
+          open
+            ? 'border-emerald-500/40 text-emerald-400 bg-slate-800'
+            : 'border-white/[0.08] text-slate-300 hover:border-emerald-500/30 hover:text-emerald-400'
+        }`}
         aria-label="Notifications"
+        aria-expanded={open}
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className={`h-5 w-5 ${hasNew ? 'animate-pulse text-accent-green' : ''}`}
-          viewBox="0 0 20 20"
-          fill="currentColor"
-        >
-          <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-        </svg>
+        <Bell className={`h-4.5 w-4.5 ${hasNew ? 'animate-bounce text-emerald-400' : ''}`} />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center shadow-md">
+          <span className="absolute -top-1 -right-1 flex min-w-[18px] h-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white shadow-md ring-2 ring-slate-900">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -149,69 +180,80 @@ export const NotificationBell = () => {
       {open && (
         <div
           ref={panelRef}
-          className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-1.5rem)] bg-primary-dark border border-gray-700 rounded-2xl shadow-2xl shadow-black/40 z-50 overflow-hidden"
+          className="absolute right-0 mt-2 w-96 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-white/[0.1] bg-slate-900/95 shadow-2xl shadow-black/80 backdrop-blur-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
         >
-          <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between bg-primary-darker">
-            <div>
+          <div className="flex items-center justify-between border-b border-white/[0.08] bg-slate-950/40 px-4 py-3.5">
+            <div className="flex items-center gap-2">
               <h3 className="text-sm font-bold text-white">Notifications</h3>
-              <p className="text-xs text-gray-400">
-                {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
-              </p>
+              {unreadCount > 0 ? (
+                <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-400 border border-emerald-500/30">
+                  {unreadCount} new
+                </span>
+              ) : (
+                <span className="text-xs text-slate-400">All caught up</span>
+              )}
             </div>
             {unreadCount > 0 && (
               <button
                 onClick={() => markAllReadMutation.mutate()}
                 disabled={markAllReadMutation.isPending}
-                className="px-3 py-2 min-h-9 text-xs text-accent-green hover:text-accent-light font-medium disabled:opacity-50 rounded-lg hover:bg-accent-green/10"
+                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
               >
-                Mark all read
+                <CheckCheck className="w-3.5 h-3.5" />
+                <span>Mark all read</span>
               </button>
             )}
           </div>
 
-          <div className="max-h-[28rem] overflow-y-auto">
+          <div className="max-h-[28rem] overflow-y-auto divide-y divide-white/[0.04]">
             {!notifications || notifications.length === 0 ? (
-              <div className="p-8 text-center text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mx-auto mb-2 opacity-30" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-                </svg>
-                <p className="text-sm">No notifications</p>
+              <div className="p-8 text-center text-slate-400">
+                <BellOff className="h-9 w-9 mx-auto mb-2.5 text-slate-600" />
+                <p className="text-sm font-medium text-slate-300">No notifications</p>
+                <p className="text-xs text-slate-500 mt-0.5">We'll alert you when important events occur.</p>
               </div>
             ) : (
               notifications.map((n) => {
-                const style = severityStyles[n.severity] ?? severityStyles.info;
+                const config = severityConfig[n.severity] ?? severityConfig.info;
+                const IconComponent = config.Icon;
                 return (
                   <div
                     key={n._id}
                     onClick={() => handleClickItem(n)}
-                    className={`group relative flex items-start gap-3 p-3 border-b border-gray-800 cursor-pointer hover:bg-primary-darker transition-colors ${
-                      !n.read ? 'bg-accent-green/5' : ''
+                    className={`group relative flex items-start gap-3 p-3.5 cursor-pointer transition-colors hover:bg-white/[0.04] ${
+                      !n.read ? 'bg-emerald-500/[0.03]' : ''
                     }`}
                   >
                     {!n.read && (
-                      <span className="absolute left-1.5 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-accent-green" />
+                      <span className="absolute left-1.5 top-4 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-emerald-400/20" />
                     )}
-                    <div className={`shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ring-1 ${style.bg} ${style.ring}`}>
-                      <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${style.icon}`} viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
+                    <div
+                      className={`shrink-0 flex h-8 w-8 items-center justify-center rounded-xl ${config.bg} ${config.text} ${config.border}`}
+                    >
+                      <IconComponent className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <p className="text-sm font-semibold text-white truncate">{n.title}</p>
-                        <span className="text-[10px] text-gray-500 shrink-0">{timeAgo(n.createdAt)}</span>
+                        <span className="text-[10px] font-medium text-slate-400 shrink-0">
+                          {timeAgo(n.createdAt)}
+                        </span>
                       </div>
-                      <p className="text-xs text-gray-300 mt-0.5 whitespace-normal break-words">{n.message}</p>
+                      <p className="text-xs leading-relaxed text-slate-300 mt-0.5 whitespace-normal break-words">
+                        {n.message}
+                      </p>
                     </div>
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         removeMutation.mutate(n._id);
                       }}
-                      className="p-2 min-w-9 min-h-9 rounded-lg text-gray-500 hover:text-red-400 hover:bg-white/5 text-xs sm:opacity-0 sm:group-hover:opacity-100"
-                      title="Dismiss"
+                      className="shrink-0 rounded-lg p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+                      title="Dismiss notification"
+                      aria-label="Dismiss notification"
                     >
-                      x
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 );

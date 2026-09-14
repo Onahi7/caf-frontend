@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Search, Plus, Package } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useQuickKeysStore, MAX_QUICK_KEYS } from '../../stores/quick-keys-store';
 import { useToast } from '../../hooks/useToast';
 import { useCurrency } from '../../hooks/useCurrency';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
 
 interface ProductPickerModalProps {
   open: boolean;
@@ -49,18 +52,14 @@ export const ProductPickerModal = ({ open, onClose, branchId }: ProductPickerMod
     enabled: open,
   });
 
-  if (!open) return null;
-
   const handleAdd = (p: PickerProduct, packCode?: string) => {
     if (isFull) {
-      showError(`Max ${MAX_QUICK_KEYS} quick keys`);
+      showError(`Maximum ${MAX_QUICK_KEYS} quick keys allowed`);
       return;
     }
     const ok = addKey({
       productId: p._id,
-      productName: packCode
-        ? `${p.name} (${p.packSizes?.find((pk) => pk.code === packCode)?.name ?? 'pack'})`
-        : p.name,
+      productName: p.name,
       brand: p.brand,
       sku: p.sku,
       unitPrice: packCode
@@ -72,109 +71,117 @@ export const ProductPickerModal = ({ open, onClose, branchId }: ProductPickerMod
     if (ok) {
       showSuccess(`Added "${p.name}" to quick keys`);
     } else {
-      showError(`"${p.name}" is already a quick key`);
+      showError(`"${p.name}" is already in quick keys`);
     }
   };
 
   return (
-    <div
-      className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4"
-      onClick={onClose}
+    <Modal
+      isOpen={open}
+      onClose={onClose}
+      title={`Add Quick Key (${keysCount}/${MAX_QUICK_KEYS})`}
+      size="lg"
     >
-      <div
-        className="bg-primary-dark border border-gray-700 rounded-t-2xl sm:rounded-2xl w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-5 py-4 border-b border-gray-700 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-white">Add Quick Key</h3>
-            <p className="text-xs text-gray-400">
-              {keysCount}/{MAX_QUICK_KEYS} slots used
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-11 h-11 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/5 text-2xl leading-none"
-          >
-            x
-          </button>
-        </div>
-
-        <div className="px-5 py-3 border-b border-gray-800">
+      <div className="space-y-4">
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 select-none" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search products by name, brand, SKU..."
-            className="w-full px-4 py-3 bg-primary-darker border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent-green"
+            placeholder="Search products by name, brand, or SKU..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-white/10 bg-slate-950/60 text-white placeholder-slate-500 text-sm focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
             autoFocus
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 pb-safe-bottom">
+        {/* Product List */}
+        <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
           {isLoading ? (
-            <div className="flex items-center justify-center h-32 text-gray-400">Loading...</div>
+            <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-2">
+              <div className="w-6 h-6 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
+              <span className="text-xs">Loading product catalogue...</span>
+            </div>
           ) : !products || products.length === 0 ? (
-            <div className="flex items-center justify-center h-32 text-gray-400">
-              {debouncedSearch ? 'No products found' : 'Start typing to search products'}
+            <div className="flex flex-col items-center justify-center py-12 text-center rounded-2xl border border-dashed border-white/[0.08] bg-slate-950/30">
+              <Package className="w-8 h-8 text-slate-600 mb-2" />
+              <p className="text-sm font-medium text-slate-300">
+                {debouncedSearch ? 'No products found' : 'Type a name or SKU to search'}
+              </p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {debouncedSearch ? 'Try a different search query' : 'Quick keys allow 1-tap checkout in POS'}
+              </p>
             </div>
           ) : (
-            <div className="space-y-2">
-              {products.map((p) => {
-                const hasPacks = p.packSizes && p.packSizes.length > 0;
-                return (
-                  <div
-                    key={p._id}
-                    className="flex items-center justify-between gap-3 p-3 bg-primary-darker border border-gray-800 rounded-lg hover:border-accent-green/40 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-white truncate">{p.name}</p>
-                      <p className="text-xs text-gray-400 truncate">
-                        {p.brand ? `${p.brand} - ` : ''}SKU {p.sku} - {p.stock} in stock
-                      </p>
-                      {!hasPacks && (
-                        <p className="text-xs text-accent-green font-bold mt-0.5">
-                          {format(p.price)}
-                        </p>
-                      )}
+            products.map((p) => {
+              const hasPacks = p.packSizes && p.packSizes.length > 0;
+              return (
+                <div
+                  key={p._id}
+                  className="flex items-center justify-between gap-3 p-3 rounded-xl border border-white/[0.06] bg-slate-950/40 hover:border-emerald-500/30 hover:bg-slate-900/60 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{p.name}</p>
+                    <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400">
+                      {p.brand && <span>{p.brand} •</span>}
+                      <span>SKU: {p.sku}</span>
+                      <span>•</span>
+                      <span className={p.stock > 0 ? 'text-emerald-400 font-medium' : 'text-rose-400'}>
+                        {p.stock} in stock
+                      </span>
                     </div>
-                    {hasPacks ? (
-                      <div className="flex flex-col gap-1.5 shrink-0">
-                        <button
-                          onClick={() => handleAdd(p)}
-                          disabled={isFull}
-                          className="px-4 py-2 min-h-10 text-xs bg-accent-green text-primary-dark rounded-md font-semibold hover:bg-accent-light disabled:opacity-50"
-                        >
-                          + Base
-                        </button>
-                        {p.packSizes!.map((pk) => (
-                          <button
-                            key={pk.code ?? pk.name}
-                            onClick={() => handleAdd(p, pk.code)}
-                            disabled={isFull}
-                            className="px-4 py-2 min-h-10 text-xs bg-primary-dark border border-accent-green/30 text-accent-green rounded-md font-semibold hover:bg-accent-green/10 disabled:opacity-50 truncate max-w-[140px]"
-                            title={`+ ${pk.name} - ${format(pk.sellingPrice)}`}
-                          >
-                            + {pk.name}
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => handleAdd(p)}
-                        disabled={isFull}
-                        className="px-4 py-2.5 min-h-11 text-sm bg-accent-green text-primary-dark rounded-lg font-semibold hover:bg-accent-light disabled:opacity-50 shrink-0"
-                      >
-                        + Add
-                      </button>
+                    {!hasPacks && (
+                      <p className="text-xs font-mono font-bold text-emerald-400 mt-1">
+                        {format(p.price)}
+                      </p>
                     )}
                   </div>
-                );
-              })}
-            </div>
+
+                  {hasPacks ? (
+                    <div className="flex flex-wrap gap-1.5 shrink-0 justify-end max-w-[200px]">
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleAdd(p)}
+                        disabled={isFull}
+                      >
+                        <Plus className="w-3.5 h-3.5 mr-1" /> Base
+                      </Button>
+                      {p.packSizes!.map((pk) => (
+                        <Button
+                          key={pk.code ?? pk.name}
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleAdd(p, pk.code)}
+                          disabled={isFull}
+                          title={`+ ${pk.name} - ${format(pk.sellingPrice)}`}
+                          className="text-xs"
+                        >
+                          <Plus className="w-3 h-3 mr-1" /> {pk.name}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleAdd(p)}
+                      disabled={isFull}
+                      className="shrink-0"
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-1" /> Add
+                    </Button>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 };

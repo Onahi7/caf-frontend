@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Input } from '../ui/Input';
+import { Modal } from '../ui/Modal';
 import { Select } from '../ui/Select';
 import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
@@ -13,12 +13,12 @@ interface ExpenseModalProps {
 }
 
 const expenseCategories = [
-  { value: 'supplies', label: 'Supplies' },
-  { value: 'maintenance', label: 'Maintenance' },
-  { value: 'utilities', label: 'Utilities' },
-  { value: 'rent', label: 'Rent' },
-  { value: 'salaries', label: 'Salaries' },
-  { value: 'other', label: 'Other' },
+  { value: 'supplies', label: 'Store & Office Supplies' },
+  { value: 'maintenance', label: 'Equipment & Maintenance' },
+  { value: 'utilities', label: 'Utilities & Internet' },
+  { value: 'rent', label: 'Rent & Facility' },
+  { value: 'salaries', label: 'Wages & Shift Advance' },
+  { value: 'other', label: 'Other Operational Expense' },
 ];
 
 export const ExpenseModal = ({ isOpen, onClose, onSubmit, isLoading }: ExpenseModalProps) => {
@@ -27,9 +27,15 @@ export const ExpenseModal = ({ isOpen, onClose, onSubmit, isLoading }: ExpenseMo
   const [category, setCategory] = useState('supplies');
   const [description, setDescription] = useState('');
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    setAmount('');
+    setCategory('supplies');
+    setDescription('');
+    onClose();
+  };
 
-  const handleSubmit = () => {
+  const handleSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0 || !description.trim()) return;
     onSubmit({ amount: parsedAmount, category, description: description.trim() });
@@ -39,56 +45,71 @@ export const ExpenseModal = ({ isOpen, onClose, onSubmit, isLoading }: ExpenseMo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-labelledby="expense-modal-title">
-      <div className="absolute inset-0 bg-black/75" onClick={onClose} />
-      <div className="relative bg-primary-dark rounded-2xl p-6 w-full max-w-md mx-4 border border-gray-700">
-        <h2 id="expense-modal-title" className="text-xl font-bold text-white mb-4">Log Expense</h2>
-        <p className="text-gray-400 mb-4">Record a cash expense for this active shift.</p>
+    <Modal isOpen={isOpen} onClose={handleClose} title="Record Cash Expense" size="sm">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Record a cash disbursement from this register drawer. The amount will be deducted from closing expected cash.
+        </p>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-gray-400 text-sm mb-2">Amount</label>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-accent-green font-bold">{symbol}</span>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                placeholder={`${symbol} 0.00`}
-                className="w-full pl-10 pr-4 py-3 bg-primary-darker border border-gray-600 rounded-xl text-white focus:outline-none focus:border-accent-green"
-              />
-            </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+            Expense Amount ({symbol})
+          </label>
+          <div className="relative">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-sm select-none">
+              {symbol}
+            </span>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+              required
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-white/10 bg-slate-950/60 text-white placeholder-slate-500 text-sm focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              autoFocus
+            />
           </div>
-
-          <Select
-            label="Category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            options={expenseCategories}
-          />
-
-          <Textarea
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="What was this expense for?"
-            rows={3}
-          />
         </div>
 
-        <div className="flex space-x-3 mt-6">
-          <Button variant="secondary" onClick={onClose} className="flex-1">
+        <Select
+          label="Category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          options={expenseCategories}
+        />
+
+        <Textarea
+          label="Purpose / Description"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="e.g. Receipt paper rolls, cleaning supplies..."
+          rows={3}
+          required
+        />
+
+        <div className="flex gap-3 pt-3">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleClose}
+            className="flex-1"
+            disabled={isLoading}
+          >
             Cancel
           </Button>
           <Button
-            onClick={handleSubmit}
+            type="submit"
+            variant="primary"
             disabled={isLoading || !amount.trim() || !description.trim()}
+            isLoading={isLoading}
             className="flex-1"
           >
-            {isLoading ? 'Logging...' : 'Log Expense'}
+            Log Expense
           </Button>
         </div>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 };

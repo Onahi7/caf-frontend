@@ -79,18 +79,18 @@ export const ConfirmDialog = ({
 
   const variants = {
     danger: {
-      button: 'bg-red-500 text-white hover:bg-red-400 focus:ring-red-400',
-      icon: 'border-red-400/20 bg-red-500/10 text-red-300',
+      button: 'bg-rose-500 text-white hover:bg-rose-400 focus:ring-rose-400 shadow-lg shadow-rose-950/40',
+      icon: 'border-rose-500/30 bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/20',
       Icon: ShieldAlert,
     },
     warning: {
-      button: 'bg-amber-400 text-primary-darker hover:bg-amber-300 focus:ring-amber-300',
-      icon: 'border-amber-300/20 bg-amber-400/10 text-amber-300',
+      button: 'bg-amber-400 text-slate-950 font-bold hover:bg-amber-300 focus:ring-amber-300 shadow-lg shadow-amber-950/40',
+      icon: 'border-amber-500/30 bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/20',
       Icon: AlertTriangle,
     },
     info: {
-      button: 'bg-accent-green text-primary-dark hover:bg-accent-light focus:ring-accent-green',
-      icon: 'border-accent-green/20 bg-accent-green/10 text-accent-green',
+      button: 'bg-emerald-500 text-slate-950 font-bold hover:bg-emerald-400 focus:ring-emerald-400 shadow-lg shadow-emerald-950/40',
+      icon: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/20',
       Icon: Info,
     },
   };
@@ -107,7 +107,7 @@ export const ConfirmDialog = ({
     >
       <button
         type="button"
-        className="absolute inset-0 cursor-default bg-black/75 backdrop-blur-sm"
+        className="absolute inset-0 cursor-default bg-slate-950/80 backdrop-blur-md transition-opacity"
         onClick={isLoading ? undefined : onClose}
         aria-label="Close confirmation"
         tabIndex={-1}
@@ -115,15 +115,20 @@ export const ConfirmDialog = ({
       <div
         ref={dialogRef}
         tabIndex={-1}
-        className="relative w-full max-w-md rounded-t-3xl border border-white/10 bg-primary-dark p-5 shadow-2xl outline-none sm:rounded-2xl sm:p-6"
+        className="relative w-full max-w-md rounded-t-3xl border border-white/[0.1] bg-slate-900/95 p-5 shadow-2xl shadow-black/80 outline-none backdrop-blur-2xl sm:rounded-2xl sm:p-6 animate-in fade-in zoom-in-95 duration-150"
       >
+        {/* Mobile drag handle indicator */}
+        <div className="pb-3 pt-1 sm:hidden flex justify-center">
+          <div className="h-1.5 w-12 rounded-full bg-white/20" />
+        </div>
+
         <div className="flex items-start gap-4">
-          <div className={`rounded-2xl border p-3 ${variantConfig.icon}`} aria-hidden="true">
+          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border p-3 ${variantConfig.icon}`} aria-hidden="true">
             <VariantIcon className="h-6 w-6" />
           </div>
-          <div className="min-w-0 flex-1">
-            <h2 id={titleId} className="text-lg font-bold text-white">{title}</h2>
-            <p id={messageId} className="mt-2 text-sm leading-6 text-gray-300">{message}</p>
+          <div className="min-w-0 flex-1 pt-0.5">
+            <h2 id={titleId} className="text-lg font-bold text-white tracking-tight">{title}</h2>
+            <p id={messageId} className="mt-1.5 text-sm leading-relaxed text-slate-300">{message}</p>
           </div>
         </div>
 
@@ -133,7 +138,7 @@ export const ConfirmDialog = ({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="min-h-11 rounded-xl border border-white/15 px-4 py-2 font-medium text-gray-200 transition-colors hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/30 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-11 rounded-xl border border-white/10 px-4 py-2 font-medium text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white focus:outline-none focus:ring-2 focus:ring-white/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {cancelLabel}
           </button>
@@ -144,7 +149,7 @@ export const ConfirmDialog = ({
               onClose();
             }}
             disabled={isLoading}
-            className={`min-h-11 rounded-xl px-4 py-2 font-semibold transition-colors focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 ${variantConfig.button}`}
+            className={`min-h-11 rounded-xl px-5 py-2 font-semibold transition-all focus:outline-none focus:ring-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${variantConfig.button}`}
           >
             <span className="flex items-center justify-center gap-2">
               {isLoading ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}

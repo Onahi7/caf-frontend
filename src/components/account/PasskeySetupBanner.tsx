@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Fingerprint, Clock, ShieldCheck } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { useWebAuthn } from '../../hooks/useWebAuthn';
 import { useToast } from '../../hooks/useToast';
@@ -41,7 +42,7 @@ export const PasskeySetupBanner = () => {
     try {
       const ok = await webauthn.register();
       if (ok) {
-        showSuccess('Passkey registered');
+        showSuccess('Passkey registered successfully');
       } else if (webauthn.error) {
         showError(webauthn.error);
       }
@@ -67,35 +68,48 @@ export const PasskeySetupBanner = () => {
   }
 
   return (
-    <div className="rounded-2xl border border-accent-green/40 bg-accent-green/10 p-4 sm:p-5 shadow-lg shadow-accent-green/10">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <div className="hidden sm:flex w-10 h-10 items-center justify-center rounded-full bg-accent-green/20 text-accent-green">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
-            </svg>
+    <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-950/40 via-slate-900/95 to-slate-900/95 p-4 sm:p-5 shadow-xl shadow-emerald-950/20 backdrop-blur-xl">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3.5">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30 shadow-md">
+            <Fingerprint className="h-6 w-6" />
           </div>
           <div className="space-y-1">
-            <p className="text-sm font-semibold text-white">
-              Register a passkey for your account
-            </p>
-            <p className="text-sm text-gray-300 leading-6">
-              Use your fingerprint, face, or screen lock to sign in next time - no
-              password to type or forget. Passkeys are phishing-resistant and
-              required by your organisation\u2019s security policy.
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold tracking-tight text-white">
+                Register a passkey for instant sign-in
+              </p>
+              <span className="hidden sm:inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-300 border border-emerald-500/20">
+                <ShieldCheck className="w-3 h-3" /> Recommended
+              </span>
+            </div>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-2xl">
+              Use your fingerprint, face, or device screen lock to sign in next time without typing passwords.
+              Passkeys are phishing-resistant and secured by hardware cryptography.
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+        <div className="flex flex-wrap items-center gap-2.5 sm:flex-nowrap shrink-0">
           <Button
             type="button"
+            variant="primary"
+            size="sm"
             onClick={handleRegister}
             disabled={registering || webauthn.isLoading}
+            className="w-full sm:w-auto"
           >
-            {registering || webauthn.isLoading ? 'Registering\u2026' : 'Register Now'}
+            <Fingerprint className="w-4 h-4 mr-1.5" />
+            <span>{registering || webauthn.isLoading ? 'Registering...' : 'Register Passkey'}</span>
           </Button>
-          <Button type="button" variant="secondary" onClick={handleSnooze}>
-            Remind me tomorrow
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={handleSnooze}
+            className="w-full sm:w-auto"
+          >
+            <Clock className="w-3.5 h-3.5 mr-1.5 opacity-70" />
+            <span>Remind tomorrow</span>
           </Button>
         </div>
       </div>

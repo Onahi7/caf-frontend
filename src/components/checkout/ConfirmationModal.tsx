@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { CheckCircle2, AlertTriangle, AlertCircle, Info, LoaderCircle } from 'lucide-react';
+import { Button } from '../ui/Button';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -11,6 +13,29 @@ interface ConfirmationModalProps {
   isLoading?: boolean;
   type?: 'info' | 'warning' | 'success' | 'error';
 }
+
+const typeConfig = {
+  success: {
+    iconStyle: 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30',
+    Icon: CheckCircle2,
+    confirmVariant: 'primary' as const,
+  },
+  warning: {
+    iconStyle: 'bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30',
+    Icon: AlertTriangle,
+    confirmVariant: 'secondary' as const,
+  },
+  error: {
+    iconStyle: 'bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/30',
+    Icon: AlertCircle,
+    confirmVariant: 'danger' as const,
+  },
+  info: {
+    iconStyle: 'bg-sky-500/15 text-sky-400 ring-1 ring-sky-500/30',
+    Icon: Info,
+    confirmVariant: 'primary' as const,
+  },
+};
 
 export const ConfirmationModal = ({
   isOpen,
@@ -53,119 +78,71 @@ export const ConfirmationModal = ({
 
   if (!isOpen) return null;
 
-  const getIconStyles = () => {
-    switch (type) {
-      case 'success':
-        return 'bg-green-500/20 text-green-400 border-green-500/30';
-      case 'warning':
-        return 'bg-amber-500/20 text-amber-400 border-amber-500/30';
-      case 'error':
-        return 'bg-red-500/20 text-red-400 border-red-500/30';
-      default:
-        return 'bg-accent-green/20 text-accent-green border-accent-green/30';
-    }
-  };
-
-  const getIcon = () => {
-    switch (type) {
-      case 'success':
-        return (
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
-      case 'warning':
-        return (
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-          </svg>
-        );
-      case 'error':
-        return (
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        );
-      default:
-        return (
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-          </svg>
-        );
-    }
-  };
+  const config = typeConfig[type] ?? typeConfig.info;
+  const IconComponent = config.Icon;
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
     >
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+      <div
+        className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
         onClick={!isLoading ? onClose : undefined}
       />
-      
-      {/* Modal */}
-      <div className="relative bg-primary-dark border border-gray-800 rounded-2xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200">
+
+      {/* Modal Card */}
+      <div className="relative w-full max-w-md rounded-2xl border border-white/[0.1] bg-slate-900/95 shadow-2xl shadow-black/80 backdrop-blur-2xl p-6 text-center animate-in zoom-in-95 duration-150">
         {/* Icon */}
-        <div className="flex justify-center pt-6">
-          <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center ${getIconStyles()}`}>
-            {getIcon()}
+        <div className="flex justify-center mb-4">
+          <div className={`flex h-14 w-14 items-center justify-center rounded-2xl ${config.iconStyle} shadow-lg`}>
+            <IconComponent className="h-7 w-7" />
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-6 text-center">
-          <h2 id="modal-title" className="text-xl font-bold text-white mb-2">
-            {title}
-          </h2>
-          <p className="text-gray-400 text-sm leading-relaxed">
-            {message}
-          </p>
-        </div>
+        <h2 id="modal-title" className="text-xl font-bold tracking-tight text-white mb-2">
+          {title}
+        </h2>
+        <p className="text-sm leading-relaxed text-slate-300 mb-6">
+          {message}
+        </p>
 
         {/* Actions */}
-        <div className="flex gap-3 p-6 pt-0">
-          <button
+        <div className="flex gap-3">
+          <Button
             type="button"
+            variant="secondary"
             onClick={onClose}
             disabled={isLoading}
-            className="flex-1 py-3 px-4 bg-primary-darker border border-gray-800 text-gray-300 font-semibold rounded-xl hover:border-gray-700 hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex-1"
           >
             {cancelText}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant={config.confirmVariant}
             onClick={onConfirm}
             disabled={isLoading}
-            className="flex-1 py-3 px-4 bg-accent-green text-primary-dark font-bold rounded-xl hover:bg-accent-light active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            isLoading={isLoading}
+            className="flex-1"
           >
-            {isLoading ? (
-              <>
-                <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-                <span>Processing...</span>
-              </>
-            ) : (
-              confirmText
-            )}
-          </button>
+            {confirmText}
+          </Button>
         </div>
 
         {/* Keyboard Hints */}
         {!isLoading && (
-          <div className="px-6 pb-4 flex items-center justify-center gap-4 text-xs text-gray-500">
+          <div className="mt-4 flex items-center justify-center gap-4 text-xs text-slate-500">
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-gray-800 border border-gray-700 rounded text-gray-400">Enter</kbd>
+              <kbd className="px-1.5 py-0.5 bg-slate-800 border border-white/[0.08] rounded text-slate-400 font-mono text-[10px]">Enter</kbd>
               to confirm
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-gray-800 border border-gray-700 rounded text-gray-400">Esc</kbd>
+              <kbd className="px-1.5 py-0.5 bg-slate-800 border border-white/[0.08] rounded text-slate-400 font-mono text-[10px]">Esc</kbd>
               to cancel
             </span>
           </div>

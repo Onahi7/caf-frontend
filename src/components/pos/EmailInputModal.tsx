@@ -55,8 +55,8 @@ export const EmailInputModal = ({
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Email Receipt" size="sm">
       <div className="space-y-4">
-        <p className="text-sm text-gray-600">
-          Enter the customer's email address to send a copy of the receipt.
+        <p className="text-xs sm:text-sm text-slate-400 leading-relaxed">
+          Enter the customer's email address to send a digital copy of the receipt.
         </p>
 
         <Input

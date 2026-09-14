@@ -88,7 +88,10 @@ const ToastContainer = ({ toasts, onRemove }: ToastContainerProps) => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed top-[calc(1rem+env(safe-area-inset-top))] right-4 left-4 z-[100] space-y-2 sm:left-auto sm:max-w-sm" aria-label="Notifications">
+    <div
+      className="pointer-events-none fixed top-[calc(1rem+env(safe-area-inset-top))] right-4 left-4 z-[100] flex flex-col gap-2.5 sm:left-auto sm:w-96"
+      aria-label="Notifications"
+    >
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} onRemove={onRemove} />
       ))}
@@ -101,87 +104,103 @@ interface ToastItemProps {
   onRemove: (id: string) => void;
 }
 
+const severityConfig = {
+  success: {
+    border: 'border-emerald-500/30 hover:border-emerald-500/50',
+    shadow: 'shadow-emerald-950/40',
+    badge: 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30',
+    progress: 'bg-emerald-400',
+    Icon: CheckCircle2,
+  },
+  error: {
+    border: 'border-rose-500/30 hover:border-rose-500/50',
+    shadow: 'shadow-rose-950/40',
+    badge: 'bg-rose-500/15 text-rose-400 ring-1 ring-rose-500/30',
+    progress: 'bg-rose-400',
+    Icon: XCircle,
+  },
+  warning: {
+    border: 'border-amber-500/30 hover:border-amber-500/50',
+    shadow: 'shadow-amber-950/40',
+    badge: 'bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/30',
+    progress: 'bg-amber-400',
+    Icon: AlertTriangle,
+  },
+  info: {
+    border: 'border-sky-500/30 hover:border-sky-500/50',
+    shadow: 'shadow-sky-950/40',
+    badge: 'bg-sky-500/15 text-sky-400 ring-1 ring-sky-500/30',
+    progress: 'bg-sky-400',
+    Icon: Info,
+  },
+};
+
 const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
   const [isVisible, setIsVisible] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [progress, setProgress] = useState(100);
+  const duration = toast.duration ?? 5000;
+  const config = severityConfig[toast.type] ?? severityConfig.info;
+  const IconComponent = config.Icon;
 
   useEffect(() => {
-    timeoutRef.current = setTimeout(() => setIsVisible(true), 10);
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
+    const timer = setTimeout(() => setIsVisible(true), 15);
+    return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
+      setProgress(remaining);
+      if (remaining <= 0) {
+        clearInterval(interval);
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [duration]);
 
   const handleRemove = () => {
     setIsVisible(false);
-    setTimeout(() => onRemove(toast.id), 200);
-  };
-
-  const getToastStyles = () => {
-    const baseStyles = "pointer-events-auto transform border-l-4 bg-primary-dark/95 shadow-2xl shadow-black/30 backdrop-blur-xl transition-all duration-200 ease-out";
-    const visibilityStyles = isVisible 
-      ? "translate-x-0 opacity-100" 
-      : "translate-x-full opacity-0";
-    
-    switch (toast.type) {
-      case 'success':
-        return `${baseStyles} ${visibilityStyles} border-accent-green`;
-      case 'error':
-        return `${baseStyles} ${visibilityStyles} border-red-400`;
-      case 'warning':
-        return `${baseStyles} ${visibilityStyles} border-amber-300`;
-      case 'info':
-        return `${baseStyles} ${visibilityStyles} border-sky-400`;
-      default:
-        return `${baseStyles} ${visibilityStyles} border-gray-400`;
-    }
-  };
-
-  const getIcon = () => {
-    switch (toast.type) {
-      case 'success':
-        return (
-          <CheckCircle2 className="h-5 w-5 text-accent-green" />
-        );
-      case 'error':
-        return (
-          <XCircle className="h-5 w-5 text-red-400" />
-        );
-      case 'warning':
-        return (
-          <AlertTriangle className="h-5 w-5 text-amber-300" />
-        );
-      case 'info':
-        return (
-          <Info className="h-5 w-5 text-sky-400" />
-        );
-    }
+    setTimeout(() => onRemove(toast.id), 220);
   };
 
   return (
     <div
-      className={`${getToastStyles()} w-full max-w-[calc(100vw-2rem)] rounded-xl border-y border-r border-white/10 p-4 text-white`}
+      className={`pointer-events-auto relative w-full overflow-hidden rounded-2xl border bg-slate-900/90 backdrop-blur-xl p-4 text-slate-100 shadow-2xl transition-all duration-200 ease-out ${config.border} ${config.shadow} ${
+        isVisible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-2 opacity-0 scale-95'
+      }`}
       role={toast.type === 'error' ? 'alert' : 'status'}
       aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
       aria-atomic="true"
     >
-      <div className="flex items-start space-x-3">
-        <div className="shrink-0" aria-hidden="true">
-          {getIcon()}
+      <div className="flex items-start gap-3.5">
+        <div className={`shrink-0 flex h-9 w-9 items-center justify-center rounded-xl ${config.badge}`}>
+          <IconComponent className="h-5 w-5" />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="font-semibold text-sm">{toast.title}</p>
+        <div className="min-w-0 flex-1 pt-0.5">
+          <p className="text-sm font-semibold tracking-tight text-white">{toast.title}</p>
           {toast.message && (
-            <p className="text-sm opacity-90 mt-1">{toast.message}</p>
+            <p className="mt-1 text-xs leading-relaxed text-slate-300 break-words">{toast.message}</p>
           )}
         </div>
         <button
+          type="button"
           onClick={handleRemove}
-          className="-mr-1 -mt-1 shrink-0 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/30"
+          className="-mr-1 -mt-1 shrink-0 rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-white/20"
           aria-label="Dismiss notification"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>
+      </div>
+
+      {/* Auto-dismiss progress bar */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/[0.06] overflow-hidden">
+        <div
+          className={`h-full transition-all duration-75 ease-linear ${config.progress}`}
+          style={{ width: `${progress}%` }}
+        />
       </div>
     </div>
   );

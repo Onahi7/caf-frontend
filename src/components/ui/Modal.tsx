@@ -99,9 +99,14 @@ export const Modal = ({
       {/* Modal Container */}
       <div
         ref={containerRef}
-        className={`relative flex max-h-[92dvh] w-full ${sizeStyles[size]} flex-col overflow-hidden rounded-t-3xl border border-white/[0.1] bg-slate-900/95 shadow-2xl shadow-black/60 sm:my-8 sm:rounded-2xl sm:max-h-[85dvh] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-200`}
+        className={`relative flex max-h-[92dvh] w-full ${sizeStyles[size]} flex-col overflow-hidden rounded-t-3xl border border-white/[0.1] bg-slate-900/95 shadow-2xl shadow-black/80 sm:my-8 sm:rounded-2xl sm:max-h-[85dvh] backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-200`}
         onClick={(event) => event.stopPropagation()}
       >
+        {/* Mobile drag handle indicator */}
+        <div className="pt-2 sm:hidden flex justify-center">
+          <div className="h-1.5 w-12 rounded-full bg-white/20" />
+        </div>
+
         {/* Header */}
         {title && (
           <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-white/[0.08] bg-slate-900/80 backdrop-blur-md px-5 py-4 sm:px-6">

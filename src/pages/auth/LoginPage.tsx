@@ -132,7 +132,7 @@ export const LoginPage = () => {
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 left-1/3 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative max-w-md w-full p-8 sm:p-10 bg-slate-900/80 border border-white/[0.08] backdrop-blur-xl rounded-3xl shadow-2xl shadow-black/60">
+      <div className="relative max-w-md w-full p-8 sm:p-10 bg-slate-900/85 border border-white/[0.08] backdrop-blur-2xl rounded-3xl shadow-2xl shadow-black/80">
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-4 ring-emerald-500/10 mb-4">
             <ShieldCheck className="w-7 h-7 text-white" />
@@ -177,15 +177,15 @@ export const LoginPage = () => {
           />
 
           {loginMutation.isError && (
-            <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
-              <p className="text-xs sm:text-sm text-red-400 font-medium">
+            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-center">
+              <p className="text-xs sm:text-sm text-rose-400 font-medium">
                 {getLoginErrorMessage(loginMutation.error)}
               </p>
             </div>
           )}
 
           {fieldErrors.branch && (
-            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center">
               <p className="text-xs sm:text-sm text-amber-300 font-medium">{fieldErrors.branch}</p>
             </div>
           )}
@@ -203,7 +203,7 @@ export const LoginPage = () => {
           </Button>
         </form>
 
-        {/* Biometric Login */}
+        {/* Biometric / Passkey Login */}
         {(webauthn.isSupported || webauthn.isPlatformAuthenticatorAvailable || biometric.isAvailable || hasCachedCredentials) && (
           <div className="mt-6">
             <div className="relative my-5">
@@ -211,7 +211,7 @@ export const LoginPage = () => {
                 <div className="w-full border-t border-white/[0.08]" />
               </div>
               <div className="relative flex justify-center text-xs uppercase tracking-wider">
-                <span className="px-3 bg-slate-900 text-slate-400 font-medium">Or continue with</span>
+                <span className="px-3 bg-slate-900 text-slate-400 font-medium">Or quick sign in</span>
               </div>
             </div>
 
@@ -245,24 +245,27 @@ export const LoginPage = () => {
                 }
               }}
               disabled={webauthn.isLoading || biometric.isLoading}
-              className="w-full py-3 px-4 bg-slate-800/80 hover:bg-slate-800 border border-white/[0.08] hover:border-emerald-500/30 rounded-xl text-white font-medium flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 shadow-sm"
+              className="group relative w-full py-3.5 px-4 bg-gradient-to-r from-emerald-950/20 via-slate-800 to-emerald-950/20 hover:from-emerald-900/30 hover:to-emerald-900/30 border border-emerald-500/30 hover:border-emerald-500/50 rounded-2xl text-white font-medium flex items-center justify-center gap-3 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 shadow-lg shadow-emerald-950/20"
             >
               {(webauthn.isLoading || biometric.isLoading) ? (
                 <div className="w-5 h-5 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
               ) : (
-                <Fingerprint className="w-5 h-5 text-emerald-400" />
+                <span className="relative flex h-5 w-5 items-center justify-center">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-20" />
+                  <Fingerprint className="relative w-5 h-5 text-emerald-400 transition-transform group-hover:scale-110" />
+                </span>
               )}
-              <span className="text-sm">
+              <span className="text-sm font-semibold tracking-tight text-slate-100">
                 {!navigator.onLine && hasCachedCredentials
                   ? 'Sign In Offline'
                   : webauthn.isSupported
                     ? 'Sign In with Passkey'
-                    : 'Sign In with Biometric'}
+                    : 'Sign In with Fingerprint'}
               </span>
             </button>
 
             {(webauthn.error || biometric.error) && (
-              <p className="mt-2 text-xs text-red-400 text-center">
+              <p className="mt-2.5 text-xs text-rose-400 text-center font-medium">
                 {webauthn.error || biometric.error}
               </p>
             )}
@@ -272,7 +275,7 @@ export const LoginPage = () => {
         <div className="mt-5 text-center">
           <button
             type="button"
-            className="text-xs text-slate-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"
+            className="text-xs text-slate-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5 font-medium"
             onClick={() => setShowRecoveryCode((s) => !s)}
           >
             <KeyRound className="w-3.5 h-3.5 opacity-70" />
@@ -360,12 +363,12 @@ const RecoveryCodeForm = ({ initialUsername, onSuccess }: RecoveryCodeFormProps)
         setError(null);
         mutation.mutate();
       }}
-      className="mt-4 space-y-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-left backdrop-blur-sm"
+      className="mt-4 space-y-3.5 rounded-2xl border border-white/[0.08] bg-slate-950/60 p-4 text-left backdrop-blur-md shadow-inner"
     >
-      <p className="text-xs text-amber-200/80 leading-relaxed">
-        Sign in with a single-use recovery code. Each code works once and is
-        consumed immediately.
-      </p>
+      <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs">
+        <KeyRound className="w-3.5 h-3.5 shrink-0" />
+        <span>Single-use emergency recovery code</span>
+      </div>
       <Input
         label="Username"
         type="text"
@@ -383,11 +386,11 @@ const RecoveryCodeForm = ({ initialUsername, onSuccess }: RecoveryCodeFormProps)
         autoComplete="one-time-code"
         required
       />
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-xs text-rose-400 font-medium">{error}</p>}
       <Button
         type="submit"
         variant="secondary"
-        className="w-full"
+        className="w-full mt-1"
         isLoading={mutation.isPending}
         disabled={mutation.isPending || !username || !code}
       >
