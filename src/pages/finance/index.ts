@@ -8,3 +8,4 @@ export { FinanceLoansPage } from './FinanceLoansPage';
 export { FinanceAdvancesPage } from './FinanceAdvancesPage';
 export { FinanceFinalSettlementPage } from './FinanceFinalSettlementPage';
 export { RecurringInvoicesPage } from './RecurringInvoicesPage';
+export { CrossCheckPage } from './CrossCheckPage';

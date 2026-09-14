@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
+import { Search, Plus, Trash2 } from 'lucide-react';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
@@ -37,6 +38,8 @@ interface SupplierFormData {
 export default function SupplierManagementPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [supplierToDelete, setSupplierToDelete] = useState<Supplier | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
 
@@ -91,6 +94,31 @@ export default function SupplierManagementPage() {
     },
     onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update status'),
   });
+
+  // Delete supplier mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiClient.delete(`/suppliers/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.suppliers.all(), exact: false });
+      setSupplierToDelete(null);
+      showSuccess('Supplier deleted');
+    },
+    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to delete supplier'),
+  });
+
+  const filteredSuppliers = useMemo(() => {
+    const list = suppliers || [];
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return list;
+    return list.filter((s) =>
+      s.name.toLowerCase().includes(q) ||
+      (s.contactPerson && s.contactPerson.toLowerCase().includes(q)) ||
+      (s.email && s.email.toLowerCase().includes(q)) ||
+      (s.phone && s.phone.toLowerCase().includes(q))
+    );
+  }, [suppliers, searchQuery]);
 
   const handleOpenModal = (supplier?: Supplier) => {
     if (supplier) {
@@ -161,8 +189,9 @@ export default function SupplierManagementPage() {
     {
       key: 'actions',
       header: 'Actions',
+      align: 'right' as const,
       render: (supplier: Supplier) => (
-        <div className="flex space-x-2">
+        <div className="flex items-center justify-end gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
           <Button
             variant="secondary"
             size="sm"
@@ -171,12 +200,21 @@ export default function SupplierManagementPage() {
             Edit
           </Button>
           <Button
-            variant="secondary"
+            variant="ghost"
             size="sm"
             onClick={() => handleToggleActive(supplier)}
-            className={supplier.isActive ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}
+            className={supplier.isActive ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300'}
           >
             {supplier.isActive ? 'Deactivate' : 'Activate'}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSupplierToDelete(supplier)}
+            className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+            title="Delete Supplier"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
       ),
@@ -184,22 +222,24 @@ export default function SupplierManagementPage() {
   ];
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-white">Supplier Management</h1>
-          <Button onClick={() => handleOpenModal()}>
+    <AdminLayout title="Suppliers">
+      <div className="space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Suppliers</h1>
+            <p className="text-sm text-slate-400 mt-1">Manage pharmaceutical vendors, contacts, and supply contracts</p>
+          </div>
+          <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-emerald-500/15">
             Add Supplier
           </Button>
         </div>
 
         {/* Suppliers Table */}
-        <div className="bg-primary-dark/50 rounded-lg shadow border border-white/10">
-          <Table
-            data={suppliers || []}
-            columns={columns}
-          />
-        </div>
+        <Table
+          data={suppliers || []}
+          columns={columns}
+          emptyMessage="No suppliers registered"
+        />
 
         {/* Supplier Modal */}
         <Modal
@@ -285,6 +325,36 @@ export default function SupplierManagementPage() {
               <Error message="Failed to save supplier. Please try again." />
             )}
           </form>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={!!supplierToDelete}
+          onClose={() => setSupplierToDelete(null)}
+          title="Delete Supplier"
+          size="sm"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-slate-300">
+              Are you sure you want to delete supplier <strong className="text-white">{supplierToDelete?.name}</strong>?
+            </p>
+            <div className="flex justify-end gap-3 pt-2 border-t border-white/10">
+              <Button
+                variant="secondary"
+                onClick={() => setSupplierToDelete(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                className="!bg-rose-600 hover:!bg-rose-500 !text-white shadow-lg shadow-rose-600/20"
+                isLoading={deleteMutation.isPending}
+                onClick={() => supplierToDelete && deleteMutation.mutate(supplierToDelete._id)}
+              >
+                Delete Supplier
+              </Button>
+            </div>
+          </div>
         </Modal>
       </div>
     </AdminLayout>

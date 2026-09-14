@@ -13,6 +13,7 @@ import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
+import { SaveReportButton } from '../../components/finance/SaveReportButton';
 
 interface TransferReportData {
   summary: {
@@ -145,9 +146,17 @@ export const TransferReportsPage = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Transfer Reports</h1>
-          <Button onClick={handleExport}>
-            Export to Excel
-          </Button>
+          <div className="flex items-center gap-2">
+            <SaveReportButton
+              reportKey="transfers"
+              route="/admin/reports/transfers"
+              params={{ branchId: effectiveBranchId, dateFrom, dateTo }}
+              defaultName="Transfer Report"
+            />
+            <Button onClick={handleExport}>
+              Export to Excel
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}

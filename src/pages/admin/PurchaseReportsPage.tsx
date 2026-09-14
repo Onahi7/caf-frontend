@@ -4,6 +4,7 @@ import apiClient from '../../lib/api-client';
 import { unwrapResponse } from '../../lib/unwrap-response';
 import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
+import { Table } from '../../components/ui/Table';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
 import { Loading } from '../../components/ui/Loading';
@@ -13,6 +14,7 @@ import { useAuthStore } from '../../stores/auth-store';
 import { useCurrency } from '../../hooks/useCurrency';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
+import { SaveReportButton } from '../../components/finance/SaveReportButton';
 
 interface PurchaseReportData {
   totalPurchases: number;
@@ -117,9 +119,17 @@ export const PurchaseReportsPage = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Purchase Reports</h1>
-          <Button onClick={handleExport}>
-            Export to CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            <SaveReportButton
+              reportKey="purchases"
+              route="/admin/reports/purchases"
+              params={{ branchId: effectiveBranchId, dateFrom, dateTo }}
+              defaultName="Purchase Report"
+            />
+            <Button onClick={handleExport}>
+              Export to CSV
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -168,77 +178,31 @@ export const PurchaseReportsPage = () => {
             </div>
 
             {/* By Supplier */}
-            <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-              <h2 className="text-xl font-bold text-white mb-4">Purchases by Supplier</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-white/5">
-                  <thead className="bg-white/5">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        Supplier
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Purchase Count
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Total Amount
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {reportData.bySupplier.map((supplier) => (
-                      <tr key={supplier.supplierId}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                          {supplier.supplierName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                          {supplier.purchaseCount}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                          {format(supplier.totalAmount)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="space-y-3">
+              <h2 className="text-lg font-bold text-white tracking-tight">Purchases by Supplier</h2>
+              <Table
+                data={reportData.bySupplier}
+                columns={[
+                  { key: 'supplierName', header: 'Supplier', mobilePrimary: true, render: (s) => <span className="font-semibold text-white">{s.supplierName}</span> },
+                  { key: 'purchaseCount', header: 'Purchase Count', align: 'center', render: (s) => <span className="text-slate-300 font-mono">{s.purchaseCount}</span> },
+                  { key: 'totalAmount', header: 'Total Amount', align: 'right', render: (s) => <span className="font-mono text-emerald-400 font-medium">{format(s.totalAmount)}</span> },
+                ]}
+                emptyMessage="No supplier purchase data available"
+              />
             </div>
 
             {/* By Product */}
-            <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-              <h2 className="text-xl font-bold text-white mb-4">Top Products Purchased</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-white/5">
-                  <thead className="bg-white/5">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        Product
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Quantity
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Total Amount
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {reportData.byProduct.slice(0, 10).map((product) => (
-                      <tr key={product.productId}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                          {product.productName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                          {product.quantity}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
-                          {format(product.totalAmount)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="space-y-3">
+              <h2 className="text-lg font-bold text-white tracking-tight">Top Products Purchased</h2>
+              <Table
+                data={reportData.byProduct.slice(0, 10)}
+                columns={[
+                  { key: 'productName', header: 'Product', mobilePrimary: true, render: (p) => <span className="font-semibold text-white">{p.productName}</span> },
+                  { key: 'quantity', header: 'Quantity', align: 'center', render: (p) => <span className="text-slate-300 font-mono">{p.quantity}</span> },
+                  { key: 'totalAmount', header: 'Total Amount', align: 'right', render: (p) => <span className="font-mono text-emerald-400 font-medium">{format(p.totalAmount)}</span> },
+                ]}
+                emptyMessage="No product purchase data available"
+              />
             </div>
 
             {/* Trend Chart */}

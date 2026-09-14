@@ -281,30 +281,31 @@ export const PromotionsManagementPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Promotions Management</h1>
-          <Button onClick={() => handleOpenModal()}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Promotions & Discounts</h1>
+            <p className="text-sm text-slate-400 mt-1">Manage promotional campaigns, coupon codes, and percentage discounts</p>
+          </div>
+          <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-emerald-500/15">
             Create Promotion
           </Button>
         </div>
 
         {/* Search Bar */}
-        <div className="mb-6">
+        <div className="max-w-md">
           <Input
-            placeholder="Search promotions..."
+            placeholder="Search promotions by code or description..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-md"
           />
         </div>
 
         {/* Promotions Table */}
-        <div className="bg-primary-dark/50 rounded-lg shadow border border-white/10">
-          <Table
-            data={promotions || []}
-            columns={columns}
-          />
-        </div>
+        <Table
+          data={promotions || []}
+          columns={columns}
+          emptyMessage="No promotions found"
+        />
 
         {/* Promotion Form Modal */}
         <Modal

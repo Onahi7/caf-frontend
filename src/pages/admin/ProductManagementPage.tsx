@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { ChevronDown, ChevronRight, FileSpreadsheet } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileSpreadsheet, Trash2 } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { unwrapArray } from '../../lib/unwrap-response';
 import { AdminLayout } from '../../components/AdminLayout';
@@ -125,6 +125,7 @@ interface ProductImportSummary {
 export const ProductManagementPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [wizardStep, setWizardStep] = useState<1 | 2>(1);
   const [productImage, setProductImage] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -150,7 +151,7 @@ export const ProductManagementPage = () => {
   const branchId = getBranchId(selectedBranch);
   const canChooseBranch = currentUser?.role === 'super_admin' || !!selectedBranch?.isHeadquarters;
 
-  const { createMutation, updateMutation } = useBranchAwareCRUDMutations<Product>(
+  const { createMutation, updateMutation, deleteMutation } = useBranchAwareCRUDMutations<Product>(
     'products',
     queryKeys.products.all(),
     branchId || '',
@@ -632,6 +633,31 @@ export const ProductManagementPage = () => {
         )
       ),
     },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right' as const,
+      render: (product: Product) => (
+        <div className="flex items-center justify-end gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => handleOpenModal(product)}
+          >
+            Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setProductToDelete(product)}
+            className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+            title="Delete Product"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      ),
+    },
   ];
 
   const paginationMeta = {
@@ -654,15 +680,16 @@ export const ProductManagementPage = () => {
           onChange={handleImportProducts}
         />
 
-        <div className="hidden md:block">
+        <div>
           <AdminPageHeader
             title="Products"
-            subtitle={`${total} products`}
+            subtitle={`${total} products catalogued`}
             actions={
-              <>
+              <div className="flex items-center gap-2 flex-wrap">
                 <Button
                   type="button"
                   variant="secondary"
+                  size="sm"
                   onClick={handleExportProducts}
                   disabled={isExportingProducts}
                 >
@@ -671,87 +698,28 @@ export const ProductManagementPage = () => {
                 <Button
                   type="button"
                   variant="secondary"
+                  size="sm"
                   onClick={handleDownloadTemplate}
                   disabled={isExportingTemplate}
                 >
-                  {isExportingTemplate ? 'Preparing Template...' : 'Excel Template'}
+                  {isExportingTemplate ? 'Preparing...' : 'Excel Template'}
                 </Button>
                 <Button
                   type="button"
                   variant="secondary"
+                  size="sm"
                   onClick={() => importInputRef.current?.click()}
                   disabled={isImportingProducts}
                 >
                   {isImportingProducts ? 'Importing...' : 'Import Excel'}
                 </Button>
-                <Button onClick={() => handleOpenModal()}>+ Add Product</Button>
-              </>
+                <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-emerald-500/15">
+                  + Add Product
+                </Button>
+              </div>
             }
           />
         </div>
-
-        <section className="space-y-4 md:hidden" aria-label="Product catalog controls">
-          <div className="grid grid-cols-[minmax(0,1fr)_7rem] gap-3">
-            <div className="rounded-2xl border border-emerald-400/25 bg-primary-dark/60 p-3">
-              <BranchSelector />
-            </div>
-            <div className="flex flex-col justify-center rounded-2xl border border-emerald-400/25 bg-primary-dark/60 px-4 py-3">
-              <span className="text-xs text-gray-400">Total Products</span>
-              <strong className="mt-1 text-2xl text-accent-green">{total}</strong>
-            </div>
-          </div>
-
-          <details open className="group rounded-2xl border border-emerald-400/25 bg-primary-dark/60">
-            <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-green/60 [&::-webkit-details-marker]:hidden">
-              <FileSpreadsheet className="h-5 w-5 text-accent-green" aria-hidden="true" />
-              <span className="flex-1">Excel Tools</span>
-              <ChevronDown className="h-5 w-5 text-gray-400 transition-transform group-open:rotate-180" aria-hidden="true" />
-            </summary>
-            <div className="grid grid-cols-3 border-t border-white/10">
-              <button
-                type="button"
-                onClick={handleExportProducts}
-                disabled={isExportingProducts}
-                className="min-h-14 border-r border-white/10 px-2 py-3 text-xs font-medium text-gray-300 hover:bg-white/5 hover:text-white disabled:opacity-50"
-              >
-                {isExportingProducts ? 'Exporting...' : 'Export Excel'}
-              </button>
-              <button
-                type="button"
-                onClick={handleDownloadTemplate}
-                disabled={isExportingTemplate}
-                className="min-h-14 border-r border-white/10 px-2 py-3 text-xs font-medium text-gray-300 hover:bg-white/5 hover:text-white disabled:opacity-50"
-              >
-                {isExportingTemplate ? 'Preparing...' : 'Excel Template'}
-              </button>
-              <button
-                type="button"
-                onClick={() => importInputRef.current?.click()}
-                disabled={isImportingProducts}
-                className="min-h-14 px-2 py-3 text-xs font-medium text-gray-300 hover:bg-white/5 hover:text-white disabled:opacity-50"
-              >
-                {isImportingProducts ? 'Importing...' : 'Import Excel'}
-              </button>
-            </div>
-          </details>
-
-          <div className="flex items-stretch gap-3">
-            <div className="min-w-0 flex-1">
-              <Input
-                placeholder="Search products..."
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => handleOpenModal()}
-              className="min-h-12 shrink-0 rounded-xl bg-amber-400 px-4 text-sm font-bold text-primary-darker transition-colors hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-300 focus:ring-offset-2 focus:ring-offset-primary-darker"
-            >
-              + Add Product
-            </button>
-          </div>
-        </section>
 
         {importSummary ? (
           <div className="rounded-2xl border border-white/10 bg-primary-dark/60 p-5">
@@ -792,94 +760,25 @@ export const ProductManagementPage = () => {
           </div>
         ) : null}
 
-        <div className="hidden gap-4 md:flex">
+        <div className="flex gap-4">
           <Input
-            placeholder="Search products..."
+            placeholder="Search products by name, SKU, barcode, brand..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1"
           />
         </div>
 
-        <div className="hidden md:block">
-          <Table
-            columns={columns}
-            data={products}
-            onRowClick={handleOpenModal}
-            pagination={paginationMeta}
-            onPageChange={pagination.setPage}
-            onLimitChange={pagination.setLimit}
-          />
-        </div>
-
-        <section className="overflow-hidden rounded-2xl border border-emerald-400/25 bg-primary-dark/60 md:hidden" aria-label="Products">
-          {products.length > 0 ? (
-            <div>
-              <div className="grid grid-cols-[minmax(0,2.2fr)_2.8rem_2.8rem_3rem_3.4rem_.75rem] gap-1.5 border-b border-white/10 px-3 py-2 text-[9px] font-semibold uppercase tracking-wide text-gray-500">
-                <span>Product</span>
-                <span className="text-center">Sell</span>
-                <span className="text-center">Cost</span>
-                <span className="text-center">Unit</span>
-                <span className="text-center">Status</span>
-                <span aria-hidden="true" />
-              </div>
-              <div className="divide-y divide-white/10">
-              {products.map((product: Product) => (
-                <button
-                  key={product._id}
-                  type="button"
-                  onClick={() => handleOpenModal(product)}
-                  className="group grid min-h-20 w-full grid-cols-[minmax(0,2.2fr)_2.8rem_2.8rem_3rem_3.4rem_.75rem] items-center gap-1.5 px-3 py-2 text-left transition-colors hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-green/60"
-                >
-                  <div className="min-w-0">
-                    <h2 className="text-xs font-bold leading-4 text-white group-hover:text-accent-green">
-                      {product.name}
-                    </h2>
-                    <p className="mt-0.5 truncate text-[10px] leading-4 text-gray-400">SKU: {product.sku || '—'}</p>
-                    <p className="truncate text-[10px] leading-4 text-gray-400">
-                      {[product.category, product.brand].filter(Boolean).join(' • ') || 'Uncategorized'}
-                    </p>
-                  </div>
-                  <strong className="text-center text-[11px] font-semibold text-white">
-                    {format(product.basePrice || 0).replace(/^\S+\s*/, '')}
-                  </strong>
-                  <strong className="text-center text-[11px] font-semibold text-white">
-                    {format(product.costPrice || 0).replace(/^\S+\s*/, '')}
-                  </strong>
-                  <span className="truncate text-center text-[10px] capitalize text-gray-200">
-                    {product.unit || '—'}
-                  </span>
-                  <div className="flex flex-col items-center gap-1">
-                    <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-semibold ${product.isActive ? 'border-green-500/20 bg-green-500/10 text-green-400' : 'border-gray-500/20 bg-gray-500/10 text-gray-300'}`}>
-                      {product.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                    <span className="flex gap-1">
-                      <span
-                        className={`rounded border px-1 py-0.5 text-[9px] font-semibold ${product.requiresPrescription ? 'border-blue-500/20 bg-blue-500/10 text-blue-400' : 'border-gray-500/20 bg-gray-500/10 text-gray-400'}`}
-                        title={product.requiresPrescription ? 'Prescription required' : 'Prescription not required'}
-                      >
-                        Rx
-                      </span>
-                      {product.isControlled ? (
-                        <span className="rounded border border-amber-500/30 bg-amber-500/10 px-1 py-0.5 text-[9px] font-semibold text-amber-300" title="Controlled substance">
-                          C
-                        </span>
-                      ) : null}
-                    </span>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-gray-500 transition-transform group-hover:translate-x-0.5 group-hover:text-accent-green" aria-hidden="true" />
-                </button>
-              ))}
-              </div>
-            </div>
-          ) : (
-            <div className="px-6 py-12 text-center">
-              <p className="font-semibold text-white">No products found</p>
-              <p className="mt-1 text-sm text-gray-400">Try another search or add a product.</p>
-            </div>
-          )}
-          <CompactPagination meta={paginationMeta} onPageChange={pagination.setPage} />
-        </section>
+        <Table
+          columns={columns}
+          data={products}
+          onRowClick={handleOpenModal}
+          pagination={paginationMeta}
+          onPageChange={pagination.setPage}
+          onLimitChange={pagination.setLimit}
+          exportFilename="products"
+          title="Product Inventory"
+        />
 
         <Modal isOpen={isModalOpen} onClose={handleCloseModal} size="xl">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">

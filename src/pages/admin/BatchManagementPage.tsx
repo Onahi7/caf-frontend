@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import apiClient from '../../lib/api-client';
@@ -8,6 +8,7 @@ import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
+import { Search } from 'lucide-react';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { useToast } from '../../hooks/useToast';
@@ -95,6 +96,7 @@ export const BatchManagementPage = () => {
   const [filterBranch, setFilterBranch] = useState('');
   const [filterProduct, setFilterProduct] = useState('');
   const [showExpiring, setShowExpiring] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const queryClient = useQueryClient();
   const { selectedBranch } = useBranchStore();
   const { showSuccess, showError } = useToast();
@@ -189,6 +191,17 @@ export const BatchManagementPage = () => {
     },
     onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update batch'),
   });
+
+  const filteredBatches = useMemo(() => {
+    if (!batches) return [];
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return batches;
+    return batches.filter((b) =>
+      b.lotNumber.toLowerCase().includes(q) ||
+      (b.productName && b.productName.toLowerCase().includes(q)) ||
+      (b.supplierName && b.supplierName.toLowerCase().includes(q))
+    );
+  }, [batches, searchQuery]);
 
   const handleOpenModal = (batch?: Batch) => {
     if (batch) {
@@ -355,7 +368,7 @@ export const BatchManagementPage = () => {
 
   return (
     <AdminLayout title="Batch Management">
-      <div className="max-w-7xl mx-auto p-6">
+      <div className="space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -369,6 +382,16 @@ export const BatchManagementPage = () => {
 
         {/* Filters */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-[38px] pointer-events-none" />
+            <Input
+              label="Search Batches"
+              placeholder="Search by lot number, product..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           <Select
             label="Filter by Branch"
             value={activeBranchId}
@@ -406,13 +429,13 @@ export const BatchManagementPage = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-primary-dark rounded-lg shadow-lg overflow-hidden">
-          <Table
-            data={batches || []}
-            columns={columns}
-            emptyMessage="No batches found"
-          />
-        </div>
+        <Table
+          data={filteredBatches}
+          columns={columns}
+          emptyMessage={searchQuery ? "No batches match your search" : "No batches found"}
+          exportFilename="batches"
+          title="Product Batches"
+        />
 
         {/* Modal */}
         <Modal

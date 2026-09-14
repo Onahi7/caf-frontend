@@ -4,6 +4,7 @@ import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
+import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
 import { Loading } from '../../components/ui/Loading';
@@ -284,93 +285,85 @@ export const AuditTrailPage = () => {
         </div>
 
         {/* Audit Logs Table */}
-        <div className="bg-primary-dark/50 rounded-2xl border border-white/10 shadow-xl">
-          <Table
-            data={logs || []}
-            columns={columns}
-          />
-        </div>
+        <Table
+          data={logs || []}
+          columns={columns}
+          emptyMessage="No audit logs match current filters"
+        />
 
         {/* Details Modal */}
-        {selectedLog && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-primary-dark rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-white/10">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">Audit Log Details</h2>
-                <button
-                  onClick={() => setSelectedLog(null)}
-                  className="text-white/50 hover:text-white"
-                >
-                  x
-                </button>
+        <Modal
+          isOpen={!!selectedLog}
+          onClose={() => setSelectedLog(null)}
+          title="Audit Log Details"
+          size="lg"
+        >
+          {selectedLog && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-white/50">Timestamp</p>
+                  <p className="text-sm text-white">{new Date(selectedLog.timestamp).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white/50">User</p>
+                  <p className="text-sm text-white">{selectedLog.userName}</p>
+                </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-white/50">Timestamp</p>
-                    <p className="text-sm text-white">{new Date(selectedLog.timestamp).toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-white/50">User</p>
-                    <p className="text-sm text-white">{selectedLog.userName}</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm font-medium text-white/50">Action</p>
-                    <p className="text-sm text-white">{selectedLog.action}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-white/50">Entity</p>
-                    <p className="text-sm text-white">{selectedLog.entity}</p>
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-white/50">Entity ID</p>
-                  <p className="text-sm text-white">{selectedLog.entityId}</p>
+                  <p className="text-sm font-medium text-white/50">Action</p>
+                  <p className="text-sm text-white">{selectedLog.action}</p>
                 </div>
+                <div>
+                  <p className="text-sm font-medium text-white/50">Entity</p>
+                  <p className="text-sm text-white">{selectedLog.entity}</p>
+                </div>
+              </div>
 
-                {selectedLog.ipAddress && (
-                  <div>
-                    <p className="text-sm font-medium text-white/50">IP Address</p>
-                    <p className="text-sm text-white">{selectedLog.ipAddress}</p>
-                  </div>
-                )}
+              <div>
+                <p className="text-sm font-medium text-white/50">Entity ID</p>
+                <p className="text-sm text-white break-all">{selectedLog.entityId}</p>
+              </div>
 
-                {(selectedLog.previousData || selectedLog.newData) && (
-                  <div>
-                    <p className="text-sm font-medium text-white/50 mb-2">Changes</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-xs text-white/50 mb-1">Previous Data</p>
-                        <pre className="p-3 bg-black/30 rounded text-xs text-white/70 overflow-x-auto">
-                          {JSON.stringify(selectedLog.previousData || {}, null, 2)}
-                        </pre>
-                      </div>
-                      <div>
-                        <p className="text-xs text-white/50 mb-1">New Data</p>
-                        <pre className="p-3 bg-black/30 rounded text-xs text-white/70 overflow-x-auto">
-                          {JSON.stringify(selectedLog.newData || {}, null, 2)}
-                        </pre>
-                      </div>
+              {selectedLog.ipAddress && (
+                <div>
+                  <p className="text-sm font-medium text-white/50">IP Address</p>
+                  <p className="text-sm text-white">{selectedLog.ipAddress}</p>
+                </div>
+              )}
+
+              {(selectedLog.previousData || selectedLog.newData) && (
+                <div>
+                  <p className="text-sm font-medium text-white/50 mb-2">Changes</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-xs text-white/50 mb-1">Previous Data</p>
+                      <pre className="p-3 bg-black/30 rounded text-xs text-white/70 overflow-x-auto max-h-48">
+                        {JSON.stringify(selectedLog.previousData || {}, null, 2)}
+                      </pre>
+                    </div>
+                    <div>
+                      <p className="text-xs text-white/50 mb-1">New Data</p>
+                      <pre className="p-3 bg-black/30 rounded text-xs text-white/70 overflow-x-auto max-h-48">
+                        {JSON.stringify(selectedLog.newData || {}, null, 2)}
+                      </pre>
                     </div>
                   </div>
-                )}
+                </div>
+              )}
 
-                {selectedLog.metadata && (
-                  <div>
-                    <p className="text-sm font-medium text-white/50">Additional Metadata</p>
-                    <pre className="mt-2 p-3 bg-black/30 rounded text-xs text-white/70 overflow-x-auto">
-                      {JSON.stringify(selectedLog.metadata, null, 2)}
-                    </pre>
-                  </div>
-                )}
-              </div>
+              {selectedLog.metadata && (
+                <div>
+                  <p className="text-sm font-medium text-white/50">Additional Metadata</p>
+                  <pre className="mt-2 p-3 bg-black/30 rounded text-xs text-white/70 overflow-x-auto max-h-48">
+                    {JSON.stringify(selectedLog.metadata, null, 2)}
+                  </pre>
+                </div>
+              )}
 
-              <div className="flex justify-end mt-6">
+              <div className="flex justify-end pt-4 border-t border-white/10">
                 <Button
                   variant="secondary"
                   onClick={() => setSelectedLog(null)}
@@ -379,8 +372,8 @@ export const AuditTrailPage = () => {
                 </Button>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </Modal>
       </div>
     </AdminLayout>
   );

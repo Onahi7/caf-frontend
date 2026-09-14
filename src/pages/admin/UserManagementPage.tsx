@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
+import { Search, UserPlus, Trash2 } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
+import { AdminPageHeader } from '../../components/admin';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
@@ -57,6 +59,9 @@ interface UserFormData {
 export const UserManagementPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
   const currentUser = useAuthStore((state) => state.user);
@@ -194,6 +199,39 @@ export const UserManagementPage = () => {
     },
   });
 
+  // Toggle user active status mutation
+  const toggleStatusMutation = useMutation({
+    mutationFn: async (targetUser: User) => {
+      if (targetUser.isActive) {
+        return apiClient.patch(`/users/${targetUser.id}/deactivate`);
+      } else {
+        return apiClient.patch(`/users/${targetUser.id}`, { isActive: true });
+      }
+    },
+    onSuccess: (_, targetUser) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all(), exact: false });
+      showSuccess(`User ${targetUser.username} ${targetUser.isActive ? 'deactivated' : 'activated'} successfully`);
+    },
+    onError: (error) => {
+      showError(getErrorMessage(error, 'Failed to update user status'));
+    },
+  });
+
+  // Delete user mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (targetUserId: string) => {
+      return apiClient.delete(`/users/${targetUserId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all(), exact: false });
+      setUserToDelete(null);
+      showSuccess('User deleted permanently');
+    },
+    onError: (error) => {
+      showError(getErrorMessage(error, 'Failed to delete user'));
+    },
+  });
+
   const handleOpenModal = (user?: User) => {
     if (user) {
       setEditingUser(user);
@@ -235,9 +273,6 @@ export const UserManagementPage = () => {
     }
   };
 
-  if (isLoading) return <AdminLayout><Loading /></AdminLayout>;
-  if (error) return <AdminLayout><Error message="Failed to load users" /></AdminLayout>;
-
   const roleLabels: Record<string, string> = {
     super_admin: 'Super Admin',
     branch_manager: 'Branch Manager',
@@ -247,38 +282,55 @@ export const UserManagementPage = () => {
     finance_manager: 'Finance Manager',
   };
 
-  const roleColors: Record<string, string> = {
-    super_admin: 'bg-purple-600',
-    branch_manager: 'bg-blue-600',
-    cashier: 'bg-yellow-600',
-    auditor: 'bg-gray-600',
-    marketer: 'bg-orange-600',
-    finance_manager: 'bg-emerald-600',
+  const roleStyles: Record<string, string> = {
+    super_admin: 'bg-purple-500/15 text-purple-300 border border-purple-500/25',
+    branch_manager: 'bg-blue-500/15 text-blue-300 border border-blue-500/25',
+    cashier: 'bg-amber-500/15 text-amber-300 border border-amber-500/25',
+    auditor: 'bg-slate-500/15 text-slate-300 border border-slate-500/25',
+    marketer: 'bg-orange-500/15 text-orange-300 border border-orange-500/25',
+    finance_manager: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/25',
   };
+
+  const filteredUsers = useMemo(() => {
+    if (!users) return [];
+    return users.filter((u) => {
+      const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return matchesRole;
+      const matchesQuery =
+        u.username.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q) ||
+        `${u.firstName} ${u.lastName}`.toLowerCase().includes(q) ||
+        (u.branchName && u.branchName.toLowerCase().includes(q));
+      return matchesRole && matchesQuery;
+    });
+  }, [users, roleFilter, searchQuery]);
 
   const columns = [
     {
       key: 'name',
       header: 'Name',
+      sortable: true,
       render: (user: User) => (
         <div>
-          <div className="font-medium">{`${user.firstName} ${user.lastName}`}</div>
-          <div className="text-sm text-gray-400">@{user.username}</div>
+          <div className="font-semibold text-white">{`${user.firstName} ${user.lastName}`}</div>
+          <div className="text-xs text-slate-400">@{user.username}</div>
         </div>
       ),
     },
     {
       key: 'email',
       header: 'Email',
+      render: (user: User) => <span className="text-slate-300 text-xs sm:text-sm font-mono">{user.email}</span>,
     },
     {
       key: 'role',
       header: 'Role',
       render: (user: User) => (
         <span
-          className={`px-2 py-1 rounded text-xs text-white ${roleColors[user.role]}`}
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${roleStyles[user.role] || 'bg-slate-500/15 text-slate-300 border-slate-500/25'}`}
         >
-          {roleLabels[user.role]}
+          {roleLabels[user.role] || user.role}
         </span>
       ),
     },
@@ -286,8 +338,8 @@ export const UserManagementPage = () => {
       key: 'branch',
       header: 'Branch',
       render: (user: User) => (
-        <span className="text-sm">
-          {user.branchName || '-'}
+        <span className="text-xs sm:text-sm text-slate-300">
+          {user.branchName || '—'}
         </span>
       ),
     },
@@ -296,53 +348,112 @@ export const UserManagementPage = () => {
       header: 'Status',
       render: (user: User) => (
         <span
-          className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium rounded-full ${
             user.isActive
-              ? 'bg-green-500/10 text-green-500 border border-green-500/20'
-              : 'bg-red-500/10 text-red-500 border border-red-500/20'
+              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
           }`}
         >
-          {user.isActive ? 'Active' : 'Inactive'}
+          <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+          <span>{user.isActive ? 'Active' : 'Inactive'}</span>
         </span>
       ),
     },
     {
       key: 'actions',
       header: 'Actions',
-      render: (user: User) => (
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => handleOpenModal(user)}
-        >
-          Edit
-        </Button>
-      ),
+      align: 'right' as const,
+      render: (user: User) => {
+        const isSelf = currentUser?.id === user.id;
+        const canDelete = currentUser?.role === 'super_admin' && !isSelf;
+        return (
+          <div className="flex items-center justify-end gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleOpenModal(user)}
+            >
+              Edit
+            </Button>
+            {!isSelf && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => toggleStatusMutation.mutate(user)}
+                isLoading={toggleStatusMutation.isPending && toggleStatusMutation.variables?.id === user.id}
+                className={user.isActive ? "text-amber-400 hover:text-amber-300" : "text-emerald-400 hover:text-emerald-300"}
+              >
+                {user.isActive ? 'Deactivate' : 'Activate'}
+              </Button>
+            )}
+            {canDelete && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setUserToDelete(user)}
+                className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                title="Delete User"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
+  if (isLoading) return <AdminLayout title="Users"><Loading /></AdminLayout>;
+  if (error) return <AdminLayout title="Users"><Error message="Failed to load users" /></AdminLayout>;
+
   return (
-    <AdminLayout>
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Users</h1>
-            <p className="text-gray-400 mt-1">Manage system users and permissions</p>
+    <AdminLayout title="Users">
+      <div className="space-y-5">
+        <AdminPageHeader
+          title="Users"
+          subtitle="Manage system user credentials, roles, and branch assignments"
+          actions={
+            <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-emerald-500/15">
+              <UserPlus className="w-4 h-4 mr-2" />
+              <span>Add User</span>
+            </Button>
+          }
+        />
+
+        {/* Search & Role Filter Bar */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <Input
+              placeholder="Search by name, username, email, or branch..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
           </div>
-          <Button onClick={() => handleOpenModal()}>
-            Add User
-          </Button>
+          <div className="sm:w-56 shrink-0">
+            <Select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+            >
+              <option value="all">All Roles</option>
+              {Object.entries(roleLabels).map(([roleKey, label]) => (
+                <option key={roleKey} value={roleKey}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
 
-        {/* Table */}
-        <div className="bg-primary-dark rounded-lg shadow-lg overflow-hidden">
-          <Table
-            data={users || []}
-            columns={columns}
-            emptyMessage="No users found"
-          />
-        </div>
+        {/* Users Table */}
+        <Table
+          data={filteredUsers}
+          columns={columns}
+          emptyMessage={searchQuery || roleFilter !== 'all' ? "No users match the current search filters" : "No users found"}
+          exportFilename="users"
+          title="User Accounts"
+        />
 
         {/* Modal */}
         <Modal
@@ -401,8 +512,8 @@ export const UserManagementPage = () => {
             />
 
             {/* Role and Branch Assignment */}
-            <div className="border-t border-gray-700 pt-4 mt-4">
-              <h3 className="text-lg font-semibold text-white mb-4">Role & Access</h3>
+            <div className="border-t border-white/[0.08] pt-4 mt-4">
+              <h3 className="text-base font-semibold text-white mb-3">Role & Access</h3>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Select
@@ -423,7 +534,7 @@ export const UserManagementPage = () => {
               </div>
 
               {requiresBranch && (
-                <p className="text-sm text-gray-400 mt-2">
+                <p className="text-xs text-slate-400 mt-2">
                   {canChooseBranch
                     ? 'This role requires branch assignment'
                     : 'Outlet users are automatically assigned to your outlet'}
@@ -432,7 +543,7 @@ export const UserManagementPage = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-gray-700">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-white/[0.08]">
               <Button
                 type="button"
                 variant="secondary"
@@ -444,14 +555,42 @@ export const UserManagementPage = () => {
                 type="submit"
                 isLoading={createMutation.isPending || updateMutation.isPending}
               >
-                {editingUser ? 'Update' : 'Create'} User
+                {editingUser ? 'Update User' : 'Create User'}
               </Button>
             </div>
           </form>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal
+          isOpen={!!userToDelete}
+          onClose={() => setUserToDelete(null)}
+          title="Delete User"
+          size="sm"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-slate-300">
+              Are you sure you want to permanently delete user <strong className="text-white">{userToDelete?.username}</strong> ({userToDelete?.firstName} {userToDelete?.lastName})? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3 pt-2 border-t border-white/10">
+              <Button
+                variant="secondary"
+                onClick={() => setUserToDelete(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                className="!bg-rose-600 hover:!bg-rose-500 !text-white shadow-lg shadow-rose-600/20"
+                isLoading={deleteMutation.isPending}
+                onClick={() => userToDelete && deleteMutation.mutate(userToDelete.id)}
+              >
+                Delete Permanently
+              </Button>
+            </div>
+          </div>
         </Modal>
       </div>
     </AdminLayout>
   );
 };
-
-

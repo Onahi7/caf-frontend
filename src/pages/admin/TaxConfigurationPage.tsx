@@ -217,22 +217,24 @@ export const TaxConfigurationPage = () => {
   ];
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Tax Configuration</h1>
-          <Button onClick={() => handleOpenModal()}>
+    <AdminLayout title="Tax Configuration">
+      <div className="space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Tax Configuration</h1>
+            <p className="text-sm text-slate-400 mt-1">Configure sales taxes, VAT, and fiscal rates</p>
+          </div>
+          <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-emerald-500/15">
             Add Tax
           </Button>
         </div>
 
         {/* Tax Table */}
-        <div className="bg-primary-dark/50 rounded-lg shadow border border-white/10">
-          <Table
-            data={taxes || []}
-            columns={columns}
-          />
-        </div>
+        <Table
+          data={taxes || []}
+          columns={columns}
+          emptyMessage="No tax configurations found"
+        />
 
         {/* Tax Form Modal */}
         <Modal

@@ -11,6 +11,7 @@ import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
+import { SaveReportButton } from '../../components/finance/SaveReportButton';
 
 const METHODS = ['FIFO', 'LIFO', 'AVERAGE'] as const;
 type ValuationMethod = typeof METHODS[number];
@@ -113,6 +114,12 @@ export function ValuationReportPage() {
                 </button>
               ))}
             </div>
+            <SaveReportButton
+              reportKey="valuation"
+              route="/admin/reports/valuation"
+              params={{ branchId, method, showAllBranches }}
+              defaultName="Valuation Report"
+            />
             <Button variant="secondary" onClick={exportCsv} disabled={!data?.products?.length}>
               Export CSV
             </Button>

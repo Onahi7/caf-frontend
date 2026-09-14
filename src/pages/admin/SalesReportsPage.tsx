@@ -14,6 +14,7 @@ import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
+import { SaveReportButton } from '../../components/finance/SaveReportButton';
 
 interface Branch {
   _id: string;
@@ -247,6 +248,19 @@ export default function SalesReportsPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Sales Reports</h1>
+          <SaveReportButton
+            reportKey="sales"
+            route="/admin/reports/sales"
+            params={{
+              branchId: filters.branchId,
+              cashierId: filters.cashierId,
+              productId: filters.productId,
+              startDate: filters.startDate,
+              endDate: filters.endDate,
+              groupBy: filters.groupBy,
+            }}
+            defaultName="Sales Report"
+          />
         </div>
 
         {/* Filters */}

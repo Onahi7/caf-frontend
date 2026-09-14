@@ -10,8 +10,8 @@ export function AdminPageHeader({ title, subtitle, actions }: AdminPageHeaderPro
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold text-white">{title}</h1>
-        {subtitle ? <p className="mt-1 text-sm text-gray-400">{subtitle}</p> : null}
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-100 tracking-tight">{title}</h1>
+        {subtitle ? <p className="mt-1 text-sm text-slate-400 leading-normal">{subtitle}</p> : null}
       </div>
       {actions ? (
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">

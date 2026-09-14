@@ -4,6 +4,7 @@ import apiClient from '../../lib/api-client';
 import { unwrapResponse } from '../../lib/unwrap-response';
 import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
+import { Table } from '../../components/ui/Table';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
 import { Loading } from '../../components/ui/Loading';
@@ -11,6 +12,7 @@ import { Error } from '../../components/ui/Error';
 import { useCurrency } from '../../hooks/useCurrency';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
+import { SaveReportButton } from '../../components/finance/SaveReportButton';
 import { useAuthStore } from '../../stores/auth-store';
 import { getBranchId, useBranchStore } from '../../stores/branch-store';
 
@@ -105,9 +107,17 @@ export const CustomerReportsPage = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Customer Reports</h1>
-          <Button onClick={handleExport}>
-            Export to CSV
-          </Button>
+          <div className="flex items-center gap-2">
+            <SaveReportButton
+              reportKey="customers"
+              route="/admin/reports/customers"
+              params={{ branchId: effectiveBranchId, dateFrom, dateTo }}
+              defaultName="Customer Report"
+            />
+            <Button onClick={handleExport}>
+              Export to CSV
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -187,83 +197,32 @@ export const CustomerReportsPage = () => {
             </div>
 
             {/* Top Customers */}
-            <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-              <h2 className="text-xl font-bold text-white mb-4">Top Customers</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-white/5">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Customer
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Total Purchases
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Purchase Count
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Loyalty Points
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {reportData.topCustomers.map((customer) => (
-                      <tr key={customer.customerId}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                          {customer.customerName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {format(customer.totalPurchases)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                          {customer.purchaseCount}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-purple-600">
-                          {customer.loyaltyPoints}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="space-y-3">
+              <h2 className="text-lg font-bold text-white tracking-tight">Top Customers</h2>
+              <Table
+                data={reportData.topCustomers}
+                columns={[
+                  { key: 'customerName', header: 'Customer', mobilePrimary: true, render: (c) => <span className="font-semibold text-white">{c.customerName}</span> },
+                  { key: 'totalPurchases', header: 'Total Purchases', align: 'right', render: (c) => <span className="font-mono text-emerald-400 font-medium">{format(c.totalPurchases)}</span> },
+                  { key: 'purchaseCount', header: 'Purchase Count', align: 'center', render: (c) => <span className="text-slate-300 font-mono">{c.purchaseCount}</span> },
+                  { key: 'loyaltyPoints', header: 'Loyalty Points', align: 'right', render: (c) => <span className="text-purple-400 font-mono font-semibold">{c.loyaltyPoints}</span> },
+                ]}
+                emptyMessage="No top customer data available"
+              />
             </div>
 
             {/* Customer Growth Trend */}
-            <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-              <h2 className="text-xl font-bold text-white mb-4">Customer Growth Trend</h2>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-white/5">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        New Customers
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Total Purchases
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5">
-                    {reportData.byPeriod.map((period, index) => (
-                      <tr key={index}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                          {new Date(period.date).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
-                          {period.newCustomers}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {format(period.totalPurchases)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="space-y-3">
+              <h2 className="text-lg font-bold text-white tracking-tight">Customer Growth Trend</h2>
+              <Table
+                data={reportData.byPeriod}
+                columns={[
+                  { key: 'date', header: 'Date', mobilePrimary: true, render: (p) => <span className="text-slate-200">{new Date(p.date).toLocaleDateString()}</span> },
+                  { key: 'newCustomers', header: 'New Customers', align: 'center', render: (p) => <span className="text-slate-300 font-mono">{p.newCustomers}</span> },
+                  { key: 'totalPurchases', header: 'Total Purchases', align: 'right', render: (p) => <span className="font-mono text-emerald-400 font-medium">{format(p.totalPurchases)}</span> },
+                ]}
+                emptyMessage="No growth trend data available"
+              />
             </div>
           </>
         )}

@@ -2,13 +2,14 @@
 @import "./styles/mobile-utils.css";
 
 @theme {
-  --color-primary-dark: #1a3a2e;
-  --color-primary-darker: #0d1f1a;
-  --color-accent-green: #00ff88;
-  --color-accent-light: #00e676;
-  --color-secondary-dark: #0a0f0d;
+  --color-primary-dark: #111827;
+  --color-primary-darker: #0b0f17;
+  --color-accent-green: #10b981;
+  --color-accent-light: #34d399;
+  --color-secondary-dark: #070a10;
+  --color-surface-elevated: #1e293b;
 
-  /* Spacing system - use these consistently */
+  /* Spacing system - consistent spacing across modules */
   --space-xs: 0.5rem; /* 8px */
   --space-sm: 0.75rem; /* 12px */
   --space-md: 1rem; /* 16px */
@@ -20,7 +21,8 @@
   --radius-sm: 0.5rem; /* 8px */
   --radius-md: 0.75rem; /* 12px */
   --radius-lg: 1rem; /* 16px */
-  --radius-xl: 1.5rem; /* 24px */
+  --radius-xl: 1.25rem; /* 20px */
+  --radius-2xl: 1.5rem; /* 24px */
 
   /* Card padding standard */
   --card-padding: 1.25rem; /* 20px - use for all cards */
@@ -75,7 +77,9 @@
 
   body {
     background-color: var(--color-primary-darker);
-    color: white;
+    color: #f8fafc;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -106,69 +110,74 @@
     }
   }
 
-  /* Typography hierarchy - use these consistently */
+  /* Typography hierarchy - modern and legible */
   .heading-1 {
-    @apply text-3xl font-bold text-white tracking-tight;
+    @apply text-3xl font-bold text-slate-50 tracking-tight;
   }
 
   .heading-2 {
-    @apply text-2xl font-bold text-white tracking-tight;
+    @apply text-2xl font-bold text-slate-100 tracking-tight;
   }
 
   .heading-3 {
-    @apply text-xl font-semibold text-white;
+    @apply text-xl font-semibold text-slate-100 tracking-tight;
   }
 
   .heading-4 {
-    @apply text-lg font-semibold text-white;
+    @apply text-lg font-semibold text-slate-200;
   }
 
   .heading-5 {
-    @apply text-base font-semibold text-white;
+    @apply text-base font-semibold text-slate-200;
   }
 
   .heading-6 {
-    @apply text-sm font-semibold text-white uppercase tracking-wide;
+    @apply text-xs font-semibold text-slate-400 uppercase tracking-wider;
   }
 
   .body-lg {
-    @apply text-base text-gray-200;
+    @apply text-base text-slate-200 leading-relaxed;
   }
 
   .body-base {
-    @apply text-sm text-gray-300;
+    @apply text-sm text-slate-300 leading-normal;
   }
 
   .body-sm {
-    @apply text-xs text-gray-400;
+    @apply text-xs text-slate-400;
   }
 
-  /* Card standard styles */
+  /* Card standard styles - modern glass-slate */
   .card {
-    @apply rounded-xl border border-white/10 bg-primary-dark/60;
+    @apply rounded-2xl border border-white/[0.08] bg-primary-dark/80 backdrop-blur-md shadow-xl shadow-black/25;
     padding: var(--card-padding);
   }
 
   .card-compact {
-    @apply rounded-xl border border-white/10 bg-primary-dark/60 p-4;
+    @apply rounded-xl border border-white/[0.08] bg-primary-dark/80 backdrop-blur-md shadow-md p-4;
   }
 
-  /* Scrollbar styling for dark theme */
+  /* Numeric tabular figures for aligned numbers/currency */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Scrollbar styling for modern dark theme */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
 
   ::-webkit-scrollbar-track {
-    background: var(--color-primary-darker);
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: rgb(75 85 99);
-    border-radius: 3px;
+    background: rgba(148, 163, 184, 0.2);
+    border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: rgb(107 114 128);
+    background: rgba(148, 163, 184, 0.4);
   }
 }

@@ -1,10 +1,20 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  ClipboardList,
+  ShoppingCart,
+  ShieldCheck,
+  LogOut,
+  Megaphone,
+} from 'lucide-react';
 import apiClient from '../lib/api-client';
 import { useAuthStore } from '../stores/auth-store';
 import { useBranchStore } from '../stores/branch-store';
 import { PasskeySetupBanner } from './account';
 import { PWAUpdatePrompt } from './ui/PWAUpdatePrompt';
+import { NotificationBell } from './NotificationBell';
+import { ConfirmDialog } from './ui/ConfirmDialog';
 
 interface MarketerLayoutProps {
   children: ReactNode;
@@ -16,6 +26,7 @@ export const MarketerLayout = ({ children, title = 'Marketer Dashboard' }: Marke
   const navigate = useNavigate();
   const { user, clearAuth } = useAuthStore();
   const { selectedBranch } = useBranchStore();
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -32,77 +43,116 @@ export const MarketerLayout = ({ children, title = 'Marketer Dashboard' }: Marke
     {
       name: 'Dashboard',
       path: '/marketer/dashboard',
+      icon: <LayoutDashboard className="w-4 h-4" />,
     },
     {
       name: 'Review',
       path: '/marketer/review',
+      icon: <ClipboardList className="w-4 h-4" />,
     },
     {
       name: 'Sell',
       path: '/marketer/sales',
+      icon: <ShoppingCart className="w-4 h-4" />,
     },
     {
       name: 'Settings',
       path: '/settings/security',
+      icon: <ShieldCheck className="w-4 h-4" />,
     },
   ];
 
   return (
-    <div className="min-h-dvh bg-primary-darker">
+    <div className="min-h-dvh bg-slate-950 flex flex-col">
       <PWAUpdatePrompt />
-      <header className="bg-primary-dark border-b border-gray-800 sticky top-0 z-20 pt-safe-top">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex items-center justify-between">
-          <div className="min-w-0">
-            <div className="text-xl font-bold text-white select-none">CAREFARM POS</div>
-            <p className="text-xs text-gray-400 truncate">
-              {selectedBranch?.name || 'No branch selected'}
-            </p>
+
+      {/* Modern Top Header */}
+      <header className="bg-slate-900/80 backdrop-blur-xl border-b border-white/[0.08] sticky top-0 z-30 pt-safe-top">
+        <div className="max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-slate-950 font-bold shadow-md shadow-emerald-500/20 shrink-0">
+              <Megaphone className="w-4 h-4 stroke-[2.5]" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm font-bold text-slate-100 tracking-tight truncate">CAREFARM FIELD</h1>
+              <p className="text-[11px] text-slate-400 truncate">
+                {selectedBranch?.name || 'All Branches'}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-300 hidden sm:inline-block">
-              {user?.firstName} {user?.lastName}
-            </span>
+
+          <div className="flex items-center gap-3">
+            <NotificationBell />
+
+            <div className="flex items-center space-x-2 px-2.5 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.04]">
+              <div className="w-7 h-7 rounded-full bg-linear-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-slate-950 font-bold text-xs shadow-xs shrink-0">
+                {user?.firstName?.[0]}{user?.lastName?.[0]}
+              </div>
+              <div className="hidden sm:block text-left min-w-0 pr-1">
+                <p className="text-xs font-medium text-slate-200 truncate">
+                  {user?.firstName} {user?.lastName}
+                </p>
+                <p className="text-[10px] text-slate-400 capitalize truncate">Marketer</p>
+              </div>
+            </div>
+
             <button
               type="button"
-              onClick={handleLogout}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white"
+              onClick={() => setShowLogoutConfirm(true)}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-colors"
             >
-              Logout
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-        <nav className="mb-4 flex items-center gap-2 overflow-x-auto pb-1">
+      {/* Main Container */}
+      <div className="flex-1 max-w-7xl w-full mx-auto px-4 py-4 sm:px-6 lg:px-8 space-y-4">
+        {/* Sleek Segmented Pill Navigation */}
+        <nav className="flex items-center gap-1.5 overflow-x-auto p-1.5 bg-slate-900/90 backdrop-blur-md border border-white/[0.08] rounded-2xl shadow-lg">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-medium transition-all duration-150 whitespace-nowrap shrink-0 ${
                   isActive
-                    ? 'bg-accent-green text-primary-dark'
-                    : 'bg-white/5 text-gray-300 border border-gray-700 hover:bg-white/10 hover:text-white'
-                } whitespace-nowrap shrink-0`}
+                    ? 'bg-emerald-500/15 text-emerald-300 font-semibold border border-emerald-500/25 shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                }`}
               >
-                {item.name}
+                <span className={isActive ? 'text-emerald-400' : 'text-slate-400'}>
+                  {item.icon}
+                </span>
+                <span>{item.name}</span>
               </Link>
             );
           })}
         </nav>
 
-        <main>
-          <div className="mb-4">
-            <h2 className="text-lg font-semibold text-white">{title}</h2>
+        <main className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight">{title}</h2>
           </div>
-          <div className="mb-4">
-            <PasskeySetupBanner />
-          </div>
+
+          <PasskeySetupBanner />
+
           {children}
         </main>
       </div>
+
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={handleLogout}
+        title="Logout"
+        message="Are you sure you want to logout? You will need to sign in again."
+        confirmLabel="Logout"
+        variant="danger"
+      />
     </div>
   );
 };

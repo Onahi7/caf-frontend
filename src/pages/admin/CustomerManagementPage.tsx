@@ -245,27 +245,21 @@ export const CustomerManagementPage = () => {
         </div>
 
         {/* Customers Table */}
-        <div className="rounded-2xl overflow-hidden border border-white/5 shadow-xl">
-          <Table
-            data={customers || []}
-            columns={columns}
-            emptyMessage="No customers found"
-          />
-          {totalCount > 0 && (
-            <Pagination
-              meta={{
-                page: pagination.state.page,
-                limit: pagination.state.limit,
-                total: totalCount,
-                pages: Math.ceil(totalCount / pagination.state.limit),
-                hasNext: pagination.state.page < Math.ceil(totalCount / pagination.state.limit),
-                hasPrev: pagination.state.page > 1,
-              }}
-              onPageChange={pagination.setPage}
-              onLimitChange={pagination.setLimit}
-            />
-          )}
-        </div>
+        <Table
+          data={customers || []}
+          columns={columns}
+          emptyMessage="No customers found"
+          pagination={totalCount > 0 ? {
+            page: pagination.state.page,
+            limit: pagination.state.limit,
+            total: totalCount,
+            pages: Math.ceil(totalCount / pagination.state.limit),
+            hasNext: pagination.state.page < Math.ceil(totalCount / pagination.state.limit),
+            hasPrev: pagination.state.page > 1,
+          } : undefined}
+          onPageChange={pagination.setPage}
+          onLimitChange={pagination.setLimit}
+        />
 
         {/* Customer Form Modal */}
         <Modal

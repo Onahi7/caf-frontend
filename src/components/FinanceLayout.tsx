@@ -1,5 +1,21 @@
 import { type ReactNode, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Wallet,
+  CreditCard,
+  Receipt,
+  Banknote,
+  DollarSign,
+  Scale,
+  PiggyBank,
+  FileCheck,
+  BarChart3,
+  ShieldCheck,
+  Menu,
+  X,
+  LogOut,
+} from 'lucide-react';
 import { useAuthStore } from '../stores/auth-store';
 import { useBranchStore } from '../stores/branch-store';
 import apiClient from '../lib/api-client';
@@ -26,61 +42,17 @@ interface NavItem {
 }
 
 const ICONS = {
-  dashboard: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-    </svg>
-  ),
-  cash: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-    </svg>
-  ),
-  receivables: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-    </svg>
-  ),
-  payables: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-    </svg>
-  ),
-  salaries: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  ),
-  advances: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-    </svg>
-  ),
-  settlement: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  ),
-  loans: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
-    </svg>
-  ),
-  reconciliation: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-    </svg>
-  ),
-  reports: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-  ),
-  security: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c1.657 0 3-1.567 3-3.5S13.657 4 12 4 9 5.567 9 7.5 10.343 11 12 11zm0 2c-3.314 0-6 1.79-6 4v1a2 2 0 002 2h8a2 2 0 002-2v-1c0-2.21-2.686-4-6-4z" />
-    </svg>
-  ),
+  dashboard: <LayoutDashboard className="w-4 h-4" />,
+  cash: <Wallet className="w-4 h-4" />,
+  receivables: <CreditCard className="w-4 h-4" />,
+  payables: <Receipt className="w-4 h-4" />,
+  salaries: <Banknote className="w-4 h-4" />,
+  advances: <DollarSign className="w-4 h-4" />,
+  settlement: <Scale className="w-4 h-4" />,
+  loans: <PiggyBank className="w-4 h-4" />,
+  reconciliation: <FileCheck className="w-4 h-4" />,
+  reports: <BarChart3 className="w-4 h-4" />,
+  security: <ShieldCheck className="w-4 h-4" />,
 };
 
 export const FinanceLayout = ({ children, title = 'Finance Hub' }: FinanceLayoutProps) => {
@@ -146,13 +118,13 @@ export const FinanceLayout = ({ children, title = 'Finance Hub' }: FinanceLayout
   };
 
   const renderNavigation = (onNavigate?: () => void) => (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {navSections.map((section) => (
         <div key={section.name}>
-          <p className="px-4 pb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+          <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
             {section.name}
           </p>
-          <ul className="space-y-2">
+          <ul className="space-y-1">
             {section.items.map((item) => {
               const isActive = isActiveRoute(item.path);
               return (
@@ -160,22 +132,22 @@ export const FinanceLayout = ({ children, title = 'Finance Hub' }: FinanceLayout
                   <Link
                     to={item.path}
                     onClick={onNavigate}
-                    className={`group flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-accent-green/50 focus:ring-offset-2 focus:ring-offset-primary-dark ${
+                    className={`group flex items-center space-x-3 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-150 ${
                       isActive
-                        ? 'bg-accent-green/10 text-accent-green shadow-[0_0_20px_rgba(0,255,136,0.1)]'
-                        : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                        ? 'bg-emerald-500/15 text-emerald-300 font-semibold border border-emerald-500/25 shadow-xs'
+                        : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]'
                     }`}
                   >
                     <span
-                      className={`transition-transform duration-200 ${
-                        isActive ? 'scale-110' : 'group-hover:scale-110'
+                      className={`transition-colors duration-150 ${
+                        isActive ? 'text-emerald-400' : 'text-slate-400 group-hover:text-slate-200'
                       }`}
                     >
                       {item.icon}
                     </span>
-                    <span className="font-medium">{item.name}</span>
+                    <span className="truncate">{item.name}</span>
                     {isActive ? (
-                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-accent-green shadow-[0_0_10px_rgba(0,255,136,0.75)]" />
+                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-xs shadow-emerald-400/50" />
                     ) : null}
                   </Link>
                 </li>
@@ -188,103 +160,109 @@ export const FinanceLayout = ({ children, title = 'Finance Hub' }: FinanceLayout
   );
 
   return (
-    <div className="h-dvh overflow-hidden bg-primary-darker">
-        <ConnectionStatus />
-        <OfflineNotification />
-        <PWAUpdatePrompt />
-      <aside className="hidden lg:flex fixed inset-y-0 left-0 z-30 w-64 bg-primary-dark border-r border-gray-800 flex-col pt-safe-top">
-        <div className="p-6 border-b border-gray-800">
-          <div className="text-2xl font-bold text-white select-none">CAREFARM FINANCE</div>
-          {selectedBranch ? (
-            <p className="text-sm text-gray-400 mt-1">{selectedBranch.name}</p>
-          ) : null}
+    <div className="h-dvh overflow-hidden bg-slate-950">
+      <ConnectionStatus />
+      <OfflineNotification />
+      <PWAUpdatePrompt />
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 z-30 w-64 bg-slate-900/95 border-r border-white/[0.08] backdrop-blur-xl flex-col pt-safe-top shadow-2xl">
+        <div className="p-4 border-b border-white/[0.08]">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-md shadow-emerald-500/20 text-slate-950 font-bold">
+              <Wallet className="w-5 h-5 stroke-[2.5]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-slate-100 font-bold text-sm tracking-tight truncate">CAREFARM FINANCE</h2>
+              <p className="text-xs text-slate-400 truncate">{selectedBranch?.name || 'All Branches'}</p>
+            </div>
+          </div>
         </div>
 
-        <nav className="flex-1 p-4 overflow-y-auto">{renderNavigation()}</nav>
+        <nav className="flex-1 p-3 overflow-y-auto">{renderNavigation()}</nav>
 
-        <div className="p-4 border-t border-white/10 bg-black/20">
-          <div className="flex items-center space-x-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-linear-to-br from-accent-green to-emerald-600 flex items-center justify-center text-primary-dark font-bold shadow-lg">
+        <div className="p-3 border-t border-white/[0.08] pb-safe-bottom">
+          <div className="flex items-center space-x-3 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.04]">
+            <div className="w-8 h-8 rounded-full bg-linear-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-slate-950 font-bold text-xs shadow-xs">
               {user?.firstName?.[0]}
               {user?.lastName?.[0]}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">
+              <p className="text-slate-200 text-xs font-medium truncate">
                 {user?.firstName} {user?.lastName}
               </p>
-              <p className="text-xs text-gray-400 truncate capitalize">
+              <p className="text-[11px] text-slate-400 truncate capitalize">
                 {user?.role?.replace('_', ' ')}
               </p>
             </div>
           </div>
           <button
             onClick={() => setShowLogoutConfirm(true)}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg transition-all duration-200 border border-white/5 hover:border-white/10 focus:outline-none focus:ring-2 focus:ring-accent-green/50 focus:ring-offset-2 focus:ring-offset-primary-dark"
+            className="mt-2 w-full flex items-center justify-center space-x-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-xs font-medium text-rose-300 hover:text-rose-200 transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            <LogOut className="w-3.5 h-3.5 text-rose-400" />
             <span>Logout</span>
           </button>
         </div>
       </aside>
 
+      {/* Mobile Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/60 transition-opacity duration-200 lg:hidden ${
+        className={`fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-xs transition-opacity duration-200 lg:hidden ${
           isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
         onClick={() => setIsMobileMenuOpen(false)}
-      ></div>
+      />
 
+      {/* Mobile Drawer */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-primary-dark border-r border-gray-800 flex flex-col transform transition-transform duration-200 lg:hidden pt-safe-top ${
+        className={`fixed inset-y-0 left-0 z-50 w-72 bg-slate-900/98 border-r border-white/[0.08] backdrop-blur-xl flex flex-col transform transition-transform duration-200 lg:hidden pt-safe-top shadow-2xl ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-5 border-b border-gray-800 flex items-center justify-between">
-          <div>
-            <div className="text-xl font-bold text-white select-none">CAREFARM FINANCE</div>
-            {selectedBranch ? (
-              <p className="text-xs text-gray-400 mt-1">{selectedBranch.name}</p>
-            ) : null}
+        <div className="p-4 border-b border-white/[0.08] flex items-center justify-between">
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-linear-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-slate-950 shadow-md">
+              <Wallet className="w-4 h-4 stroke-[2.5]" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-slate-100 font-bold text-sm tracking-tight truncate">CAREFARM FINANCE</h2>
+              <p className="text-[11px] text-slate-400 truncate">{selectedBranch?.name || 'All Branches'}</p>
+            </div>
           </div>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
-            className="p-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/5"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-white/[0.06] transition-colors"
             aria-label="Close menu"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <nav className="flex-1 p-4 overflow-y-auto">
+        <nav className="flex-1 p-3 overflow-y-auto">
           {renderNavigation(() => setIsMobileMenuOpen(false))}
         </nav>
 
-        <div className="p-4 border-t border-white/10 bg-black/20">
-          <div className="flex items-center space-x-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-linear-to-br from-accent-green to-emerald-600 flex items-center justify-center text-primary-dark font-bold shadow-lg">
+        <div className="p-3 border-t border-white/[0.08] pb-safe-bottom">
+          <div className="flex items-center space-x-3 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.04]">
+            <div className="w-8 h-8 rounded-full bg-linear-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-slate-950 font-bold text-xs shadow-xs">
               {user?.firstName?.[0]}
               {user?.lastName?.[0]}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">
+              <p className="text-slate-200 text-xs font-medium truncate">
                 {user?.firstName} {user?.lastName}
               </p>
-              <p className="text-xs text-gray-400 truncate capitalize">
+              <p className="text-[11px] text-slate-400 truncate capitalize">
                 {user?.role?.replace('_', ' ')}
               </p>
             </div>
           </div>
           <button
             onClick={() => setShowLogoutConfirm(true)}
-            className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-lg transition-all duration-200 border border-white/5 hover:border-white/10 focus:outline-none focus:ring-2 focus:ring-accent-green/50 focus:ring-offset-2 focus:ring-offset-primary-dark"
+            className="mt-2 w-full flex items-center justify-center space-x-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 rounded-lg text-xs font-medium text-rose-300 hover:text-rose-200 transition-colors"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            <LogOut className="w-3.5 h-3.5 text-rose-400" />
             <span>Logout</span>
           </button>
         </div>
@@ -300,24 +278,23 @@ export const FinanceLayout = ({ children, title = 'Finance Hub' }: FinanceLayout
         variant="danger"
       />
 
-      <div className="flex h-dvh min-w-0 flex-col bg-primary-darker lg:ml-64">
-        <header className="bg-primary-dark/50 backdrop-blur-xl border-b border-white/5 px-4 py-4 sm:px-6 lg:px-8 lg:py-6 sticky top-0 z-30 pt-safe-top">
+      {/* Main Content Area */}
+      <div className="flex h-dvh min-w-0 flex-col bg-slate-950 lg:ml-64">
+        <header className="bg-slate-900/80 backdrop-blur-xl border-b border-white/[0.08] px-4 py-3 sm:px-6 lg:px-8 sticky top-0 z-20 pt-safe-top">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden p-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-white/5"
+                className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors"
                 aria-label="Open menu"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+                <Menu className="w-5 h-5" />
               </button>
-              <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight truncate">{title}</h2>
+              <h1 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight truncate">{title}</h1>
             </div>
             <div className="flex items-center gap-3">
               <NotificationBell />
-              <div className="hidden sm:block w-64">
+              <div className="hidden sm:block w-56">
                 <BranchSelector />
               </div>
             </div>

@@ -183,20 +183,22 @@ export const EmailTemplatesPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Email Templates</h1>
-          <Button onClick={() => handleOpenModal()}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Email Templates</h1>
+            <p className="text-sm text-slate-400 mt-1">Configure automated notifications, receipts, and order updates</p>
+          </div>
+          <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-emerald-500/15">
             Create Template
           </Button>
         </div>
 
         {/* Templates Table */}
-        <div className="bg-primary-dark/50 rounded-lg shadow border border-white/10">
-          <Table
-            data={templates || []}
-            columns={columns}
-          />
-        </div>
+        <Table
+          data={templates || []}
+          columns={columns}
+          emptyMessage="No email templates found"
+        />
 
         {/* Template Form Modal */}
         <Modal

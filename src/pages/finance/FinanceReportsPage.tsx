@@ -201,6 +201,48 @@ export function FinanceReportsPage() {
           </div>
         </div>
       ) : null}
+
+      <div className="bg-white/5 rounded-xl border border-white/10 p-5 mt-6">
+        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5 text-amber-400" /> Reconciliation Summary
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[
+            { key: 'caf', label: 'CAF', data: d.externalServices.caf.reconciliation },
+            { key: 'emr', label: 'EMR', data: d.externalServices.emr.reconciliation },
+            { key: 'lab', label: 'LAB', data: d.externalServices.lab.reconciliation },
+          ].map((source) => (
+            <div key={source.key} className="bg-white/5 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-white">{source.label}</span>
+                <span className={`text-xs px-2 py-1 rounded-full ${
+                  source.data?.status === 'balanced' ? 'bg-green-500/20 text-green-400' :
+                  source.data?.status === 'variance' ? 'bg-red-500/20 text-red-400' :
+                  'bg-gray-500/20 text-gray-400'
+                }`}>
+                  {source.data?.status || 'Not Submitted'}
+                </span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Net Expected</span>
+                  <span className="text-white">{format(source.data?.netExpected?.total || 0)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">Actual</span>
+                  <span className="text-white">{format(source.data?.actual?.total || 0)}</span>
+                </div>
+                <div className="flex justify-between border-t border-white/10 pt-2">
+                  <span className="text-gray-400">Variance</span>
+                  <span className={source.data?.variance?.total === 0 ? 'text-green-400' : 'text-red-400 font-semibold'}>
+                    {format(source.data?.variance?.total || 0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </FinanceLayout>
   );
 }

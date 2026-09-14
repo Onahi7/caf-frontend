@@ -234,22 +234,24 @@ export const PaymentMethodsPage = () => {
   ];
 
   return (
-    <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Payment Methods</h1>
-          <Button onClick={() => handleOpenModal()}>
+    <AdminLayout title="Payment Methods">
+      <div className="space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">Payment Methods</h1>
+            <p className="text-sm text-slate-400 mt-1">Configure accepted payment channels, card, cash, and digital wallets</p>
+          </div>
+          <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-emerald-500/15">
             Add Payment Method
           </Button>
         </div>
 
         {/* Payment Methods Table */}
-        <div className="bg-primary-dark/50 rounded-lg shadow border border-white/10">
-          <Table
-            data={methods || []}
-            columns={columns}
-          />
-        </div>
+        <Table
+          data={methods || []}
+          columns={columns}
+          emptyMessage="No payment methods configured"
+        />
 
         {/* Payment Method Form Modal */}
         <Modal

@@ -20,6 +20,20 @@ import { ParkedSalesBar } from '../../components/pos/ParkedSalesBar';
 import { QuickKeysGrid } from '../../components/pos/QuickKeysGrid';
 import type { QuickKeyProduct } from '../../stores/quick-keys-store';
 import { queryKeys } from '../../lib/query-keys';
+import {
+  Search,
+  ScanLine,
+  LayoutGrid,
+  List as ListIcon,
+  Minus,
+  Plus,
+  Trash2,
+  X,
+  ShoppingBag,
+  Percent,
+  ArrowRight,
+  Package,
+} from 'lucide-react';
 
 interface Shift {
   _id: string;
@@ -752,15 +766,13 @@ export const POSPage = () => {
             {/* Search Bar + Scan Button */}
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search drug name, brand, SKU, or barcode..."
-                  className="w-full pl-12 pr-4 py-3 bg-primary-dark border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-green focus:ring-1 focus:ring-accent-green/20 transition-all"
+                  className="w-full pl-11 pr-4 py-2.5 bg-slate-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 text-sm transition-all shadow-xs"
                 />
               </div>
 
@@ -769,16 +781,13 @@ export const POSPage = () => {
                 <button
                   onClick={toggleScanMode}
                   title={scanMode ? 'Stop scanning' : 'Start barcode scanner'}
-                  className={`px-4 py-3 rounded-xl border font-medium text-sm transition-all flex items-center gap-2 ${
+                  className={`px-4 py-2.5 rounded-xl border font-medium text-xs transition-all flex items-center gap-2 ${
                     scanMode
-                      ? 'bg-accent-green text-primary-dark border-accent-green shadow-lg shadow-accent-green/40'
-                      : 'bg-primary-dark border-gray-700 text-gray-300 hover:border-accent-green/50'
+                      ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-lg shadow-emerald-500/25 font-bold'
+                      : 'bg-slate-900/80 border-white/10 text-slate-300 hover:border-emerald-500/40 hover:text-white'
                   }`}
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9V6a1 1 0 011-1h3M3 15v3a1 1 0 001 1h3m11-4v3a1 1 0 01-1 1h-3m4-12h-3a1 1 0 00-1 1v3" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h8" />
-                  </svg>
+                  <ScanLine className="w-4 h-4" />
                   <span className="hidden sm:inline">{scanMode ? 'Stop' : 'Scan'}</span>
                 </button>
               )}
@@ -786,15 +795,15 @@ export const POSPage = () => {
 
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               {/* Category Filter */}
-              <div className="flex gap-2 overflow-x-auto pb-2 xl:pb-0">
+              <div className="flex gap-1.5 overflow-x-auto pb-1.5 xl:pb-0">
                 {categories.map((cat) => (
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all ${
                       selectedCategory === cat.id
-                        ? 'bg-accent-green text-primary-dark shadow-lg shadow-accent-green/30'
-                        : 'bg-primary-dark border border-gray-700 text-gray-300 hover:border-accent-green/50'
+                        ? 'bg-emerald-500/15 text-emerald-300 font-semibold border border-emerald-500/25 shadow-xs'
+                        : 'bg-slate-900/80 border border-white/[0.08] text-slate-400 hover:text-slate-200 hover:border-white/15'
                     }`}
                   >
                     {cat.label}
@@ -802,19 +811,20 @@ export const POSPage = () => {
                 ))}
               </div>
 
-              <div className="flex rounded-xl border border-gray-700 bg-primary-dark p-1">
+              <div className="flex rounded-xl border border-white/[0.08] bg-slate-900/90 p-1">
                 {(['grid', 'list'] as const).map((mode) => (
                   <button
                     key={mode}
                     type="button"
                     onClick={() => setProductViewMode(mode)}
-                    className={`rounded-lg px-4 py-2 text-sm font-semibold capitalize transition-all ${
+                    className={`flex items-center space-x-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-all ${
                       productViewMode === mode
-                        ? 'bg-accent-green text-primary-dark'
-                        : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                        ? 'bg-white/[0.08] text-slate-100 shadow-xs'
+                        : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    {mode}
+                    {mode === 'grid' ? <LayoutGrid className="w-3.5 h-3.5" /> : <ListIcon className="w-3.5 h-3.5" />}
+                    <span>{mode}</span>
                   </button>
                 ))}
               </div>
@@ -847,7 +857,7 @@ export const POSPage = () => {
             ) : products.length > 0 ? (
               <div className="space-y-4">
                 {productsPagination && (
-                  <div className="rounded-xl border border-gray-700 bg-primary-dark/70 px-4 py-3 text-sm text-gray-300">
+                  <div className="rounded-xl border border-white/[0.08] bg-slate-900/60 px-4 py-2.5 text-xs text-slate-400">
                     Showing {products.length} of {productsPagination.total} products
                   </div>
                 )}
@@ -859,49 +869,51 @@ export const POSPage = () => {
                     key={product._id}
                     onClick={() => handleAddToCart(product)}
                     disabled={product.stock <= 0}
-                    className={`group rounded-xl overflow-hidden transition-all ${
+                    className={`group rounded-2xl overflow-hidden bg-slate-900/80 border border-white/[0.08] text-left flex flex-col transition-all duration-150 ${
                       product.stock <= 0
-                        ? 'opacity-50 cursor-not-allowed'
-                        : 'hover:shadow-lg hover:shadow-accent-green/20 hover:-translate-y-1'
+                        ? 'opacity-40 cursor-not-allowed'
+                        : 'hover:border-emerald-500/40 hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-0.5'
                     }`}
                   >
-                    <div className="aspect-square relative bg-primary-dark overflow-hidden rounded-t-xl">
+                    <div className="aspect-4/3 relative bg-slate-950 overflow-hidden">
                       <img
                         src={getProductImage(product)}
                         alt={product.name}
                         onError={handleImageError}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       {product.stock <= 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                          <span className="px-3 py-1.5 bg-red-600 text-white text-xs font-semibold rounded-lg">
+                        <div className="absolute inset-0 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs">
+                          <span className="px-2.5 py-1 bg-rose-500 text-white text-[11px] font-bold rounded-lg shadow-md">
                             Out of Stock
                           </span>
                         </div>
                       )}
                       {product.stock > 0 && product.stock <= 5 && (
-                        <div className="absolute top-2 right-2 px-2.5 py-1 bg-orange-500 text-white text-xs font-semibold rounded-lg">
+                        <div className="absolute top-2 right-2 px-2 py-0.5 bg-amber-500 text-slate-950 text-[10px] font-bold rounded-md shadow-xs">
                           Low Stock ({getStockDisplay(product.stock, product.unit, product.packSizes)})
                         </div>
                       )}
-                      <div className="absolute inset-0 bg-linear-to-t from-black/40 to-transparent group-hover:from-black/60 transition-all" />
+                      <div className="absolute inset-0 bg-linear-to-t from-slate-950/50 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
                     </div>
-                    <div className="p-3 bg-primary-dark rounded-b-xl border-t border-gray-700">
-                      <h3 className="text-left text-sm font-semibold leading-snug text-white break-words">
-                        {product.name}
-                      </h3>
-                      <p className="mt-2 rounded-md bg-accent-green/10 px-2 py-1 text-left text-xs font-semibold text-accent-green whitespace-normal break-words">
-                        Brand: {getDisplayBrand(product.brand)}
-                      </p>
-                      <p className="mt-1 text-left text-xs text-gray-400 whitespace-normal break-words">
-                        {product.category || 'Uncategorized'} - {product.sku || 'No SKU'}
-                      </p>
-                      <div className="flex items-center justify-between mt-2">
-                        <p className="text-accent-green font-bold text-base">{format(product.price)}</p>
+                    <div className="p-3 bg-slate-900/90 flex-1 flex flex-col justify-between border-t border-white/[0.06]">
+                      <div>
+                        <h3 className="text-xs font-semibold leading-snug text-slate-100 line-clamp-2">
+                          {product.name}
+                        </h3>
+                        <p className="mt-1.5 inline-block text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+                          {getDisplayBrand(product.brand)}
+                        </p>
+                        <p className="mt-1 text-[11px] text-slate-400 truncate">
+                          {product.category || 'General'} · #{product.sku || 'No SKU'}
+                        </p>
+                      </div>
+                      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-white/[0.04]">
+                        <p className="text-emerald-400 font-bold text-sm tabular-nums font-mono">{format(product.price)}</p>
                         {product.stock > 0 && (
-                          <svg className="w-5 h-5 text-accent-green opacity-0 group-hover:opacity-100 transition-opacity" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M5 13l4 4L19 7" strokeWidth="2" stroke="currentColor" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                          <span className="text-[10px] font-medium text-slate-400">
+                            {product.stock} {product.unit}
+                          </span>
                         )}
                       </div>
                     </div>
@@ -909,20 +921,20 @@ export const POSPage = () => {
                 ))}
                 </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     {products.map((product) => (
                       <button
                         key={product._id}
                         type="button"
                         onClick={() => handleAddToCart(product)}
                         disabled={product.stock <= 0}
-                        className={`group flex w-full gap-4 rounded-2xl border border-gray-700 bg-primary-dark p-3 text-left transition-all ${
+                        className={`group flex w-full gap-3.5 rounded-2xl border border-white/[0.08] bg-slate-900/80 p-3 text-left transition-all duration-150 ${
                           product.stock <= 0
-                            ? 'cursor-not-allowed opacity-50'
-                            : 'hover:border-accent-green/50 hover:bg-primary-dark/80 hover:shadow-lg hover:shadow-accent-green/10'
+                            ? 'cursor-not-allowed opacity-40'
+                            : 'hover:border-emerald-500/40 hover:bg-slate-800/80 hover:shadow-lg hover:shadow-emerald-500/5'
                         }`}
                       >
-                        <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-primary-darker sm:h-28 sm:w-28">
+                        <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-950 border border-white/[0.06] sm:h-24 sm:w-24">
                           <img
                             src={getProductImage(product)}
                             alt={product.name}
@@ -930,34 +942,34 @@ export const POSPage = () => {
                             className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                           />
                           {product.stock <= 0 && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/55">
-                              <span className="rounded-lg bg-red-600 px-2 py-1 text-xs font-semibold text-white">
+                            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/75 backdrop-blur-xs">
+                              <span className="rounded-lg bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
                                 Out
                               </span>
                             </div>
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">
-                              <h3 className="text-base font-bold leading-snug text-white break-words">
+                              <h3 className="text-sm font-bold leading-snug text-slate-100 break-words">
                                 {product.name}
                               </h3>
-                              <p className="mt-1 inline-flex rounded-lg bg-accent-green/10 px-2.5 py-1 text-sm font-semibold text-accent-green">
-                                Brand: {getDisplayBrand(product.brand)}
+                              <p className="mt-1 inline-flex rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">
+                                {getDisplayBrand(product.brand)}
                               </p>
                             </div>
-                            <p className="shrink-0 text-lg font-bold text-accent-green">
+                            <p className="shrink-0 text-base font-bold text-emerald-400 tabular-nums font-mono">
                               {format(product.price)}
                             </p>
                           </div>
-                          <div className="mt-3 grid gap-2 text-sm text-gray-400 sm:grid-cols-3">
-                            <span>Category: {product.category || 'Uncategorized'}</span>
-                            <span>SKU: {product.sku || 'No SKU'}</span>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+                            <span>{product.category || 'General'}</span>
+                            <span className="font-mono">#{product.sku || 'No SKU'}</span>
                             <span>Stock: {getStockDisplay(product.stock, product.unit, product.packSizes)}</span>
                           </div>
                           {product.packSizes && product.packSizes.length > 0 && (
-                            <p className="mt-2 text-xs font-medium text-gray-500">
+                            <p className="mt-1 text-[11px] font-medium text-slate-500">
                               Packs: {product.packSizes.map((pack) => pack.name).join(', ')}
                             </p>
                           )}
@@ -972,20 +984,20 @@ export const POSPage = () => {
                     type="button"
                     onClick={() => fetchNextPage()}
                     disabled={loadingMoreProducts}
-                    className="w-full rounded-xl border border-accent-green/40 bg-accent-green/10 px-4 py-3 text-sm font-semibold text-accent-green disabled:opacity-60"
+                    className="w-full rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-colors disabled:opacity-60"
                   >
                     {loadingMoreProducts ? 'Loading more...' : 'Load more products'}
                   </button>
                 )}
               </div>
             ) : (
-              <div className="flex items-center justify-center h-full">
+              <div className="flex items-center justify-center h-full py-12">
                 <div className="text-center">
-                  <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                  </svg>
-                  <p className="text-gray-400 font-medium">No products found</p>
-                  <p className="text-gray-500 text-sm">Try adjusting your search or filters</p>
+                  <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-3 text-slate-500">
+                    <Package className="w-6 h-6 stroke-[1.5]" />
+                  </div>
+                  <p className="text-slate-300 font-semibold text-sm">No products found</p>
+                  <p className="text-slate-500 text-xs mt-1">Try adjusting your search or filters</p>
                 </div>
               </div>
             )}
@@ -993,42 +1005,45 @@ export const POSPage = () => {
         </div>
 
         {/* Right: Shopping Cart Section - Desktop Only */}
-        <div className="hidden lg:flex w-96 flex-col bg-primary-dark rounded-2xl border border-gray-700 overflow-hidden shadow-xl shadow-black/20">
+        <div className="hidden lg:flex w-96 flex-col bg-slate-900/95 rounded-2xl border border-white/[0.08] overflow-hidden shadow-2xl backdrop-blur-xl">
           {/* Cart Header */}
-          <div className="bg-linear-to-r from-accent-green/10 to-emerald-600/10 border-b border-gray-700 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-white">Order</h2>
-                <p className="text-xs text-gray-400 mt-0.5">{items.length} item{items.length !== 1 ? 's' : ''}</p>
+          <div className="border-b border-white/[0.08] px-5 py-4 flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <ShoppingBag className="w-4 h-4" />
               </div>
-              {items.length > 0 && (
-                <span className="px-3 py-1.5 bg-accent-green/20 border border-accent-green/40 rounded-lg text-accent-green text-xs font-semibold">
-                  {items.length}
-                </span>
-              )}
+              <div>
+                <h2 className="text-sm font-bold text-slate-100 tracking-tight">Order</h2>
+                <p className="text-[11px] text-slate-400">{items.length} item{items.length !== 1 ? 's' : ''}</p>
+              </div>
             </div>
+            {items.length > 0 && (
+              <span className="px-2.5 py-1 bg-slate-800 border border-white/10 rounded-full text-slate-300 text-xs font-semibold tabular-nums">
+                {items.length}
+              </span>
+            )}
           </div>
 
           {/* Cart Items */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
             {items.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center py-8 text-center">
-                <svg className="w-14 h-14 text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-                <p className="text-gray-400 font-medium">Your cart is empty</p>
-                <p className="text-gray-500 text-xs mt-1">Add products to get started</p>
+              <div className="h-full flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-3 text-slate-500">
+                  <ShoppingBag className="w-6 h-6 stroke-[1.5]" />
+                </div>
+                <p className="text-slate-300 font-semibold text-sm">Your cart is empty</p>
+                <p className="text-slate-500 text-xs mt-1">Add products to get started</p>
               </div>
             ) : (
               items.map((item) => (
-                <div key={itemKey(item.productId, item.packSize)} className="bg-primary-darker rounded-lg p-3 border border-gray-700 hover:border-accent-green/40 transition-colors group">
-                  <div className="flex items-start justify-between mb-2">
+                <div key={itemKey(item.productId, item.packSize)} className="bg-slate-900/90 rounded-2xl p-3 border border-white/[0.08] hover:border-white/15 transition-all shadow-xs group">
+                  <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-white font-semibold text-sm leading-snug whitespace-normal break-words">{item.productName}</h3>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        SKU: {item.sku}
+                      <h3 className="text-slate-100 font-semibold text-xs leading-snug break-words">{item.productName}</h3>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        <span className="font-mono">#{item.sku}</span>
                         {item.packSize && (
-                          <span className="ml-1 px-1.5 py-0.5 bg-accent-green/10 text-accent-green rounded text-[10px]">
+                          <span className="ml-1 px-1.5 py-0.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded text-[10px] font-semibold">
                             {item.packSize.name}
                           </span>
                         )}
@@ -1036,37 +1051,36 @@ export const POSPage = () => {
                     </div>
                     <button
                       onClick={() => removeItem(item.productId, item.packSize)}
-                      className="text-gray-500 hover:text-red-400 transition-colors ml-2 p-2 shrink-0"
+                      className="text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors p-1.5 rounded-lg shrink-0"
                       title="Remove item"
                     >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                      </svg>
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 bg-primary-dark rounded-lg p-1">
+                  <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                    <div className="flex items-center space-x-1 bg-slate-950/80 rounded-xl p-0.5 border border-white/[0.06]">
                       <button
                         onClick={() => handleQuantityDecrement(item.productId, item.packSize, item.quantity)}
-                        className="w-11 h-11 min-h-11 flex items-center justify-center hover:bg-gray-700 rounded transition-colors text-gray-300"
+                        className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white disabled:opacity-30"
+                        disabled={item.quantity <= 1}
                       >
-                        -
+                        <Minus className="w-3.5 h-3.5" />
                       </button>
                       <input
                         type="text"
                         value={item.quantity}
                         onChange={(e) => handleQuantityChange(item.productId, item.packSize, e.target.value)}
-                        className="w-12 h-11 bg-transparent text-center text-white font-semibold text-base focus:outline-none"
+                        className="w-8 bg-transparent text-center text-slate-100 font-semibold text-xs focus:outline-none tabular-nums"
                       />
                       <button
                         onClick={() => handleQuantityIncrement(item.productId, item.packSize, item.quantity)}
-                        className="w-11 h-11 min-h-11 flex items-center justify-center hover:bg-gray-700 rounded transition-colors text-gray-300"
+                        className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
                       >
-                        +
+                        <Plus className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <p className="text-white font-bold text-sm">{format(item.unitPrice * item.quantity)}</p>
+                    <p className="text-emerald-400 font-bold text-xs tabular-nums font-mono">{format(item.unitPrice * item.quantity)}</p>
                   </div>
                 </div>
               ))
@@ -1076,36 +1090,38 @@ export const POSPage = () => {
           {/* Cart Summary */}
           {items.length > 0 && (
             <>
-              <div className="border-t border-gray-700 px-6 py-4 space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-400">Subtotal</span>
-                  <span className="text-white font-semibold">{format(subtotal)}</span>
+              <div className="border-t border-white/[0.08] px-5 py-3 space-y-1.5 bg-slate-900/90 text-xs">
+                <div className="flex items-center justify-between text-slate-400">
+                  <span>Subtotal</span>
+                  <span className="text-slate-200 font-medium tabular-nums">{format(subtotal)}</span>
                 </div>
                 {discount > 0 && (
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-400">Discount</span>
-                    <span className="text-red-400 font-semibold">-{format(discount)}</span>
+                  <div className="flex items-center justify-between text-rose-400">
+                    <span>Discount</span>
+                    <span className="font-semibold tabular-nums">-{format(discount)}</span>
                   </div>
                 )}
-                <div className="border-t border-gray-700 pt-2 mt-2 flex items-center justify-between">
-                  <span className="text-white font-bold">Total</span>
-                  <span className="text-xl font-bold text-accent-green">{format(total)}</span>
+                <div className="border-t border-white/[0.08] pt-2 flex items-center justify-between">
+                  <span className="text-slate-300 font-bold">Total</span>
+                  <span className="text-lg font-black text-emerald-400 tabular-nums font-mono">{format(total)}</span>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="border-t border-gray-700 px-6 py-4 space-y-2">
+              <div className="border-t border-white/[0.08] px-5 py-4 space-y-2 bg-slate-900/90">
                 <button
                   onClick={() => navigate('/pos/discounts')}
-                  className="w-full py-2.5 bg-primary-darker border border-gray-700 rounded-lg text-white font-medium text-sm hover:border-accent-green/40 transition-colors"
+                  className="w-full py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 rounded-xl text-slate-300 hover:text-white font-medium text-xs transition-colors flex items-center justify-center space-x-1.5"
                 >
-                  Apply Discount
+                  <Percent className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Apply Discount</span>
                 </button>
                 <button
                   onClick={() => navigate('/pos/payment')}
-                  className="w-full py-2.5 bg-linear-to-r from-accent-green to-emerald-500 rounded-lg text-primary-dark font-semibold text-sm hover:shadow-lg hover:shadow-accent-green/40 transition-all"
+                  className="w-full py-2.5 bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center space-x-1.5 active:scale-[0.99]"
                 >
-                  Proceed to Checkout
+                  <span>Proceed to Checkout</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </>
@@ -1117,13 +1133,12 @@ export const POSPage = () => {
       {items.length > 0 && (
         <button
           onClick={() => setShowMobileCart(true)}
-          className="lg:hidden fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-40 w-16 h-16 bg-linear-to-r from-accent-green to-emerald-500 rounded-full shadow-2xl shadow-accent-green/50 flex items-center justify-center hover:scale-110 transition-transform"
+          className="lg:hidden fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-40 w-14 h-14 bg-linear-to-r from-emerald-500 to-teal-600 rounded-full shadow-2xl shadow-emerald-500/40 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+          aria-label="View current order"
         >
           <div className="relative">
-            <svg className="w-7 h-7 text-primary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-            <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-white text-xs font-bold flex items-center justify-center">
+            <ShoppingBag className="w-6 h-6 text-slate-950" />
+            <span className="absolute -top-2 -right-2 w-5 h-5 bg-rose-500 border border-slate-900 rounded-full text-white text-[10px] font-bold flex items-center justify-center tabular-nums">
               {cartItemCount}
             </span>
           </div>
@@ -1132,118 +1147,128 @@ export const POSPage = () => {
 
       {/* Mobile Cart Overlay */}
       {showMobileCart && (
-        <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-primary-darker">
+        <div className="lg:hidden fixed inset-0 z-50 flex flex-col bg-slate-950 animate-fade-in">
           {/* Mobile Cart Header */}
-          <div className="bg-primary-dark border-b border-gray-700 px-4 py-4 flex items-center justify-between pt-safe-top">
-            <div>
-              <h2 className="text-xl font-bold text-white">Your Order</h2>
-              <p className="text-sm text-gray-400 mt-0.5">{items.length} item{items.length !== 1 ? 's' : ''}</p>
+          <div className="bg-slate-900/90 backdrop-blur-xl border-b border-white/[0.08] px-4 py-3.5 flex items-center justify-between pt-safe-top">
+            <div className="flex items-center space-x-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <ShoppingBag className="w-4 h-4" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-100 tracking-tight">Your Order</h2>
+                <p className="text-[11px] text-slate-400">{items.length} item{items.length !== 1 ? 's' : ''}</p>
+              </div>
             </div>
             <button
               onClick={() => setShowMobileCart(false)}
-              className="w-12 h-12 flex items-center justify-center rounded-xl bg-primary-darker text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.05] border border-white/10 text-slate-400 hover:text-white transition-colors"
+              aria-label="Close cart"
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="w-4 h-4" />
             </button>
           </div>
 
           {/* Mobile Cart Items */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
             {items.map((item) => (
-              <div key={itemKey(item.productId, item.packSize)} className="bg-primary-dark rounded-xl p-4 border border-gray-700">
-                <div className="flex items-start justify-between mb-3">
+              <div key={itemKey(item.productId, item.packSize)} className="bg-slate-900/90 rounded-2xl p-3.5 border border-white/[0.08]">
+                <div className="flex items-start justify-between gap-2 mb-2.5">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-semibold text-base leading-snug whitespace-normal break-words">{item.productName}</h3>
-                    {item.brand && item.brand.trim().toLowerCase() !== 'unknown' && (
-                      <p className="text-sm text-accent-green mt-0.5 whitespace-normal break-words">
-                        Brand: {item.brand}
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-400 mt-1">
-                      SKU: {item.sku}
+                    <h3 className="text-slate-100 font-semibold text-xs leading-snug break-words">{item.productName}</h3>
+                    <div className="flex items-center flex-wrap gap-1.5 mt-1">
+                      {item.brand && item.brand.trim().toLowerCase() !== 'unknown' && (
+                        <span className="text-[10px] text-emerald-400 font-medium">
+                          {item.brand}
+                        </span>
+                      )}
                       {item.packSize && (
-                        <span className="ml-1 px-1.5 py-0.5 bg-accent-green/10 text-accent-green rounded text-[10px]">
+                        <span className="px-1.5 py-0.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded text-[10px] font-semibold">
                           {item.packSize.name}
                         </span>
                       )}
-                    </p>
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        #{item.sku}
+                      </span>
+                    </div>
                   </div>
                   <button
                     onClick={() => removeItem(item.productId, item.packSize)}
-                    className="text-gray-500 hover:text-red-400 transition-colors ml-3 p-2 shrink-0"
+                    className="text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors p-1.5 rounded-lg shrink-0"
+                    aria-label="Remove item"
                   >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
-                    </svg>
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
 
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 bg-primary-darker rounded-lg p-1.5">
-                      <button
-                        onClick={() => handleQuantityDecrement(item.productId, item.packSize, item.quantity)}
-                        className="w-12 h-12 flex items-center justify-center hover:bg-gray-700 rounded transition-colors text-gray-300"
-                      >
-                        <span className="text-lg">-</span>
-                      </button>
-                      <input
-                        type="text"
-                        value={item.quantity}
-                        onChange={(e) => handleQuantityChange(item.productId, item.packSize, e.target.value)}
-                        className="w-12 h-12 bg-transparent text-center text-white font-semibold text-base focus:outline-none"
-                      />
-                      <button
-                        onClick={() => handleQuantityIncrement(item.productId, item.packSize, item.quantity)}
-                        className="w-12 h-12 flex items-center justify-center hover:bg-gray-700 rounded transition-colors text-gray-300"
-                      >
-                        <span className="text-lg">+</span>
-                      </button>
-                    </div>
-                    <p className="text-white font-bold text-lg">{format(item.unitPrice * item.quantity)}</p>
+                <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                  <div className="flex items-center space-x-1 bg-slate-950/80 rounded-xl p-0.5 border border-white/[0.06]">
+                    <button
+                      onClick={() => handleQuantityDecrement(item.productId, item.packSize, item.quantity)}
+                      className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white disabled:opacity-30"
+                      disabled={item.quantity <= 1}
+                      aria-label="Decrease quantity"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <input
+                      type="text"
+                      value={item.quantity}
+                      onChange={(e) => handleQuantityChange(item.productId, item.packSize, e.target.value)}
+                      className="w-10 bg-transparent text-center text-slate-100 font-semibold text-xs focus:outline-none tabular-nums"
+                    />
+                    <button
+                      onClick={() => handleQuantityIncrement(item.productId, item.packSize, item.quantity)}
+                      className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                      aria-label="Increase quantity"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
                   </div>
+                  <p className="text-emerald-400 font-bold text-sm tabular-nums font-mono">{format(item.unitPrice * item.quantity)}</p>
+                </div>
               </div>
             ))}
           </div>
 
           {/* Mobile Cart Summary & Actions */}
-          <div className="bg-primary-dark border-t border-gray-700">
-            <div className="px-4 py-4 space-y-3">
-              <div className="flex items-center justify-between text-base">
-                <span className="text-gray-400">Subtotal</span>
-                <span className="text-white font-semibold">{format(subtotal)}</span>
+          <div className="bg-slate-900/95 border-t border-white/[0.08] backdrop-blur-xl">
+            <div className="px-4 py-3.5 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between text-slate-400">
+                <span>Subtotal</span>
+                <span className="text-slate-200 font-medium tabular-nums">{format(subtotal)}</span>
               </div>
               {discount > 0 && (
-                <div className="flex items-center justify-between text-base">
-                  <span className="text-gray-400">Discount</span>
-                  <span className="text-red-400 font-semibold">-{format(discount)}</span>
+                <div className="flex items-center justify-between text-rose-400">
+                  <span>Discount</span>
+                  <span className="font-semibold tabular-nums">-{format(discount)}</span>
                 </div>
               )}
-              <div className="border-t border-gray-700 pt-3 flex items-center justify-between">
-                <span className="text-white font-bold text-lg">Total</span>
-                <span className="text-2xl font-bold text-accent-green">{format(total)}</span>
+              <div className="border-t border-white/[0.08] pt-2 flex items-center justify-between">
+                <span className="text-slate-300 font-bold">Total Due</span>
+                <span className="text-xl font-black text-emerald-400 tabular-nums font-mono">{format(total)}</span>
               </div>
             </div>
 
-            <div className="px-4 pb-6 pb-safe-bottom space-y-3">
+            <div className="px-4 pb-6 pb-safe-bottom space-y-2">
               <button
                 onClick={() => {
                   setShowMobileCart(false);
                   navigate('/pos/discounts');
                 }}
-                className="w-full py-3.5 bg-primary-darker border border-gray-700 rounded-xl text-white font-medium text-base hover:border-accent-green/40 transition-colors"
+                className="w-full py-2.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 rounded-xl text-slate-300 hover:text-white font-medium text-xs transition-colors flex items-center justify-center space-x-1.5"
               >
-                Apply Discount
+                <Percent className="w-3.5 h-3.5 text-slate-400" />
+                <span>Apply Discount</span>
               </button>
               <button
                 onClick={() => {
                   setShowMobileCart(false);
                   navigate('/pos/payment');
                 }}
-                className="w-full py-3.5 bg-linear-to-r from-accent-green to-emerald-500 rounded-xl text-primary-dark font-bold text-base shadow-lg shadow-accent-green/30 hover:shadow-accent-green/50 transition-all"
+                className="w-full py-3 bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl text-slate-950 font-bold text-sm shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center space-x-2 active:scale-[0.99]"
               >
-                Proceed to Checkout
+                <span>Proceed to Checkout</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>

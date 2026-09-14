@@ -167,8 +167,7 @@ export function ExpensesPage() {
         )}
 
         {expenses && expenses.length > 0 && (
-          <div className="rounded-xl border border-white/10 bg-white/5 overflow-hidden">
-            <Table
+          <Table
               columns={[
                 {
                   key: 'createdAt',
@@ -227,7 +226,6 @@ export function ExpensesPage() {
               ]}
               data={expenses}
             />
-          </div>
         )}
 
         <Modal

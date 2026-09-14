@@ -9,7 +9,12 @@ import {
   ShoppingCart,
   ArrowLeftRight,
   FileText,
-  DollarSign
+  DollarSign,
+  Receipt,
+  BarChart3,
+  Clock,
+  Activity,
+  ShieldCheck,
 } from 'lucide-react';
 
 export function ReportsPage() {
@@ -86,7 +91,52 @@ export function ReportsPage() {
       color: 'bg-indigo-500',
       stats: 'Activity Monitoring',
       roles: ['super_admin', 'branch_manager', 'auditor']
-    }
+    },
+    {
+      title: 'Profit & Loss',
+      description: 'Revenue, costs, and profit margins',
+      icon: BarChart3,
+      path: '/admin/reports/profit-loss',
+      color: 'bg-emerald-600',
+      stats: 'P&L Statement',
+      roles: ['super_admin', 'branch_manager', 'auditor', 'finance_manager']
+    },
+    {
+      title: 'Expense Report',
+      description: 'Expense breakdown by category and period',
+      icon: Receipt,
+      path: '/admin/reports/expenses',
+      color: 'bg-rose-500',
+      stats: 'Cost Analysis',
+      roles: ['super_admin', 'branch_manager', 'auditor', 'finance_manager']
+    },
+    {
+      title: 'Dead Stock',
+      description: 'Slow-moving and unsold inventory',
+      icon: Clock,
+      path: '/admin/reports/dead-stock',
+      color: 'bg-amber-600',
+      stats: 'Inventory Efficiency',
+      roles: ['super_admin', 'branch_manager', 'auditor']
+    },
+    {
+      title: 'Stock Movements',
+      description: 'Inbound and outbound stock history',
+      icon: Activity,
+      path: '/admin/reports/stock-movements',
+      color: 'bg-cyan-600',
+      stats: 'Movement Tracking',
+      roles: ['super_admin', 'branch_manager', 'auditor']
+    },
+    {
+      title: 'Reconciliation',
+      description: 'Financial reconciliation and variance tracking',
+      icon: ShieldCheck,
+      path: '/finance/reconciliations',
+      color: 'bg-amber-500',
+      stats: 'Variance Tracking',
+      roles: ['super_admin', 'branch_manager', 'finance_manager', 'auditor']
+    },
   ];
   const visibleReportModules = reportModules.filter((module) =>
     module.roles.includes(user?.role || ''),

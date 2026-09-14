@@ -1,11 +1,21 @@
 import { useState } from 'react';
-import { ArrowRightLeft, Package, Truck } from 'lucide-react';
+import {
+  ArrowRight,
+  ArrowRightLeft,
+  CheckCircle2,
+  ClipboardCheck,
+  Package,
+  Truck,
+  XCircle,
+} from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../lib/api-client';
 import { unwrapArray } from '../../lib/unwrap-response';
 import { AdminLayout } from '../../components/AdminLayout';
+import { BranchSelector } from '../../components/BranchSelector';
 import { AdminStatusBadge } from '../../components/admin';
+import { AdminMobileBottomNav } from '../../components/admin/AdminMobileBottomNav';
 import { Button } from '../../components/ui/Button';
 import { Error } from '../../components/ui/Error';
 import { Input } from '../../components/ui/Input';
@@ -71,6 +81,107 @@ interface TransferFormData {
   productId: string;
   quantity: number;
   reason: string;
+}
+
+const decisionStyles = {
+  approved: {
+    icon: CheckCircle2,
+    labelClass: 'text-emerald-400',
+    iconClass: 'border-emerald-400 text-emerald-400',
+  },
+  rejected: {
+    icon: XCircle,
+    labelClass: 'text-red-400',
+    iconClass: 'border-red-400 text-red-400',
+  },
+  completed: {
+    icon: CheckCircle2,
+    labelClass: 'text-blue-400',
+    iconClass: 'border-blue-400 text-blue-400',
+  },
+} as const;
+
+function TransferRoute({ transfer }: { transfer: Transfer }) {
+  return (
+    <div className="space-y-1.5 text-sm">
+      <p className="font-medium text-white">{transfer.sourceBranchId.name}</p>
+      <div className="flex items-center gap-2">
+        <ArrowRight className="h-4 w-4 shrink-0 text-amber-400" />
+        <p className="font-medium text-white">{transfer.destinationBranchId.name}</p>
+      </div>
+      <p className="pt-1 font-semibold text-white">{transfer.quantity.toLocaleString()} units</p>
+    </div>
+  );
+}
+
+function PendingTransferRow({ transfer, onReview }: { transfer: Transfer; onReview: (transfer: Transfer) => void }) {
+  return (
+    <article className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] gap-x-4 gap-y-3 px-3 py-4">
+      <div className="min-w-0">
+        <h3 className="text-sm font-bold leading-5 text-white">{transfer.productId.name}</h3>
+        <p className="mt-1 text-xs text-gray-400">SKU: {transfer.productId.sku}</p>
+      </div>
+      <TransferRoute transfer={transfer} />
+      <div className="min-w-0 text-xs">
+        <p className="font-medium text-white">{transfer.requestedBy.firstName} {transfer.requestedBy.lastName}</p>
+        <p className="mt-1 text-xs text-gray-400">{new Date(transfer.createdAt).toLocaleDateString()}</p>
+        <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-400">{transfer.reason}</p>
+      </div>
+      <div className="flex items-end justify-between gap-3">
+        <span className="w-fit rounded-full border border-amber-400/35 bg-amber-400/10 px-3 py-1 text-xs font-semibold text-amber-300">
+          Pending
+        </span>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="!rounded-full !border-amber-400 !bg-transparent !px-3 !text-amber-300 hover:!bg-amber-400/10"
+          onClick={() => onReview(transfer)}
+        >
+          Review
+        </Button>
+      </div>
+    </article>
+  );
+}
+
+function DecisionTransferRow({ transfer }: { transfer: Transfer }) {
+  const style = decisionStyles[transfer.status as keyof typeof decisionStyles] ?? decisionStyles.completed;
+  const StatusIcon = style.icon;
+  const reviewer = transfer.approvedBy
+    ? `${transfer.approvedBy.firstName} ${transfer.approvedBy.lastName}`
+    : null;
+
+  return (
+    <article className="grid grid-cols-[minmax(0,1.1fr)_minmax(0,.9fr)] gap-x-4 gap-y-3 px-3 py-4">
+      <div className="min-w-0">
+        <div className={`mb-2 flex items-center gap-2 text-xs font-bold capitalize ${style.labelClass}`}>
+          <span className={`inline-flex h-6 w-6 items-center justify-center rounded-full border ${style.iconClass}`}>
+            <StatusIcon className="h-4 w-4" />
+          </span>
+          {formatStatusLabel(transfer.status)}
+        </div>
+        <h3 className="text-sm font-medium leading-5 text-white">{transfer.productId.name}</h3>
+        <p className="mt-1 text-xs text-gray-400">SKU: {transfer.productId.sku}</p>
+      </div>
+      <TransferRoute transfer={transfer} />
+      <div className="min-w-0 text-sm">
+        <p className="font-medium text-white">{transfer.requestedBy.firstName} {transfer.requestedBy.lastName}</p>
+        <p className="mt-1 text-xs text-gray-400">{new Date(transfer.createdAt).toLocaleDateString()}</p>
+        <p className="mt-2 line-clamp-2 text-xs leading-5 text-gray-400">{transfer.reason}</p>
+      </div>
+      <div className="min-w-0 text-xs leading-5 text-gray-400">
+        <p className={`font-bold capitalize ${style.labelClass}`}>{formatStatusLabel(transfer.status)}</p>
+        {reviewer ? <p>by {reviewer}</p> : null}
+        {transfer.status === 'rejected' && transfer.rejectionReason ? (
+          <p className="mt-1"><span className="font-semibold text-red-400">Reason:</span> {transfer.rejectionReason}</p>
+        ) : transfer.notes ? (
+          <p className="mt-1"><span className={`font-semibold ${style.labelClass}`}>Notes:</span> {transfer.notes}</p>
+        ) : transfer.completedAt ? (
+          <p className="mt-1">{new Date(transfer.completedAt).toLocaleDateString()}</p>
+        ) : null}
+      </div>
+    </article>
+  );
 }
 
 export default function TransferManagementPage() {
@@ -185,6 +296,13 @@ export default function TransferManagementPage() {
     });
   };
 
+  const handleOpenReview = (transfer: Transfer) => {
+    setSelectedTransfer(transfer);
+    setApprovalNotes('');
+    setRejectionReason('');
+    setIsApprovalModalOpen(true);
+  };
+
   const transferColumns = [
     {
       key: 'createdAt',
@@ -254,10 +372,7 @@ export default function TransferManagementPage() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={() => {
-              setSelectedTransfer(transfer);
-              setIsApprovalModalOpen(true);
-            }}
+            onClick={() => handleOpenReview(transfer)}
           >
             Review
           </Button>
@@ -292,10 +407,78 @@ export default function TransferManagementPage() {
   }
 
   const safeTransfers = transfers || [];
+  const pendingTransfers = safeTransfers.filter((transfer) => transfer.status === 'pending');
+  const decidedTransfers = safeTransfers.filter((transfer) => transfer.status !== 'pending');
 
   return (
-    <AdminLayout title="Transfer Management">
-      <div className="space-y-6">
+    <AdminLayout title="Stock Transfers" showMobileBranchSelector={false}>
+      <div className="space-y-6 pb-24 lg:pb-0">
+        <div className="space-y-4 lg:hidden">
+          <div className="grid grid-cols-[minmax(0,1fr)_9.5rem] items-end gap-3">
+            <div className="flex min-h-14 items-center rounded-2xl border border-emerald-400/25 bg-primary-dark/60 p-3 [&_label]:sr-only [&_select]:!px-3 [&_select]:!text-sm">
+              <BranchSelector />
+            </div>
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="!min-h-14 !rounded-2xl !border-amber-300 !bg-amber-400 !px-3 !text-sm !font-bold !text-primary-darker hover:!bg-amber-300"
+            >
+              + New Transfer
+            </Button>
+          </div>
+
+          {safeTransfers.length === 0 ? (
+            <div className="rounded-2xl border border-emerald-400/25 bg-primary-dark/60 px-5 py-12 text-center">
+              <p className="text-sm font-semibold text-white">No transfer requests yet</p>
+              <p className="mt-2 text-sm text-gray-400">Create the first stock transfer for this branch.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <section className="overflow-hidden rounded-2xl border border-emerald-400/30 bg-primary-dark/55">
+                <header className="flex items-center justify-between border-b border-white/10 px-4 py-4">
+                  <div className="flex items-center gap-3">
+                    <ClipboardCheck className="h-6 w-6 text-amber-400" />
+                    <h2 className="text-base font-bold text-amber-300">Needs review</h2>
+                  </div>
+                  <span className="flex h-9 min-w-9 items-center justify-center rounded-full bg-amber-400/10 px-2 text-sm font-bold text-amber-300">
+                    {pendingTransfers.length}
+                  </span>
+                </header>
+                {pendingTransfers.length > 0 ? (
+                  <div className="divide-y divide-white/10">
+                    {pendingTransfers.map((transfer) => (
+                      <PendingTransferRow key={transfer._id} transfer={transfer} onReview={handleOpenReview} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="px-4 py-8 text-center text-sm text-gray-400">No transfers need review.</p>
+                )}
+              </section>
+
+              <section className="overflow-hidden rounded-2xl border border-emerald-400/30 bg-primary-dark/55">
+                <header className="flex items-center justify-between border-b border-white/10 px-4 py-4">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+                    <h2 className="text-base font-bold text-emerald-400">Recent decisions</h2>
+                  </div>
+                  <span className="flex h-9 min-w-9 items-center justify-center rounded-full bg-emerald-400/10 px-2 text-sm font-bold text-emerald-400">
+                    {decidedTransfers.length}
+                  </span>
+                </header>
+                {decidedTransfers.length > 0 ? (
+                  <div className="divide-y divide-white/10">
+                    {decidedTransfers.map((transfer) => (
+                      <DecisionTransferRow key={transfer._id} transfer={transfer} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="px-4 py-8 text-center text-sm text-gray-400">No recent decisions.</p>
+                )}
+              </section>
+            </div>
+          )}
+        </div>
+
+        <div className="hidden space-y-6 lg:block">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
@@ -352,72 +535,8 @@ export default function TransferManagementPage() {
             </p>
           </div>
 
-          <div className="hidden md:block">
-            <Table data={safeTransfers} columns={transferColumns} />
-          </div>
-
-          <div className="space-y-3 p-4 md:hidden">
-            {safeTransfers.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-white/10 bg-primary-darker p-6 text-center text-sm text-gray-400">
-                No transfers found for this branch.
-              </div>
-            ) : (
-              safeTransfers.map((transfer) => (
-                <div key={transfer._id} className="rounded-xl border border-white/10 bg-primary-darker p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-white">{transfer.productId.name}</p>
-                      <p className="text-xs text-gray-500">{transfer.productId.sku}</p>
-                    </div>
-                    <AdminStatusBadge tone={toneForStatus(transfer.status)}>
-                      {formatStatusLabel(transfer.status)}
-                    </AdminStatusBadge>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <p className="text-gray-500">From</p>
-                      <p className="text-white">{transfer.sourceBranchId.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">To</p>
-                      <p className="text-white">{transfer.destinationBranchId.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Qty</p>
-                      <p className="text-white">{transfer.quantity}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-sm">
-                    <p className="text-gray-500">Requested by</p>
-                    <p className="text-white">
-                      {transfer.requestedBy.firstName} {transfer.requestedBy.lastName}
-                    </p>
-                    <p className="mt-1 text-xs text-gray-500">
-                      {new Date(transfer.createdAt).toLocaleString()}
-                    </p>
-                    {transfer.status === 'rejected' && transfer.rejectionReason && (
-                      <p className="mt-1 text-xs text-red-400">
-                        Rejected: {transfer.rejectionReason}
-                      </p>
-                    )}
-                  </div>
-                  {transfer.status === 'pending' ? (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      className="mt-4 w-full"
-                      onClick={() => {
-                        setSelectedTransfer(transfer);
-                        setIsApprovalModalOpen(true);
-                      }}
-                    >
-                      Review
-                    </Button>
-                  ) : null}
-                </div>
-              ))
-            )}
-          </div>
+          <Table data={safeTransfers} columns={transferColumns} />
+        </div>
         </div>
 
         <Modal
@@ -621,6 +740,7 @@ export default function TransferManagementPage() {
           ) : null}
         </Modal>
       </div>
+      <AdminMobileBottomNav active="inventory" />
     </AdminLayout>
   );
 }

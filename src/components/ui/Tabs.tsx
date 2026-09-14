@@ -15,8 +15,8 @@ interface TabsProps {
 export const Tabs = ({ tabs, activeTab, onChange, children }: TabsProps) => {
   return (
     <div>
-      <div className="border-b border-white/10">
-        <div role="tablist" className="-mb-px flex space-x-8">
+      <div className="overflow-x-auto pb-1">
+        <div role="tablist" className="inline-flex p-1 bg-slate-900/80 border border-white/[0.08] rounded-2xl gap-1 shadow-inner">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.key;
             return (
@@ -48,10 +48,10 @@ export const Tabs = ({ tabs, activeTab, onChange, children }: TabsProps) => {
                   onChange(tabs[nextIndex].key);
                   document.getElementById(`tab-${tabs[nextIndex].key}`)?.focus();
                 }}
-                className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                className={`whitespace-nowrap py-2 px-3.5 sm:px-4 rounded-xl font-medium text-xs sm:text-sm transition-all duration-150 select-none ${
                   isActive
-                    ? 'border-accent-green text-accent-green'
-                    : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-500'
+                    ? 'bg-white/[0.1] text-white shadow-xs font-semibold'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
                 }`}
               >
                 {tab.label}

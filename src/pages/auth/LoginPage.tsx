@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
+import { Fingerprint, KeyRound, ShieldCheck, ArrowRight } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { useAuthStore } from '../../stores/auth-store';
@@ -126,16 +127,25 @@ export const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-primary-darker pt-safe-top">
-      <div className="max-w-md w-full p-8 bg-primary-dark rounded-lg shadow-xl">
-        <h1 className="text-3xl font-bold text-white mb-2 text-center">
-          CAREFARM POS
-        </h1>
-        <p className="text-gray-400 text-center mb-8">
-          Sign in to your account
-        </p>
+    <div className="min-h-screen relative flex items-center justify-center bg-slate-950 p-4 pt-safe-top overflow-hidden selection:bg-emerald-500/20 selection:text-emerald-300">
+      {/* Ambient background glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 left-1/3 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl pointer-events-none" />
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="relative max-w-md w-full p-8 sm:p-10 bg-slate-900/80 border border-white/[0.08] backdrop-blur-xl rounded-3xl shadow-2xl shadow-black/60">
+        <div className="flex flex-col items-center mb-8">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/25 ring-4 ring-emerald-500/10 mb-4">
+            <ShieldCheck className="w-7 h-7 text-white" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white text-center">
+            CAREFARM <span className="text-emerald-400 font-light">POS</span>
+          </h1>
+          <p className="text-sm text-slate-400 text-center mt-1">
+            Clinical Commerce & Pharmacy Management
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
           <Input
             label="Username"
             type="text"
@@ -167,16 +177,16 @@ export const LoginPage = () => {
           />
 
           {loginMutation.isError && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/50">
-              <p className="text-sm text-red-500">
+            <div className="p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-center">
+              <p className="text-xs sm:text-sm text-red-400 font-medium">
                 {getLoginErrorMessage(loginMutation.error)}
               </p>
             </div>
           )}
 
           {fieldErrors.branch && (
-            <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/50">
-              <p className="text-sm text-yellow-300">{fieldErrors.branch}</p>
+            <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center">
+              <p className="text-xs sm:text-sm text-amber-300 font-medium">{fieldErrors.branch}</p>
             </div>
           )}
 
@@ -184,23 +194,24 @@ export const LoginPage = () => {
             type="submit"
             variant="primary"
             size="lg"
-            className="w-full"
+            className="w-full mt-2"
             isLoading={loginMutation.isPending}
             disabled={loginMutation.isPending}
           >
-            Sign In
+            <span>Sign In to System</span>
+            <ArrowRight className="w-4 h-4 ml-1.5 opacity-80" />
           </Button>
         </form>
 
         {/* Biometric Login */}
         {(webauthn.isSupported || webauthn.isPlatformAuthenticatorAvailable || biometric.isAvailable || hasCachedCredentials) && (
-          <div className="mt-4">
-            <div className="relative">
+          <div className="mt-6">
+            <div className="relative my-5">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-700" />
+                <div className="w-full border-t border-white/[0.08]" />
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-primary-dark text-gray-400">Or</span>
+              <div className="relative flex justify-center text-xs uppercase tracking-wider">
+                <span className="px-3 bg-slate-900 text-slate-400 font-medium">Or continue with</span>
               </div>
             </div>
 
@@ -234,37 +245,38 @@ export const LoginPage = () => {
                 }
               }}
               disabled={webauthn.isLoading || biometric.isLoading}
-              className="mt-4 w-full py-3 bg-primary-darker border border-gray-600 rounded-xl text-white font-medium flex items-center justify-center gap-3 hover:bg-gray-800 transition-colors disabled:opacity-50"
+              className="w-full py-3 px-4 bg-slate-800/80 hover:bg-slate-800 border border-white/[0.08] hover:border-emerald-500/30 rounded-xl text-white font-medium flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 shadow-sm"
             >
               {(webauthn.isLoading || biometric.isLoading) ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-emerald-400/30 border-t-emerald-400 rounded-full animate-spin" />
               ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
-                </svg>
+                <Fingerprint className="w-5 h-5 text-emerald-400" />
               )}
-              {!navigator.onLine && hasCachedCredentials
-                ? 'Sign In Offline'
-                : webauthn.isSupported
-                  ? 'Sign In with Passkey'
-                  : 'Sign In with Biometric'}
+              <span className="text-sm">
+                {!navigator.onLine && hasCachedCredentials
+                  ? 'Sign In Offline'
+                  : webauthn.isSupported
+                    ? 'Sign In with Passkey'
+                    : 'Sign In with Biometric'}
+              </span>
             </button>
 
             {(webauthn.error || biometric.error) && (
-              <p className="mt-2 text-sm text-red-400 text-center">
+              <p className="mt-2 text-xs text-red-400 text-center">
                 {webauthn.error || biometric.error}
               </p>
             )}
           </div>
         )}
 
-        <div className="mt-4 text-center">
+        <div className="mt-5 text-center">
           <button
             type="button"
-            className="text-sm text-gray-400 hover:text-white underline underline-offset-4"
+            className="text-xs text-slate-400 hover:text-emerald-400 transition-colors inline-flex items-center gap-1.5"
             onClick={() => setShowRecoveryCode((s) => !s)}
           >
-            {showRecoveryCode ? 'Use password instead' : 'Lost your device? Use a recovery code'}
+            <KeyRound className="w-3.5 h-3.5 opacity-70" />
+            <span>{showRecoveryCode ? 'Use password instead' : 'Lost device? Use recovery code'}</span>
           </button>
         </div>
 
@@ -289,9 +301,9 @@ export const LoginPage = () => {
           />
         )}
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-400">
-            Contact your administrator for account access
+        <div className="mt-6 pt-4 border-t border-white/[0.06] text-center">
+          <p className="text-xs text-slate-400">
+            CareFarm Healthcare Systems &copy; {new Date().getFullYear()}
           </p>
         </div>
       </div>
@@ -348,9 +360,9 @@ const RecoveryCodeForm = ({ initialUsername, onSuccess }: RecoveryCodeFormProps)
         setError(null);
         mutation.mutate();
       }}
-      className="mt-4 space-y-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4"
+      className="mt-4 space-y-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-left backdrop-blur-sm"
     >
-      <p className="text-sm text-amber-100/90">
+      <p className="text-xs text-amber-200/80 leading-relaxed">
         Sign in with a single-use recovery code. Each code works once and is
         consumed immediately.
       </p>

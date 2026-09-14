@@ -14,7 +14,7 @@ import { Link } from 'react-router-dom';
 import {
   DollarSign, TrendingUp, TrendingDown, AlertTriangle,
   CreditCard, Wallet, ArrowRightLeft, Package, Users,
-  Receipt, FileText, BarChart3,
+  Receipt, FileText, BarChart3, ShieldCheck,
 } from 'lucide-react';
 import type { UnifiedDashboard } from '../../types/finance';
 import { useCurrency } from '../../hooks/useCurrency';
@@ -419,6 +419,12 @@ export function FinanceHubPage() {
             <Button variant="secondary" className="w-full justify-start">
               <BarChart3 className="w-4 h-4 mr-2" />
               View Reports
+            </Button>
+          </Link>
+          <Link to="/finance/cross-check">
+            <Button variant="secondary" className="w-full justify-start">
+              <ShieldCheck className="w-4 h-4 mr-2" />
+              Cross-Check Reconciliation
             </Button>
           </Link>
         </div>

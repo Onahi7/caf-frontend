@@ -23,23 +23,28 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const baseStyles = 'font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-primary-darker disabled:opacity-50 disabled:cursor-not-allowed active:scale-95';
-    
+    const baseStyles =
+      'font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-primary-darker disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] select-none inline-flex items-center justify-center cursor-pointer';
+
     const variantStyles = {
-      primary: 'bg-accent-green text-primary-dark hover:bg-accent-light hover:shadow-[0_0_15px_rgba(0,255,136,0.3)] focus:ring-accent-green border border-transparent',
-      secondary: 'bg-transparent text-white border border-gray-600 hover:border-accent-green hover:text-accent-green focus:ring-accent-green',
-      danger: 'bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 hover:border-red-500/50 focus:ring-red-500',
-      ghost: 'bg-transparent text-gray-400 hover:text-white hover:bg-white/5 focus:ring-gray-500',
+      primary:
+        'bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-semibold shadow-md shadow-emerald-950/40 hover:shadow-lg hover:shadow-emerald-900/30 focus:ring-emerald-500 border border-emerald-400/20',
+      secondary:
+        'bg-white/[0.06] hover:bg-white/[0.12] text-slate-200 border border-white/10 hover:border-white/20 focus:ring-slate-400 shadow-xs',
+      danger:
+        'bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 hover:border-rose-500/40 focus:ring-rose-500 shadow-xs',
+      ghost:
+        'bg-transparent text-slate-400 hover:text-white hover:bg-white/[0.06] focus:ring-slate-500 border border-transparent',
     };
-    
+
     const sizeStyles = {
-      sm: 'px-3 py-2 text-sm min-h-10',
-      md: 'px-4 py-2.5 text-base min-h-11',
-      lg: 'px-6 py-3 text-lg min-h-12',
+      sm: 'px-3 py-1.5 text-xs min-h-9 gap-1.5',
+      md: 'px-4 py-2.5 text-sm min-h-11 gap-2',
+      lg: 'px-6 py-3 text-base min-h-12 gap-2.5 font-semibold',
     };
 
     const spinnerSizes = {
-      sm: 'h-3 w-3',
+      sm: 'h-3.5 w-3.5',
       md: 'h-4 w-4',
       lg: 'h-5 w-5',
     };

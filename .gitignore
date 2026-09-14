@@ -44,3 +44,8 @@ encrypted-*.txt
 !.dev.vars.example
 !.env.example
 .capgo
+
+# Audit artifacts
+audit-shots/
+design-qa.md
+

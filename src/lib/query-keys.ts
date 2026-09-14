@@ -261,6 +261,9 @@ export const queryKeys = {
     transfer: (filters: ReportFilters) => [...queryKeys.reports.all(), 'transfer', filters] as const,
     purchase: (filters: ReportFilters) => [...queryKeys.reports.all(), 'purchase', filters] as const,
     customer: (filters: ReportFilters) => [...queryKeys.reports.all(), 'customer', filters] as const,
+    profitLoss: (filters: ReportFilters) => [...queryKeys.reports.all(), 'profit-loss', filters] as const,
+    expenses: (filters: ReportFilters) => [...queryKeys.reports.all(), 'expenses', filters] as const,
+    deadStock: (filters: ReportFilters) => [...queryKeys.reports.all(), 'dead-stock', filters] as const,
   },
   
   // Audit Logs

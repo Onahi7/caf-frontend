@@ -13,6 +13,7 @@ import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
+import { SaveReportButton } from '../../components/finance/SaveReportButton';
 
 interface Branch {
   _id: string;
@@ -151,7 +152,13 @@ export const ExpiryReportsPage = () => {
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold text-white">Expiry Reports</h1>
           {data && data.length > 0 && (
-            <div className="flex space-x-2">
+            <div className="flex items-center space-x-2">
+              <SaveReportButton
+                reportKey="expiry"
+                route="/admin/reports/expiry"
+                params={{ branchId: effectiveBranchId, daysUntilExpiry }}
+                defaultName="Expiry Report"
+              />
               <Button variant="secondary" size="sm" onClick={() => handleExport('pdf')}>
                 Export PDF
               </Button>

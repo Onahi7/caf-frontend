@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
+import { Building2, Plus } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
+import { AdminPageHeader } from '../../components/admin';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
@@ -49,6 +51,8 @@ interface BranchFormData {
 export const BranchManagementPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+  const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
 
@@ -206,10 +210,10 @@ export const BranchManagementPage = () => {
       header: 'Type',
       render: (branch: Branch) => (
         <span
-          className={`px-2 py-1 rounded text-xs ${
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
             branch.isHeadquarters
-              ? 'bg-accent-green text-primary-dark'
-              : 'bg-primary-dark text-white'
+              ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+              : 'bg-slate-800 text-slate-300 border-slate-700'
           }`}
         >
           {branch.isHeadquarters ? 'HQ' : 'Branch'}
@@ -221,19 +225,21 @@ export const BranchManagementPage = () => {
       header: 'Status',
       render: (branch: Branch) => (
         <span
-          className={`px-2 py-1 rounded text-xs ${
+          className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-medium rounded-full ${
             branch.isActive
-              ? 'bg-green-600 text-white'
-              : 'bg-red-600 text-white'
+              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
           }`}
         >
-          {branch.isActive ? 'Active' : 'Inactive'}
+          <span className={`w-1.5 h-1.5 rounded-full ${branch.isActive ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+          <span>{branch.isActive ? 'Active' : 'Inactive'}</span>
         </span>
       ),
     },
     {
       key: 'actions',
       header: 'Actions',
+      align: 'right' as const,
       render: (branch: Branch) => (
         <Button
           size="sm"
@@ -248,26 +254,24 @@ export const BranchManagementPage = () => {
 
   return (
     <AdminLayout title="Branch Management">
-      <div className="max-w-7xl mx-auto p-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Branches</h2>
-            <p className="text-gray-400 mt-1">Manage pharmacy branches and configurations</p>
-          </div>
-          <Button onClick={() => handleOpenModal()}>
-            Add Branch
-          </Button>
-        </div>
+      <div className="space-y-5">
+        <AdminPageHeader
+          title="Branches"
+          subtitle="Manage pharmacy branch outlets, headquarters, and operational parameters"
+          actions={
+            <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-emerald-500/15">
+              <Plus className="w-4 h-4 mr-1.5" />
+              <span>Add Branch</span>
+            </Button>
+          }
+        />
 
         {/* Table */}
-        <div className="bg-primary-dark rounded-lg shadow-lg overflow-hidden">
-          <Table
-            data={branches || []}
-            columns={columns}
-            emptyMessage="No branches found"
-          />
-        </div>
+        <Table
+          data={branches || []}
+          columns={columns}
+          emptyMessage="No branches found"
+        />
 
         {/* Modal */}
         <Modal
@@ -278,7 +282,7 @@ export const BranchManagementPage = () => {
         >
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {/* Basic Information */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Branch Name"
                 {...register('name', { required: 'Branch name is required' })}
@@ -300,7 +304,7 @@ export const BranchManagementPage = () => {
               placeholder="Enter branch address"
             />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Phone"
                 type="tel"
@@ -308,32 +312,32 @@ export const BranchManagementPage = () => {
                 error={errors.phone?.message}
                 placeholder="+232-XX-XXX-XXX"
               />
-            <Input
-              label="Email"
-              type="email"
-              {...register('email', { required: 'Email is required' })}
-              error={errors.email?.message}
-              placeholder="branch.name@pharmacy.com"
-            />
-          </div>
+              <Input
+                label="Email"
+                type="email"
+                {...register('email', { required: 'Email is required' })}
+                error={errors.email?.message}
+                placeholder="branch.name@pharmacy.com"
+              />
+            </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Select
-              label="Currency"
-              {...register('currencyCode', { required: 'Currency is required' })}
-              error={errors.currencyCode?.message}
-              options={[
-                { value: 'SLE', label: 'SLE - Sierra Leone Leone' },
-                { value: 'USD', label: 'USD - US Dollar' },
-              ]}
-            />
-          </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Select
+                label="Currency"
+                {...register('currencyCode', { required: 'Currency is required' })}
+                error={errors.currencyCode?.message}
+                options={[
+                  { value: 'SLE', label: 'SLE - Sierra Leone Leone' },
+                  { value: 'USD', label: 'USD - US Dollar' },
+                ]}
+              />
+            </div>
 
-          {/* Configuration */}
-            <div className="border-t border-gray-700 pt-4 mt-4">
-              <h3 className="text-lg font-semibold text-white mb-4">Configuration</h3>
+            {/* Configuration */}
+            <div className="border-t border-white/[0.08] pt-4 mt-4">
+              <h3 className="text-base font-semibold text-white mb-3">Configuration</h3>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Reorder Threshold"
                   type="number"
@@ -377,7 +381,7 @@ export const BranchManagementPage = () => {
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-white/[0.08]">
               <Button
                 type="button"
                 variant="secondary"
