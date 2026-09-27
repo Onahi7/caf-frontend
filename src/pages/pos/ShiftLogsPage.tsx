@@ -89,6 +89,19 @@ export const ShiftLogsPage = () => {
     retry: false,
   });
 
+  // Fetch shift report for live totals
+  const { data: shiftReport } = useQuery<{
+    totalSales: number;
+    salesCount: number;
+    expectedCash: number;
+  }>({
+    queryKey: queryKeys.shifts.report(currentShift?._id),
+    queryFn: async () => {
+      const response = await apiClient.get(`/shifts/${currentShift!._id}/report`);
+      return response.data?.data ?? response.data;
+    },
+    enabled: !!currentShift?._id && currentShift?.status === 'open',
+  });
   // Close shift mutation
   const closeShiftMutation = useMutation({
     mutationFn: async (data: { closingCash: number }) => {
@@ -169,11 +182,11 @@ export const ShiftLogsPage = () => {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Total Sales</span>
-                <span className="text-white font-medium">{format(currentShift.totalSales || 0)}</span>
+                <span className="text-white font-medium">{format(shiftReport?.totalSales ?? currentShift.totalSales ?? 0)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-400">Expected Cash</span>
-                <span className="text-white font-medium">{format(currentShift.expectedCash || currentShift.openingCash)}</span>
+                <span className="text-white font-medium">{format(shiftReport?.expectedCash ?? currentShift.expectedCash ?? currentShift.openingCash)}</span>
               </div>
             </div>
 

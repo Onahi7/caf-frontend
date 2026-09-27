@@ -278,6 +278,21 @@ export const POSPage = () => {
     retry: false,
   });
 
+  // Fetch shift report for accurate totals (server-side computation from all sales records)
+  const { data: shiftReport } = useQuery<{
+    totalSales: number;
+    salesCount: number;
+    expectedCash: number;
+    openingCash: number;
+  }>({
+    queryKey: queryKeys.shifts.report(currentShift?._id),
+    queryFn: async () => {
+      const response = await apiClient.get(`/shifts/${currentShift!._id}/report`);
+      return response.data?.data ?? response.data;
+    },
+    enabled: !!currentShift?._id && currentShift?.status === 'open',
+    refetchInterval: 30_000,
+  });
   // Handle a barcode value from the continuous scanner
   const handleBarcodeScan = useCallback(async (barcode: string) => {
     const branchId = getBranchId(selectedBranch);
@@ -626,15 +641,19 @@ export const POSPage = () => {
   ];
 
   const cartItemCount = items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalSales = (shiftSales || []).reduce(
+  // Prefer server-computed totals from the shift report (accurate across all records)
+  // Fall back to client-side sums (which may miss records beyond the 500 limit)
+  const clientTotalSales = (shiftSales || []).reduce(
     (sum, sale) => sum + (Number(sale.total) || 0),
     0,
   );
+  const totalSales = shiftReport?.totalSales ?? clientTotalSales;
   const totalExpenses = (shiftExpenses || []).reduce(
     (sum, expense) => sum + (Number(expense.amount) || 0),
     0,
   );
-  const expectedCash = (currentShift?.openingCash || 0) + totalSales - totalExpenses;
+  const expectedCash = shiftReport?.expectedCash ?? ((currentShift?.openingCash || 0) + totalSales - totalExpenses);
+  const salesCount = shiftReport?.salesCount;
 
   // Guard: Redirect to branch selection if no branch is selected
   if (!selectedBranch) {
@@ -1321,6 +1340,7 @@ export const POSPage = () => {
           totalSales={totalSales}
           totalExpenses={totalExpenses}
           expectedCash={expectedCash}
+          salesCount={salesCount}
         />
       )}
 

@@ -112,6 +112,28 @@ export const ShiftManagementPage = () => {
     enabled: !!currentShift?._id && (activeTab === 'expenses' || activeTab === 'current'),
   });
 
+  // Fetch shift report for live totals (totalSales, salesCount, expectedCash, expenses)
+  // The shift document doesn't store these while open — the report endpoint computes them from actual records
+  const { data: shiftReport } = useQuery<{
+    totalSales: number;
+    salesCount: number;
+    expectedCash: number;
+    openingCash: number;
+    closingCash: number;
+    variance: number;
+    totalCashSales: number;
+    totalCardSales: number;
+    totalMobileSales: number;
+  }>({
+    queryKey: queryKeys.shifts.report(currentShift?._id),
+    queryFn: async () => {
+      const response = await apiClient.get(`/shifts/${currentShift!._id}/report`);
+      return response.data?.data ?? response.data;
+    },
+    enabled: !!currentShift?._id && currentShift?.status === 'open',
+    refetchInterval: 30_000, // refresh every 30s for live totals
+  });
+
   // Open shift mutation
   const openShiftMutation = useMutation({
     mutationFn: async (data: { openingCash: number }) => {
@@ -158,7 +180,7 @@ export const ShiftManagementPage = () => {
       const response = await apiClient.post(`/shifts/${data.shiftId}/close`, {
         closingCash: data.closingCash,
         notes: data.notes,
-        totalSales: currentShift?.totalSales || 0,
+        totalSales: shiftReport?.totalSales || 0,
       });
       return (response.data?.data ?? response.data) as Shift;
     },
@@ -337,8 +359,8 @@ export const ShiftManagementPage = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                         </svg>
                       </div>
-                      <p className="text-2xl font-bold text-white">{format(currentShift.totalSales || 0)}</p>
-                      <p className="text-xs text-gray-500 mt-1">{currentShift.salesCount || 0} transactions</p>
+                      <p className="text-2xl font-bold text-white">{format(shiftReport?.totalSales ?? currentShift.totalSales ?? 0)}</p>
+                      <p className="text-xs text-gray-500 mt-1">{shiftReport?.salesCount ?? currentShift.salesCount ?? 0} transactions</p>
                     </div>
 
                     <div className="bg-primary-dark rounded-xl p-5 border border-gray-700">
@@ -349,7 +371,7 @@ export const ShiftManagementPage = () => {
                         </svg>
                       </div>
                       <p className="text-2xl font-bold text-white">
-                        {format(currentShift.expectedCash || currentShift.openingCash)}
+                        {format(shiftReport?.expectedCash ?? currentShift.expectedCash ?? currentShift.openingCash)}
                       </p>
                     </div>
 
@@ -576,11 +598,17 @@ export const ShiftManagementPage = () => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-400">Total Sales</span>
-                  <span className="text-white font-medium">{format(currentShift.totalSales || 0)}</span>
+                  <span className="text-white font-medium">{format(shiftReport?.totalSales ?? 0)}</span>
                 </div>
+                {(shiftReport?.salesCount ?? 0) > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Transactions</span>
+                    <span className="text-white font-medium">{shiftReport?.salesCount}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-base pt-2 border-t border-gray-700">
                   <span className="text-white font-medium">Expected Cash</span>
-                  <span className="text-accent-green font-bold">{format(currentShift.expectedCash || currentShift.openingCash)}</span>
+                  <span className="text-accent-green font-bold">{format(shiftReport?.expectedCash ?? currentShift.expectedCash ?? currentShift.openingCash)}</span>
                 </div>
               </div>
 

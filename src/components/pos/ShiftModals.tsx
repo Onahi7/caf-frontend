@@ -92,6 +92,7 @@ interface CloseShiftModalProps {
   totalSales: number;
   totalExpenses: number;
   expectedCash: number;
+  salesCount?: number;
 }
 
 export const CloseShiftModal = ({
@@ -103,6 +104,7 @@ export const CloseShiftModal = ({
   totalSales,
   totalExpenses,
   expectedCash,
+  salesCount,
 }: CloseShiftModalProps) => {
   const { symbol, format } = useCurrency();
   const [closingCash, setClosingCash] = useState('');
@@ -140,6 +142,12 @@ export const CloseShiftModal = ({
             <span>Cash Sales Total</span>
             <span className="font-mono text-slate-200">{format(totalSales)}</span>
           </div>
+          {salesCount !== undefined && (
+            <div className="flex justify-between text-xs text-slate-400">
+              <span>Transactions</span>
+              <span className="font-mono text-slate-200">{salesCount}</span>
+            </div>
+          )}
           {totalExpenses > 0 && (
             <div className="flex justify-between text-xs text-rose-400">
               <span>Expenses Disbursed</span>
