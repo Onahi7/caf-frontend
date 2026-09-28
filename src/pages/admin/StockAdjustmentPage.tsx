@@ -349,19 +349,26 @@ export default function StockAdjustmentPage() {
         <Modal isOpen={isModalOpen} onClose={handleCloseModal} title="Adjust Product Stock">
           {selectedProduct && (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="space-y-1">
-                <p className="text-sm text-gray-300">Product: <span className="font-semibold text-white">{selectedProduct.name}</span></p>
-                <p className="text-sm text-gray-300">Current Stock: <span className="font-semibold text-white">{selectedProduct.quantityAvailable}</span></p>
-                <p className="text-sm text-gray-300">Supplier: <span className="font-semibold text-white">{formatSupplier(selectedProduct.supplierId)}</span></p>
+              <div className="rounded-2xl border border-white/[0.08] bg-slate-950/60 p-4 space-y-2 shadow-inner">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Selected Product</span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-mono text-xs font-bold">
+                    {selectedProduct.quantityAvailable ?? 0} in stock
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-white tracking-tight">{selectedProduct.name}</h3>
+                {selectedProduct.supplierId && (
+                  <p className="text-xs text-slate-400">Supplier: <span className="text-slate-200 font-medium">{formatSupplier(selectedProduct.supplierId)}</span></p>
+                )}
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-300">
-                  Batch <span className="text-red-500">*</span>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Target Batch <span className="text-rose-400">*</span>
                 </label>
                 <select
                   {...register('batchId', { required: 'Batch is required' })}
                   disabled={batchesLoading}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900/90 px-3.5 py-2.5 text-xs text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
                 >
                   <option value="">{batchesLoading ? 'Loading batches…' : 'Select a batch'}</option>
                   {batches.map((batch) => (
@@ -370,9 +377,9 @@ export default function StockAdjustmentPage() {
                     </option>
                   ))}
                 </select>
-                {errors.batchId && <p className="mt-1 text-sm text-red-500">{errors.batchId.message}</p>}
+                {errors.batchId && <p className="mt-1 text-xs text-rose-400 font-medium">{errors.batchId.message}</p>}
                 {!batchesLoading && batches.length === 0 && (
-                  <p className="mt-1 text-sm text-amber-400">Create a batch before adjusting this product.</p>
+                  <p className="mt-1 text-xs text-amber-400 font-medium">Create a batch before adjusting this product.</p>
                 )}
               </div>
               <Input
@@ -387,19 +394,25 @@ export default function StockAdjustmentPage() {
                 error={errors.quantityChange?.message}
               />
               <div>
-                <label className="mb-1 block text-sm font-medium text-gray-300">Reason <span className="text-red-500">*</span></label>
+                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
+                  Reason for Adjustment <span className="text-rose-400">*</span>
+                </label>
                 <textarea
                   {...register('reason', { required: 'Reason is required' })}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900/90 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 resize-none"
                   rows={3}
-                  placeholder="Why this adjustment?"
+                  placeholder="Explain reason for discrepancy (e.g. damaged during unpacking, expired batch writeoff, audit count correction)"
                 />
-                {errors.reason && <p className="mt-1 text-sm text-red-500">{errors.reason.message}</p>}
+                {errors.reason && <p className="mt-1 text-xs text-rose-400 font-medium">{errors.reason.message}</p>}
               </div>
-              <div className="flex justify-end space-x-3 pt-4">
+              <div className="flex justify-end space-x-3 pt-4 border-t border-white/[0.08]">
                 <Button type="button" variant="secondary" onClick={handleCloseModal}>Cancel</Button>
-                <Button type="submit" disabled={adjustmentMutation.isPending || batches.length === 0}>
-                  {adjustmentMutation.isPending ? 'Adjusting...' : 'Adjust Stock'}
+                <Button 
+                  type="submit" 
+                  disabled={batches.length === 0}
+                  isLoading={adjustmentMutation.isPending}
+                >
+                  Adjust Stock
                 </Button>
               </div>
               {adjustmentMutation.isError && <Error message="Failed to adjust stock. Please try again." />}

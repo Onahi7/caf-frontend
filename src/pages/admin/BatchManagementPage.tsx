@@ -274,13 +274,13 @@ export const BatchManagementPage = () => {
 
   // Get expiry warning color
   const getExpiryWarning = (expiryDate: string, isExpired: boolean) => {
-    if (isExpired) return { color: 'text-red-400', label: 'Expired' };
+    if (isExpired) return { color: 'text-rose-400 font-bold', label: 'Expired' };
     const days = getDaysUntilExpiry(expiryDate);
-    if (days <= 0) return { color: 'text-red-400', label: 'Expired' };
-    if (days <= 30) return { color: 'text-red-400', label: `${days}d` };
-    if (days <= 60) return { color: 'text-orange-400', label: `${days}d` };
-    if (days <= 90) return { color: 'text-yellow-400', label: `${days}d` };
-    return { color: 'text-green-400', label: `${days}d` };
+    if (days <= 0) return { color: 'text-rose-400 font-bold', label: 'Expired' };
+    if (days <= 30) return { color: 'text-rose-400 font-semibold', label: `${days}d left` };
+    if (days <= 60) return { color: 'text-amber-400 font-medium', label: `${days}d left` };
+    if (days <= 90) return { color: 'text-amber-300 font-medium', label: `${days}d left` };
+    return { color: 'text-emerald-400 font-medium', label: `${days}d left` };
   };
 
   if (!branchId) {
@@ -344,9 +344,9 @@ export const BatchManagementPage = () => {
       key: 'pricing',
       header: 'Pricing',
       render: (batch: Batch) => (
-        <div className="text-sm">
-          <div>Buy: {format(batch.purchasePrice)}</div>
-          <div className="text-accent-green">Sell: {format(batch.sellingPrice)}</div>
+        <div className="text-xs space-y-0.5 font-mono">
+          <div className="text-slate-400">Buy: <span className="text-slate-200">{format(batch.purchasePrice)}</span></div>
+          <div className="text-emerald-400 font-bold">Sell: {format(batch.sellingPrice)}</div>
         </div>
       ),
     },

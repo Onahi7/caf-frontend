@@ -374,10 +374,10 @@ export const PricingManagementPage = () => {
             </Button>
             <Button
               type="submit"
-              disabled={bulkUpdateMutation.isPending}
+              isLoading={bulkUpdateMutation.isPending}
               className="bg-accent-green hover:bg-accent-green/90"
             >
-              {bulkUpdateMutation.isPending ? 'Updating...' : 'Update Prices'}
+              Update Prices
             </Button>
           </div>
         </form>

@@ -257,8 +257,9 @@ export function RecurringInvoicesPage() {
           variant="primary"
           onClick={() => createMutation.mutate()}
           disabled={!form.customerId || !form.total || createMutation.isPending}
+          isLoading={createMutation.isPending}
         >
-          {createMutation.isPending ? 'Saving...' : editing ? 'Update' : 'Create'}
+          {editing ? 'Update' : 'Create'}
         </Button>
       </div>
     </div>

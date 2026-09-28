@@ -103,13 +103,13 @@ export const CustomerReportsPage = () => {
     }
   };
 
-  if (isLoading) return isPosContext ? <POSLayout><Loading /></POSLayout> : <AdminLayout><Loading /></AdminLayout>;
-  if (error) return isPosContext ? <POSLayout><Error message="Failed to load customer reports" /></POSLayout> : <AdminLayout><Error message="Failed to load customer reports" /></AdminLayout>;
+  if (isLoading) return isPosContext ? <POSLayout title="Customer Reports"><Loading /></POSLayout> : <AdminLayout title="Customer Reports"><Loading /></AdminLayout>;
+  if (error) return isPosContext ? <POSLayout title="Customer Reports"><Error message="Failed to load customer reports" /></POSLayout> : <AdminLayout title="Customer Reports"><Error message="Failed to load customer reports" /></AdminLayout>;
 
   const pageContent = (
     <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-white">Customer Reports</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Customer Reports</h1>
           <div className="flex items-center gap-2">
             <SaveReportButton
               reportKey="customers"
@@ -233,8 +233,8 @@ export const CustomerReportsPage = () => {
   );
 
   return isPosContext ? (
-    <POSLayout>{pageContent}</POSLayout>
+    <POSLayout title="Customer Reports">{pageContent}</POSLayout>
   ) : (
-    <AdminLayout>{pageContent}</AdminLayout>
+    <AdminLayout title="Customer Reports">{pageContent}</AdminLayout>
   );
 };

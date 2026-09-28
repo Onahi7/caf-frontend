@@ -468,13 +468,9 @@ export const PromotionsManagementPage = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                isLoading={createMutation.isPending || updateMutation.isPending}
               >
-                {createMutation.isPending || updateMutation.isPending
-                  ? 'Saving...'
-                  : editingPromotion
-                  ? 'Update Promotion'
-                  : 'Create Promotion'}
+                {editingPromotion ? 'Update Promotion' : 'Create Promotion'}
               </Button>
             </div>
 

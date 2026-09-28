@@ -555,7 +555,7 @@ export default function TransferManagementPage() {
               })}
               error={errors.destinationBranchId?.message}
             >
-              <option value="" className="bg-primary-dark text-white">
+              <option value="" className="bg-slate-900 text-white">
                 Select destination branch
               </option>
               {branches
@@ -564,7 +564,7 @@ export default function TransferManagementPage() {
                   <option
                     key={branch._id}
                     value={branch._id}
-                    className="bg-primary-dark text-white"
+                    className="bg-slate-900 text-white"
                   >
                     {branch.name} ({branch.code})
                   </option>
@@ -576,14 +576,14 @@ export default function TransferManagementPage() {
               {...register('productId', { required: 'Product is required' })}
               error={errors.productId?.message}
             >
-              <option value="" className="bg-primary-dark text-white">
+              <option value="" className="bg-slate-900 text-white">
                 Select product
               </option>
               {products?.map((product) => (
                 <option
                   key={product._id}
                   value={product._id}
-                  className="bg-primary-dark text-white"
+                  className="bg-slate-900 text-white"
                 >
                   {product.name} ({product.sku}) - Available: {product.quantityAvailable}
                 </option>
@@ -602,21 +602,21 @@ export default function TransferManagementPage() {
             />
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-white">
-                Reason <span className="text-red-500">*</span>
+              <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
+                Reason for Transfer <span className="text-rose-400">*</span>
               </label>
               <textarea
                 {...register('reason', { required: 'Reason is required' })}
-                className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 transition-all duration-200 focus:border-accent-green/50 focus:outline-none focus:ring-2 focus:ring-accent-green/20"
+                className="w-full rounded-xl border border-white/10 bg-slate-900/90 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 resize-none"
                 rows={3}
-                placeholder="Explain the reason for this transfer"
+                placeholder="Explain the reason for this stock transfer"
               />
               {errors.reason ? (
-                <p className="mt-1 text-sm text-red-500">{errors.reason.message}</p>
+                <p className="mt-1 text-xs text-rose-400 font-medium">{errors.reason.message}</p>
               ) : null}
             </div>
 
-            <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:justify-end">
+            <div className="flex flex-col-reverse gap-3 pt-4 sm:flex-row sm:justify-end border-t border-white/[0.08]">
               <Button
                 type="button"
                 variant="secondary"
@@ -627,8 +627,11 @@ export default function TransferManagementPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createTransferMutation.isPending}>
-                {createTransferMutation.isPending ? 'Creating...' : 'Create Transfer'}
+              <Button 
+                type="submit" 
+                isLoading={createTransferMutation.isPending}
+              >
+                Create Transfer
               </Button>
             </div>
 
@@ -712,9 +715,10 @@ export default function TransferManagementPage() {
                       notes: approvalNotes,
                     });
                   }}
-                  disabled={rejectTransferMutation.isPending || !rejectionReason.trim()}
+                  disabled={!rejectionReason.trim() || approveTransferMutation.isPending}
+                  isLoading={rejectTransferMutation.isPending}
                 >
-                  {rejectTransferMutation.isPending ? 'Rejecting...' : 'Reject'}
+                  Reject
                 </Button>
                 <Button
                   type="button"
@@ -727,9 +731,10 @@ export default function TransferManagementPage() {
                       notes: approvalNotes,
                     });
                   }}
-                  disabled={approveTransferMutation.isPending}
+                  disabled={rejectTransferMutation.isPending}
+                  isLoading={approveTransferMutation.isPending}
                 >
-                  {approveTransferMutation.isPending ? 'Approving...' : 'Approve'}
+                  Approve
                 </Button>
               </div>
 

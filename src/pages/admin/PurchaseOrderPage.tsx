@@ -547,9 +547,9 @@ export default function PurchaseOrderPage() {
               </Button>
               <Button
                 type="submit"
-                disabled={createMutation.isPending}
+                isLoading={createMutation.isPending}
               >
-                {createMutation.isPending ? 'Creating...' : 'Create PO'}
+                Create PO
               </Button>
             </div>
 
@@ -634,9 +634,9 @@ export default function PurchaseOrderPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={receiveMutation.isPending}
+                  isLoading={receiveMutation.isPending}
                 >
-                  {receiveMutation.isPending ? 'Receiving...' : 'Receive Items'}
+                  Receive Items
                 </Button>
               </div>
 

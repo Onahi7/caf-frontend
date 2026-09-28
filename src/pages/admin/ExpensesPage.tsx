@@ -317,17 +317,17 @@ export function ExpensesPage() {
               />
             )}
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Category</label>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-1.5">Expense Category</label>
               <select
                 {...register('category', { required: 'Category is required' })}
-                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                className="w-full rounded-xl border border-white/10 bg-slate-900/90 px-3.5 py-2.5 text-xs text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
               >
                 <option value="">Select category...</option>
                 {CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
-              {errors.category && <p className="text-red-400 text-xs mt-1">{errors.category.message}</p>}
+              {errors.category && <p className="text-rose-400 text-xs mt-1 font-medium">{errors.category.message}</p>}
             </div>
             <Input
               label="Amount"
@@ -350,12 +350,15 @@ export function ExpensesPage() {
               label="Notes (optional)"
               {...register('notes')}
             />
-            <div className="flex gap-3 justify-end pt-4 border-t border-slate-800">
+            <div className="flex gap-3 justify-end pt-4 border-t border-white/[0.08]">
               <Button variant="secondary" type="button" onClick={() => { setIsModalOpen(false); reset(); }}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? 'Recording...' : 'Record Expense'}
+              <Button 
+                type="submit" 
+                isLoading={createMutation.isPending}
+              >
+                Record Expense
               </Button>
             </div>
           </form>

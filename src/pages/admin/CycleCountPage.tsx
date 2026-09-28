@@ -301,9 +301,9 @@ export function CycleCountPage() {
                     </Button>
                     <Button
                       onClick={handleSubmitCount}
-                      disabled={submitMutation.isPending}
+                      isLoading={submitMutation.isPending}
                     >
-                      {submitMutation.isPending ? 'Submitting...' : 'Submit for Review'}
+                      Submit for Review
                     </Button>
                   </>
                 )}
@@ -318,9 +318,9 @@ export function CycleCountPage() {
                     </Button>
                     <Button
                       onClick={handleApprove}
-                      disabled={approveMutation.isPending}
+                      isLoading={approveMutation.isPending}
                     >
-                      {approveMutation.isPending ? 'Approving...' : 'Approve & Apply Adjustments'}
+                      Approve & Apply Adjustments
                     </Button>
                   </>
                 )}

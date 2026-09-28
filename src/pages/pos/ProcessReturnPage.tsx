@@ -9,6 +9,7 @@ import { useToast } from '../../hooks/useToast';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useDebounce } from '../../hooks/useDebounce';
 import { QRScannerModal } from '../../components/pos/QRScannerModal';
+import { Button } from '../../components/ui/Button';
 import { queryKeys } from '../../lib/query-keys';
 import { formatDate } from '../../lib/date-format';
 
@@ -278,17 +279,15 @@ export const ProcessReturnPage = () => {
             <span className="text-gray-400">Refund Amount</span>
             <span className="text-accent-green font-bold">{format(returnTotal)}</span>
           </div>
-          <button
+          <Button
             onClick={handleProcessReturn}
             disabled={selectedItems.length === 0 || returnMutation.isPending}
-            className={`w-full py-4 rounded-xl font-semibold transition-colors ${
-              selectedItems.length > 0
-                ? 'bg-cyan-500 text-white hover:bg-cyan-600'
-                : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-            }`}
+            isLoading={returnMutation.isPending}
+            className="w-full"
+            size="lg"
           >
-            {returnMutation.isPending ? 'Processing...' : `Process Return (${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''})`}
-          </button>
+            {`Process Return (${selectedItems.length} item${selectedItems.length !== 1 ? 's' : ''})`}
+          </Button>
         </div>
       </div>
     );

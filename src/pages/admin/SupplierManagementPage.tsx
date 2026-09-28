@@ -326,13 +326,9 @@ export default function SupplierManagementPage() {
               </Button>
               <Button
                 type="submit"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                isLoading={createMutation.isPending || updateMutation.isPending}
               >
-                {createMutation.isPending || updateMutation.isPending
-                  ? 'Saving...'
-                  : editingSupplier
-                  ? 'Update Supplier'
-                  : 'Add Supplier'}
+                {editingSupplier ? 'Update Supplier' : 'Add Supplier'}
               </Button>
             </div>
 

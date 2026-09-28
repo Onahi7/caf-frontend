@@ -6,6 +6,9 @@ import { unwrapArray } from '../../lib/unwrap-response';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useToast } from '../../hooks/useToast';
 import { queryKeys } from '../../lib/query-keys';
+import { Modal } from '../../components/ui/Modal';
+import { Button } from '../../components/ui/Button';
+import { POSLayout } from '../../components/pos/POSLayout';
 
 interface Customer {
   _id: string;
@@ -79,17 +82,18 @@ export const CustomerLookupPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-primary-darker flex flex-col pt-safe-top">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800">
-        <button onClick={() => navigate(-1)} className="text-white flex items-center min-w-11 min-h-11 justify-center -ml-2 rounded-lg hover:bg-white/5">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-lg font-bold text-white">Customer Lookup</h1>
-        <div className="w-6" />
-      </div>
+    <POSLayout title="Customer Lookup">
+      <div className="min-h-screen bg-primary-darker flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800">
+          <button onClick={() => navigate(-1)} className="text-white flex items-center min-w-11 min-h-11 justify-center -ml-2 rounded-lg hover:bg-white/5">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="text-lg font-bold text-white">Customer Lookup</h1>
+          <div className="w-6" />
+        </div>
 
       <div className="flex-1 p-4 space-y-4">
         {/* Search Bar */}
@@ -157,75 +161,76 @@ export const CustomerLookupPage = () => {
       </div>
 
       {/* Add Customer Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/75" onClick={() => setShowAddModal(false)} />
-          <div className="relative bg-gray-900 rounded-2xl p-6 w-full max-w-md mx-4">
-            <h2 className="text-xl font-bold text-white mb-4">Add New Customer</h2>
-            
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-gray-400 text-sm mb-1">First Name</label>
-                  <input
-                    type="text"
-                    value={newCustomer.firstName}
-                    onChange={(e) => setNewCustomer({ ...newCustomer, firstName: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-400 text-sm mb-1">Last Name</label>
-                  <input
-                    type="text"
-                    value={newCustomer.lastName}
-                    onChange={(e) => setNewCustomer({ ...newCustomer, lastName: e.target.value })}
-                    className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Phone</label>
-                <input
-                  type="tel"
-                  value={newCustomer.phone}
-                  onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
-                  placeholder="080-1234-5678"
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-gray-400 text-sm mb-1">Email</label>
-                <input
-                  type="email"
-                  value={newCustomer.email}
-                  onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
-                  placeholder="customer@email.com"
-                  className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                />
-              </div>
+      <Modal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        title="Add New Customer"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-slate-300 text-xs font-semibold mb-1.5">First Name *</label>
+              <input
+                type="text"
+                value={newCustomer.firstName}
+                onChange={(e) => setNewCustomer({ ...newCustomer, firstName: e.target.value })}
+                placeholder="e.g. John"
+                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
             </div>
-
-            <div className="flex space-x-3 mt-6">
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="flex-1 py-3 bg-gray-700 text-white font-medium rounded-xl hover:bg-gray-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => createCustomerMutation.mutate(newCustomer)}
-                disabled={!newCustomer.firstName || !newCustomer.lastName || createCustomerMutation.isPending}
-                className="flex-1 py-3 bg-blue-500 text-white font-medium rounded-xl hover:bg-blue-600 transition-colors disabled:opacity-50"
-              >
-                {createCustomerMutation.isPending ? 'Adding...' : 'Add Customer'}
-              </button>
+            <div>
+              <label className="block text-slate-300 text-xs font-semibold mb-1.5">Last Name *</label>
+              <input
+                type="text"
+                value={newCustomer.lastName}
+                onChange={(e) => setNewCustomer({ ...newCustomer, lastName: e.target.value })}
+                placeholder="e.g. Doe"
+                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
             </div>
           </div>
+          
+          <div>
+            <label className="block text-slate-300 text-xs font-semibold mb-1.5">Phone Number</label>
+            <input
+              type="tel"
+              value={newCustomer.phone}
+              onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
+              placeholder="e.g. +232 76 123456"
+              className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+            />
+          </div>
+          
+          <div>
+            <label className="block text-slate-300 text-xs font-semibold mb-1.5">Email Address</label>
+            <input
+              type="email"
+              value={newCustomer.email}
+              onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
+              placeholder="e.g. customer@example.com"
+              className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+            <Button
+              variant="secondary"
+              onClick={() => setShowAddModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => createCustomerMutation.mutate(newCustomer)}
+              disabled={!newCustomer.firstName.trim() || !newCustomer.lastName.trim() || createCustomerMutation.isPending}
+              isLoading={createCustomerMutation.isPending}
+            >
+              Add Customer
+            </Button>
+          </div>
         </div>
-      )}
+      </Modal>
     </div>
+    </POSLayout>
   );
 };

@@ -328,9 +328,9 @@ export const SystemSettingsPage = () => {
             </Button>
             <Button
               type="submit"
-              disabled={updateMutation.isPending}
+              isLoading={updateMutation.isPending}
             >
-              {updateMutation.isPending ? 'Saving...' : 'Save Settings'}
+              Save Settings
             </Button>
           </div>
 

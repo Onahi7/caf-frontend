@@ -310,13 +310,9 @@ export const TaxConfigurationPage = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                isLoading={createMutation.isPending || updateMutation.isPending}
               >
-                {createMutation.isPending || updateMutation.isPending
-                  ? 'Saving...'
-                  : editingTax
-                  ? 'Update Tax'
-                  : 'Add Tax'}
+                {editingTax ? 'Update Tax' : 'Add Tax'}
               </Button>
             </div>
 

@@ -9,7 +9,11 @@ import { queryKeys } from '../lib/query-keys';
 
 type BranchesResponse = Branch[] | { data?: Branch[] };
 
-export const BranchSelector = () => {
+export interface BranchSelectorProps {
+  hideLabel?: boolean;
+}
+
+export const BranchSelector = ({ hideLabel = false }: BranchSelectorProps = {}) => {
   const { selectedBranch, branches, setSelectedBranch, setBranches } = useBranchStore();
   const { user } = useAuthStore();
 
@@ -69,7 +73,8 @@ export const BranchSelector = () => {
     return (
       <div className="w-full sm:w-64">
         <Select
-          label="Branch"
+          label={hideLabel ? undefined : 'Branch'}
+          aria-label="Branch"
           options={[{ value: '', label: 'Loading...' }]}
           disabled
         />
@@ -95,7 +100,8 @@ export const BranchSelector = () => {
   return (
     <div className="w-full sm:w-64">
       <Select
-        label="Branch"
+        label={hideLabel ? undefined : 'Branch'}
+        aria-label="Branch"
         options={availableBranches.map(branch => ({
           value: branch._id,
           label: `${branch.name} ${branch.isHeadquarters ? '(HQ)' : ''}`,

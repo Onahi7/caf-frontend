@@ -1,9 +1,12 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router-dom';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { ProtectedRoute } from '../components/ProtectedRoute';
 import { useAuthStore } from '../stores/auth-store';
 import { getDefaultRouteForRole } from '../lib/role-routes';
 import { FinanceReportsPage as FinanceReportsPageFinance } from '../pages/finance/FinanceReportsPage';
+import { AdminLayout } from '../components/AdminLayout';
+import { FinanceLayout } from '../components/FinanceLayout';
+import { MarketerLayout } from '../components/MarketerLayout';
 import {
   LoginPage,
   DashboardPage,
@@ -84,7 +87,26 @@ const RoleAwareHomeRedirect = () => {
   return <Navigate to={getDefaultRouteForRole(user?.role)} replace />;
 };
 
+const AdminLayoutShell = () => (
+  <AdminLayout>
+    <Outlet />
+  </AdminLayout>
+);
+
+const FinanceLayoutShell = () => (
+  <FinanceLayout>
+    <Outlet />
+  </FinanceLayout>
+);
+
+const MarketerLayoutShell = () => (
+  <MarketerLayout>
+    <Outlet />
+  </MarketerLayout>
+);
+
 export const router = createBrowserRouter([
+  // Root & Public Routes
   {
     path: '/',
     element: <RoleAwareHomeRedirect />,
@@ -92,6 +114,10 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <LoginPage />,
+  },
+  {
+    path: '/unauthorized',
+    element: <UnauthorizedPage />,
   },
   {
     path: '/settings/security',
@@ -103,6 +129,50 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+
+  // Legacy / Direct Root Aliases -> Redirect to /admin/...
+  {
+    path: '/dashboard',
+    element: <RoleAwareHomeRedirect />,
+  },
+  {
+    path: '/branches',
+    element: <Navigate to="/admin/branches" replace />,
+  },
+  {
+    path: '/users',
+    element: <Navigate to="/admin/users" replace />,
+  },
+  {
+    path: '/products',
+    element: <Navigate to="/admin/products" replace />,
+  },
+  {
+    path: '/batches',
+    element: <Navigate to="/admin/stock-adjustments" replace />,
+  },
+  {
+    path: '/transfers',
+    element: <Navigate to="/admin/transfers" replace />,
+  },
+  {
+    path: '/cycle-counts',
+    element: <Navigate to="/admin/cycle-counts" replace />,
+  },
+  {
+    path: '/inventory',
+    element: <Navigate to="/admin/inventory" replace />,
+  },
+  {
+    path: '/sales',
+    element: <Navigate to="/admin/sales" replace />,
+  },
+  {
+    path: '/reports',
+    element: <Navigate to="/admin/reports" replace />,
+  },
+
+  // POS Direct Routes
   {
     path: '/pos',
     element: (
@@ -180,26 +250,6 @@ export const router = createBrowserRouter([
   {
     path: '/pos/transactons',
     element: <Navigate to="/pos/transactions" replace />,
-  },
-  {
-    path: '/admin/transactions',
-    element: (
-      <ProtectedRoute allowedRoles={['cashier', 'branch_manager', 'super_admin', 'auditor']}>
-        <ErrorBoundary>
-          <TransactionHistoryPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/shifts',
-    element: (
-      <ProtectedRoute allowedRoles={['cashier', 'branch_manager', 'super_admin', 'auditor']}>
-        <ErrorBoundary>
-          <ShiftLogsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
   },
   {
     path: '/pos/customers',
@@ -321,654 +371,528 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
   },
+
+  // Admin Nested Route Tree (Scoped within AdminLayoutShell)
   {
-    path: '/admin/dashboard',
+    path: '/admin',
     element: (
-      <ProtectedRoute allowedRoles={['branch_manager', 'super_admin', 'auditor']}>
+      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'cashier', 'finance_manager']}>
         <ErrorBoundary>
-          <DashboardPage />
+          <AdminLayoutShell />
         </ErrorBoundary>
       </ProtectedRoute>
     ),
+    children: [
+      {
+        index: true,
+        element: <RoleAwareHomeRedirect />,
+      },
+      {
+        path: 'dashboard',
+        element: (
+          <ProtectedRoute allowedRoles={['branch_manager', 'super_admin', 'auditor']}>
+            <DashboardPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'hq-dashboard',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin']}>
+            <HQDashboardPage />
+          </ProtectedRoute>
+        ),
+      },
+      // Inventory Management Subroutes
+      {
+        path: 'inventory',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor']}>
+            <InventoryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'products',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <ProductManagementPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'batches',
+        element: <Navigate to="/admin/stock-adjustments" replace />,
+      },
+      {
+        path: 'stock-adjustments',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <StockAdjustmentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'transfers',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <TransferManagementPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'cycle-counts',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <CycleCountPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'pricing',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <PricingManagementPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'promotions',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <PromotionsManagementPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'suppliers',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <SupplierManagementPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'purchase-orders',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <PurchaseOrderPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'marketer-assignments',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <MarketerAssignmentsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'marketer-dashboard',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <MarketerDashboardPage />
+          </ProtectedRoute>
+        ),
+      },
+      // Sales & Customer Orders Subroutes
+      {
+        path: 'sales',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'cashier', 'auditor', 'finance_manager']}>
+            <SalesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'sales/credit',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'cashier']}>
+            <CreditSalesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'sales/request-analysis',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'cashier', 'auditor', 'finance_manager']}>
+            <RequestAnalysisPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'customers',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'cashier']}>
+            <CustomerManagementPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'customer-orders',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'cashier']}>
+            <CustomerOrdersPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'proforma-invoices',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <ProformaInvoicesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'delivery-notes',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'cashier']}>
+            <DeliveryNotesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'transactions',
+        element: (
+          <ProtectedRoute allowedRoles={['cashier', 'branch_manager', 'super_admin', 'auditor']}>
+            <TransactionHistoryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'shifts',
+        element: (
+          <ProtectedRoute allowedRoles={['cashier', 'branch_manager', 'super_admin', 'auditor']}>
+            <ShiftLogsPage />
+          </ProtectedRoute>
+        ),
+      },
+      // Reports Subroutes
+      {
+        path: 'reports',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'finance_manager', 'cashier']}>
+            <ReportsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports/valuation',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'finance_manager']}>
+            <ValuationReportPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports/sales',
+        element: (
+          <ProtectedRoute allowedRoles={['cashier', 'branch_manager', 'super_admin', 'auditor']}>
+            <SalesReportsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports/inventory',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor']}>
+            <InventoryReportsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports/expiry',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor']}>
+            <ExpiryReportsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports/purchases',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor']}>
+            <PurchaseReportsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports/transfers',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor']}>
+            <TransferReportsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reports/customers',
+        element: (
+          <ProtectedRoute allowedRoles={['cashier', 'branch_manager', 'super_admin', 'auditor']}>
+            <CustomerReportsPage />
+          </ProtectedRoute>
+        ),
+      },
+      // Administration Subroutes
+      {
+        path: 'branches',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin']}>
+            <BranchManagementPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'users',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <UserManagementPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'printers',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <PrintersPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'printers/new',
+        element: <Navigate to="/admin/printers" replace />,
+      },
+      {
+        path: 'settings',
+        element: <Navigate to="/admin/settings/system" replace />,
+      },
+      {
+        path: 'settings/system',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin']}>
+            <SystemSettingsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'settings/taxes',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <TaxConfigurationPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'settings/payment-methods',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
+            <PaymentMethodsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'email/templates',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin']}>
+            <EmailTemplatesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'email/logs',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin']}>
+            <EmailLogsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'jobs',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin']}>
+            <JobsMonitoringPage />
+          </ProtectedRoute>
+        ),
+      },
+      // Audit Subroutes
+      {
+        path: 'audit',
+        element: <Navigate to="/admin/audit/trail" replace />,
+      },
+      {
+        path: 'audit/trail',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'auditor']}>
+            <AuditTrailPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'audit/user-activity',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'auditor']}>
+            <UserActivityLogsPage />
+          </ProtectedRoute>
+        ),
+      },
+      // Finance Operations inside Admin
+      {
+        path: 'expenses',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'cashier', 'finance_manager']}>
+            <ExpensesPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'finance',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
+            <FinanceTransactionsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'finance-dashboard',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
+            <FinanceReportsPageFinance />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'finance-manager-dashboard',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'finance_manager']}>
+            <FinanceManagerDashboardPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'reconciliations',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
+            <ReconciliationPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'salaries',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
+            <SalaryManagementPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'cash-management',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
+            <CashManagementPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'finance-reports',
+        element: (
+          <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
+            <FinanceReportsPage />
+          </ProtectedRoute>
+        ),
+      },
+    ],
   },
-  {
-    path: '/dashboard',
-    element: <RoleAwareHomeRedirect />,
-  },
-  {
-    path: '/admin/inventory',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor']}>
-        <ErrorBoundary>
-          <InventoryPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/sales',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'cashier', 'auditor', 'finance_manager']}>
-        <ErrorBoundary>
-          <SalesPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/reports',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'finance_manager', 'cashier']}>
-        <ErrorBoundary>
-          <ReportsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/branches',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin']}>
-        <ErrorBoundary>
-          <BranchManagementPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/branches',
-    element: <Navigate to="/admin/branches" replace />,
-  },
-  {
-    path: '/admin/users',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <UserManagementPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/users',
-    element: <Navigate to="/admin/users" replace />,
-  },
-  {
-    path: '/admin/products',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <ProductManagementPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/products',
-    element: <Navigate to="/admin/products" replace />,
-  },
-  {
-    path: '/admin/batches',
-    element: <Navigate to="/admin/stock-adjustments" replace />,
-  },
-  {
-    path: '/batches',
-    element: <Navigate to="/admin/stock-adjustments" replace />,
-  },
-  {
-    path: '/admin/stock-adjustments',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <StockAdjustmentPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/transfers',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <TransferManagementPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/cycle-counts',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <CycleCountPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/printers',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <PrintersPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/sales/credit',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'cashier']}>
-        <ErrorBoundary>
-          <CreditSalesPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/sales/request-analysis',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <RequestAnalysisPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/printers/new',
-    element: <Navigate to="/admin/printers" replace />,
-  },
-  {
-    path: '/admin/pricing',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <PricingManagementPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/expenses',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'cashier', 'finance_manager']}>
-        <ErrorBoundary>
-          <ExpensesPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/finance',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <FinanceTransactionsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/reports/valuation',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'finance_manager']}>
-        <ErrorBoundary>
-          <ValuationReportPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/reports/sales',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'finance_manager', 'cashier']}>
-        <ErrorBoundary>
-          <SalesReportsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/reports/inventory',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'finance_manager']}>
-        <ErrorBoundary>
-          <InventoryReportsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/reports/expiry',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'finance_manager']}>
-        <ErrorBoundary>
-          <ExpiryReportsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/hq-dashboard',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin']}>
-        <ErrorBoundary>
-          <HQDashboardPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/marketer/dashboard',
-    element: (
-      <ProtectedRoute allowedRoles={['marketer']}>
-        <ErrorBoundary>
-          <MarketerDashboardPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/marketer/sales',
-    element: (
-      <ProtectedRoute allowedRoles={['marketer']}>
-        <ErrorBoundary>
-          <MarketerSalesPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/marketer/review',
-    element: (
-      <ProtectedRoute allowedRoles={['marketer']}>
-        <ErrorBoundary>
-          <MarketerReviewAssignmentsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/marketer-assignments',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <MarketerAssignmentsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/marketer/assignments',
-    element: <Navigate to="/admin/marketer-assignments" replace />,
-  },
-  {
-    path: '/admin/marketer-dashboard',
-    element: <Navigate to="/marketer/dashboard" replace />,
-  },
-  {
-    path: '/admin/suppliers',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <SupplierManagementPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/customer-orders',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'cashier']}>
-        <ErrorBoundary>
-          <CustomerOrdersPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/proforma-invoices',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <ProformaInvoicesPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/delivery-notes',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'cashier']}>
-        <ErrorBoundary>
-          <DeliveryNotesPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/purchase-orders',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <PurchaseOrderPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/customers',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'cashier']}>
-        <ErrorBoundary>
-          <CustomerManagementPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/promotions',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <PromotionsManagementPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/email/templates',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin']}>
-        <ErrorBoundary>
-          <EmailTemplatesPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/email/logs',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <EmailLogsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/jobs',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin']}>
-        <ErrorBoundary>
-          <JobsMonitoringPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/reports/purchases',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'finance_manager']}>
-        <ErrorBoundary>
-          <PurchaseReportsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/reports/transfers',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'finance_manager']}>
-        <ErrorBoundary>
-          <TransferReportsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/reports/customers',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor', 'finance_manager', 'cashier']}>
-        <ErrorBoundary>
-          <CustomerReportsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/settings',
-    element: <Navigate to="/admin/settings/system" replace />,
-  },
-  {
-    path: '/admin/audit',
-    element: <Navigate to="/admin/audit/trail" replace />,
-  },
-  {
-    path: '/admin/settings/system',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin']}>
-        <ErrorBoundary>
-          <SystemSettingsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/settings/taxes',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <TaxConfigurationPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/settings/payment-methods',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager']}>
-        <ErrorBoundary>
-          <PaymentMethodsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/audit/trail',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor']}>
-        <ErrorBoundary>
-          <AuditTrailPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/audit/user-activity',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'auditor']}>
-        <ErrorBoundary>
-          <UserActivityLogsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/finance-dashboard',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <FinanceReportsPageFinance />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/finance-manager-dashboard',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'finance_manager']}>
-        <ErrorBoundary>
-          <FinanceManagerDashboardPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
+
+  // Finance Hub Workspace (Scoped within FinanceLayoutShell)
   {
     path: '/finance',
     element: (
       <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
         <ErrorBoundary>
-          <FinanceHubPage />
+          <FinanceLayoutShell />
         </ErrorBoundary>
       </ProtectedRoute>
     ),
+    children: [
+      {
+        index: true,
+        element: <FinanceHubPage />,
+      },
+      {
+        path: 'cash-book',
+        element: <FinanceCashBookPage />,
+      },
+      {
+        path: 'receivables',
+        element: <FinanceReceivablesPage />,
+      },
+      {
+        path: 'payables',
+        element: <FinancePayablesPage />,
+      },
+      {
+        path: 'salaries',
+        element: <FinanceSalariesPage />,
+      },
+      {
+        path: 'reconciliations',
+        element: <FinanceReconciliationsPage />,
+      },
+      {
+        path: 'loans',
+        element: <FinanceLoansPage />,
+      },
+      {
+        path: 'advances',
+        element: <FinanceAdvancesPage />,
+      },
+      {
+        path: 'settlement',
+        element: <FinanceFinalSettlementPage />,
+      },
+      {
+        path: 'recurring-invoices',
+        element: <RecurringInvoicesPage />,
+      },
+      {
+        path: 'reports',
+        element: <FinanceReportsPage />,
+      },
+    ],
   },
+
+  // Marketer Field Operations Workspace (Scoped within MarketerLayoutShell)
   {
-    path: '/finance/cash-book',
+    path: '/marketer',
     element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
+      <ProtectedRoute allowedRoles={['marketer', 'super_admin']}>
         <ErrorBoundary>
-          <FinanceCashBookPage />
+          <MarketerLayoutShell />
         </ErrorBoundary>
       </ProtectedRoute>
     ),
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/marketer/dashboard" replace />,
+      },
+      {
+        path: 'dashboard',
+        element: <MarketerDashboardPage />,
+      },
+      {
+        path: 'sales',
+        element: <MarketerSalesPage />,
+      },
+      {
+        path: 'review',
+        element: <MarketerReviewAssignmentsPage />,
+      },
+    ],
   },
-  {
-    path: '/finance/receivables',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <FinanceReceivablesPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/finance/payables',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <FinancePayablesPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/finance/salaries',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <FinanceSalariesPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/finance/reconciliations',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <FinanceReconciliationsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/finance/reports',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <FinanceReportsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/finance/loans',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <FinanceLoansPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/finance/recurring-invoices',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <RecurringInvoicesPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/finance/advances',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <FinanceAdvancesPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/finance/settlement',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <FinanceFinalSettlementPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/reconciliations',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <ReconciliationPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/salaries',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <SalaryManagementPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/cash-management',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <CashManagementPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/admin/finance-reports',
-    element: (
-      <ProtectedRoute allowedRoles={['super_admin', 'branch_manager', 'finance_manager', 'auditor']}>
-        <ErrorBoundary>
-          <FinanceReportsPage />
-        </ErrorBoundary>
-      </ProtectedRoute>
-    ),
-  },
-  {
-    path: '/unauthorized',
-    element: <UnauthorizedPage />,
-  },
+
+  // Catch-All 404
   {
     path: '*',
     element: <NotFoundPage />,

@@ -1,5 +1,5 @@
-import { type ReactNode, useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { type ReactNode, useState, useEffect, createContext, useContext } from 'react';
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard,
   ShieldCheck,
@@ -48,8 +48,24 @@ import { PWAUpdatePrompt } from './ui/PWAUpdatePrompt';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 import { POSLayout } from './pos/POSLayout';
 
+interface AdminLayoutContextType {
+  isInAdminLayout: boolean;
+  setTitle: (title: string) => void;
+  title: string;
+  setShowMobileBranchSelector: (show: boolean) => void;
+}
+
+export const AdminLayoutContext = createContext<AdminLayoutContextType>({
+  isInAdminLayout: false,
+  setTitle: () => {},
+  title: 'Admin',
+  setShowMobileBranchSelector: () => {},
+});
+
+export const useAdminLayoutContext = () => useContext(AdminLayoutContext);
+
 interface AdminLayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
   title?: string;
   showMobileBranchSelector?: boolean;
 }
@@ -76,19 +92,48 @@ export const AdminLayout = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  const parentAdmin = useContext(AdminLayoutContext);
+  const [dynamicTitle, setDynamicTitle] = useState(title);
+  const [dynamicShowBranchSelector, setDynamicShowBranchSelector] = useState(showMobileBranchSelector);
+
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
 
-  const isPosContext = location.pathname.startsWith('/pos/') || (user?.role === 'cashier' && !location.pathname.startsWith('/admin/dashboard'));
+  useEffect(() => {
+    if (title && title !== 'Admin') {
+      setDynamicTitle(title);
+    }
+  }, [title]);
+
+  useEffect(() => {
+    setDynamicShowBranchSelector(showMobileBranchSelector);
+  }, [showMobileBranchSelector]);
+
+  useEffect(() => {
+    if (parentAdmin.isInAdminLayout) {
+      if (title && title !== 'Admin') {
+        parentAdmin.setTitle(title);
+      }
+      if (showMobileBranchSelector !== undefined) {
+        parentAdmin.setShowMobileBranchSelector(showMobileBranchSelector);
+      }
+    }
+  }, [parentAdmin, title, showMobileBranchSelector]);
+
+  if (parentAdmin.isInAdminLayout) {
+    return <>{children || <Outlet />}</>;
+  }
+
+  const isPosContext = location.pathname.startsWith('/pos/');
 
   if (isPosContext) {
     return (
-      <POSLayout>
-        <div className="flex-1 overflow-y-auto p-4 pt-16 lg:pt-6 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-6 lg:p-8">
+      <POSLayout title={dynamicTitle}>
+        <div className="flex-1 overflow-y-auto p-4 lg:p-8 pb-[calc(5rem+env(safe-area-inset-bottom,0px))]">
           <div className="max-w-7xl mx-auto space-y-5">
             <PasskeySetupBanner />
-            {children}
+            {children || <Outlet />}
           </div>
         </div>
       </POSLayout>
@@ -431,8 +476,16 @@ export const AdminLayout = ({
   );
 
   return (
-    <div className="h-dvh overflow-hidden bg-slate-950 flex">
-      <ConnectionStatus />
+    <AdminLayoutContext.Provider
+      value={{
+        isInAdminLayout: true,
+        setTitle: setDynamicTitle,
+        title: dynamicTitle,
+        setShowMobileBranchSelector: setDynamicShowBranchSelector,
+      }}
+    >
+      <div className="h-dvh overflow-hidden bg-slate-950 flex">
+        <ConnectionStatus />
       <OfflineNotification />
       <PWAUpdatePrompt />
 
@@ -561,29 +614,30 @@ export const AdminLayout = ({
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-100 tracking-tight truncate">{title}</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-100 tracking-tight truncate">{dynamicTitle}</h2>
             </div>
             <div className="flex shrink-0 items-center gap-3">
               <NotificationBell />
               <div className="hidden sm:block w-60">
-                <BranchSelector />
+                <BranchSelector hideLabel />
               </div>
             </div>
           </div>
-          {showMobileBranchSelector ? (
-            <div className="mt-3 sm:hidden">
-              <BranchSelector />
+          {dynamicShowBranchSelector ? (
+            <div className="mt-2.5 sm:hidden">
+              <BranchSelector hideLabel />
             </div>
           ) : null}
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-4 pb-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:pb-8 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto space-y-5">
             <PasskeySetupBanner />
-            {children}
+            {children || <Outlet />}
           </div>
         </main>
       </div>
     </div>
+    </AdminLayoutContext.Provider>
   );
 };

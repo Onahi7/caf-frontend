@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ShoppingCart,
@@ -33,12 +33,32 @@ interface Shift {
   totalSales?: number;
 }
 
-export const POSSidebar = () => {
+import { usePOSSidebarStore } from '../../stores/pos-sidebar-store';
+
+export interface POSSidebarProps {
+  isMobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+export const POSSidebar = ({ isMobileOpen, onClose }: POSSidebarProps = {}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
   const selectedBranch = useBranchStore((state) => state.selectedBranch);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const { isOpen: storeIsOpen, closeSidebar } = usePOSSidebarStore();
+  const open = isMobileOpen !== undefined ? isMobileOpen : storeIsOpen;
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else {
+      closeSidebar();
+    }
+  };
+
+  useEffect(() => {
+    closeSidebar();
+  }, [location.pathname, closeSidebar]);
+
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const { showError } = useToast();
   const dashboardPath =
@@ -147,29 +167,11 @@ export const POSSidebar = () => {
 
   return (
     <>
-      {/* Mobile Toggle Button */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="lg:hidden fixed top-[calc(1rem+env(safe-area-inset-top))] left-4 z-50 w-12 h-12 bg-slate-900/90 backdrop-blur-md border border-white/10 rounded-2xl flex items-center justify-center text-slate-200 hover:text-white hover:bg-slate-800 transition-all shadow-xl active:scale-95"
-        aria-label="Toggle navigation menu"
-      >
-        {isExpanded ? (
-          <X className="w-5 h-5" />
-        ) : (
-          <Menu className="w-5 h-5" />
-        )}
-      </button>
-
-      {/* Mobile floating notification bell */}
-      <div className="lg:hidden fixed top-[calc(1rem+env(safe-area-inset-top))] right-4 z-50">
-        <NotificationBell />
-      </div>
-
       {/* Overlay for mobile */}
-      {isExpanded && (
+      {open && (
         <div
           className="lg:hidden fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 animate-fade-in"
-          onClick={() => setIsExpanded(false)}
+          onClick={handleClose}
         />
       )}
 
@@ -179,20 +181,28 @@ export const POSSidebar = () => {
           fixed inset-y-0 left-0 z-50 lg:z-30
           w-64 bg-slate-900/95 border-r border-white/[0.08] backdrop-blur-xl
           transform transition-transform duration-300 ease-in-out
-          ${isExpanded ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           flex flex-col shadow-2xl
         `}
       >
         {/* Header */}
         <div className="p-4 border-b border-white/[0.08] pt-safe-top">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-md shadow-emerald-500/20 text-slate-950">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-emerald-500 to-teal-700 flex items-center justify-center shadow-md shadow-emerald-500/20 text-slate-950 shrink-0">
               <ShoppingCart className="w-5 h-5 stroke-[2.5]" />
             </div>
             <div className="flex-1 min-w-0">
               <h2 className="text-slate-100 font-bold text-sm tracking-tight truncate">CAREFARM POS</h2>
               <p className="text-xs text-slate-400 truncate">{selectedBranch?.name || 'Main Branch'}</p>
             </div>
+            <button
+              type="button"
+              onClick={handleClose}
+              className="lg:hidden p-2 -mr-1 rounded-xl text-slate-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+              aria-label="Close navigation menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
             <div className="hidden lg:block">
               <NotificationBell />
             </div>
@@ -210,7 +220,7 @@ export const POSSidebar = () => {
                 key={item.id}
                 onClick={() => {
                   navigate(item.path);
-                  setIsExpanded(false);
+                  handleClose();
                 }}
                 className={`
                   w-full flex items-center justify-between px-3 py-2.5 rounded-xl

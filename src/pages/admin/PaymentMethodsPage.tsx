@@ -336,13 +336,9 @@ export const PaymentMethodsPage = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                isLoading={createMutation.isPending || updateMutation.isPending}
               >
-                {createMutation.isPending || updateMutation.isPending
-                  ? 'Saving...'
-                  : editingMethod
-                  ? 'Update Method'
-                  : 'Add Method'}
+                {editingMethod ? 'Update Method' : 'Add Method'}
               </Button>
             </div>
 

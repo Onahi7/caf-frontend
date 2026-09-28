@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { ChevronDown, ChevronRight, FileSpreadsheet, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileSpreadsheet, Trash2, Plus, Download, Upload, Camera, Image as ImageIcon, X } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { unwrapArray } from '../../lib/unwrap-response';
 import { AdminLayout } from '../../components/AdminLayout';
@@ -602,6 +602,29 @@ export const ProductManagementPage = () => {
     },
     { key: 'unit', header: 'Unit' },
     {
+      key: 'packSizes',
+      header: 'Packaging Tiers',
+      render: (product: Product) => (
+        product.packSizes && product.packSizes.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 max-w-xs">
+            {product.packSizes.map((pack, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 shadow-xs"
+                title={`${pack.quantityPerPack} ${product.unit}s per ${pack.name}`}
+              >
+                <span className="font-semibold text-white">{pack.name}</span>
+                <span className="text-slate-400 text-[10px]">({pack.quantityPerPack} {product.unit}s)</span>
+                <span className="text-emerald-400 font-mono font-semibold ml-0.5">{format(pack.sellingPrice)}</span>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-slate-500 text-xs italic">Base {product.unit} only</span>
+        )
+      ),
+    },
+    {
       key: 'requiresPrescription',
       header: 'Prescription',
       render: (product: Product) => (
@@ -692,30 +715,39 @@ export const ProductManagementPage = () => {
                   variant="secondary"
                   size="sm"
                   onClick={handleExportProducts}
-                  disabled={isExportingProducts}
+                  isLoading={isExportingProducts}
                 >
-                  {isExportingProducts ? 'Exporting...' : 'Export Excel'}
+                  <Download className="w-3.5 h-3.5 mr-1.5 opacity-70" />
+                  Export Excel
                 </Button>
                 <Button
                   type="button"
                   variant="secondary"
                   size="sm"
                   onClick={handleDownloadTemplate}
-                  disabled={isExportingTemplate}
+                  isLoading={isExportingTemplate}
                 >
-                  {isExportingTemplate ? 'Preparing...' : 'Excel Template'}
+                  <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 opacity-70" />
+                  Excel Template
                 </Button>
                 <Button
                   type="button"
                   variant="secondary"
                   size="sm"
                   onClick={() => importInputRef.current?.click()}
-                  disabled={isImportingProducts}
+                  isLoading={isImportingProducts}
                 >
-                  {isImportingProducts ? 'Importing...' : 'Import Excel'}
+                  <Upload className="w-3.5 h-3.5 mr-1.5 opacity-70" />
+                  Import Excel
                 </Button>
-                <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-emerald-500/15">
-                  + Add Product
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => handleOpenModal()}
+                  className="shadow-lg shadow-emerald-500/20"
+                >
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Add Product
                 </Button>
               </div>
             }
@@ -723,12 +755,12 @@ export const ProductManagementPage = () => {
         </div>
 
         {importSummary ? (
-          <div className="rounded-2xl border border-white/10 bg-primary-dark/60 p-5">
+          <div className="rounded-2xl border border-white/[0.08] bg-slate-900/90 backdrop-blur-xl p-5 shadow-xl shadow-black/40 animate-in fade-in duration-200">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-white">Latest Import</h2>
-                <p className="text-sm text-gray-400">
-                  Created {importSummary.createdCount} product(s), failed {importSummary.failedCount} row(s).
+                <h2 className="text-base font-bold text-white tracking-tight">Latest Import</h2>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Created <span className="text-emerald-400 font-semibold">{importSummary.createdCount}</span> product(s), failed <span className="text-rose-400 font-semibold">{importSummary.failedCount}</span> row(s).
                 </p>
               </div>
               <Button
@@ -746,7 +778,7 @@ export const ProductManagementPage = () => {
                 {importSummary.errors.slice(0, 5).map((item) => (
                   <div
                     key={`${item.row}-${item.productName}`}
-                    className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-200"
+                    className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-2.5 text-xs text-rose-200"
                   >
                     Row {item.row} ({item.productName}): {item.message}
                   </div>
@@ -783,15 +815,39 @@ export const ProductManagementPage = () => {
 
         <Modal isOpen={isModalOpen} onClose={handleCloseModal} size="xl">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <h2 className="text-xl font-bold text-white">
-              {editingProduct
-                ? wizardStep === 1
-                  ? 'Edit Product (Details)'
-                  : 'Edit Product (Stock & Units)'
-                : wizardStep === 1
-                  ? 'Add Product (Step 1 of 2)'
-                  : 'Add Product (Step 2 of 2)'}
-            </h2>
+            {/* Modal Stepper Header */}
+            <div className="border-b border-white/[0.08] pb-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold text-white tracking-tight">
+                    {editingProduct ? 'Edit Product' : 'Add New Product'}
+                  </h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    {wizardStep === 1
+                      ? 'Step 1: Core product details, barcode, category & pricing'
+                      : 'Step 2: Opening stock, batch expiry & packaging unit conversions'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                    wizardStep === 1 
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' 
+                      : 'bg-white/5 text-slate-400 border border-white/10'
+                  }`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                    Step 1
+                  </span>
+                  <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+                    wizardStep === 2 
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' 
+                      : 'bg-white/5 text-slate-400 border border-white/10'
+                  }`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                    Step 2
+                  </span>
+                </div>
+              </div>
+            </div>
 
             {wizardStep === 1 ? (
               <>
@@ -802,9 +858,9 @@ export const ProductManagementPage = () => {
                     {...register('branchId', { required: 'Branch is required' })}
                     disabled={!!editingProduct}
                   >
-                    <option value="" className="bg-primary-dark text-white">Choose a branch...</option>
+                    <option value="" className="bg-slate-900 text-white">Choose a branch...</option>
                     {branches?.map((branch) => (
-                      <option key={branch._id} value={branch._id} className="bg-primary-dark text-white">
+                      <option key={branch._id} value={branch._id} className="bg-slate-900 text-white">
                         {branch.name}
                       </option>
                     ))}
@@ -920,51 +976,53 @@ export const ProductManagementPage = () => {
                   error={errors.maxStockLevel?.message}
                 />
 
-                <div className="space-y-3 p-4 bg-white/5 rounded-xl border border-white/5">
-                  <div className="flex items-center">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-slate-900/60 rounded-2xl border border-white/[0.08]">
+                  <label className="flex items-center gap-3 p-3 rounded-xl bg-slate-950/40 border border-white/[0.04] hover:border-emerald-500/30 transition-colors cursor-pointer group">
                     <input
                       type="checkbox"
                       id="requiresPrescription"
                       {...register('requiresPrescription')}
-                      className="h-5 w-5 rounded border-gray-600 bg-primary-darker text-accent-green focus:ring-accent-green transition-colors"
+                      className="h-4 w-4 rounded border-white/20 bg-slate-900 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 transition-colors cursor-pointer"
                     />
-                    <label htmlFor="requiresPrescription" className="ml-3 block text-sm font-medium text-white">
-                      Requires Prescription
-                    </label>
-                  </div>
+                    <div className="min-w-0">
+                      <span className="block text-xs font-semibold text-slate-200 group-hover:text-white">Requires Prescription</span>
+                      <span className="block text-[11px] text-slate-400">Restricted pharmacy dispensing</span>
+                    </div>
+                  </label>
 
-                  <div className="flex items-center">
+                  <label className="flex items-center gap-3 p-3 rounded-xl bg-slate-950/40 border border-white/[0.04] hover:border-emerald-500/30 transition-colors cursor-pointer group">
                     <input
                       type="checkbox"
                       id="isControlled"
                       {...register('isControlled')}
-                      className="h-5 w-5 rounded border-gray-600 bg-primary-darker text-accent-green focus:ring-accent-green transition-colors"
+                      className="h-4 w-4 rounded border-white/20 bg-slate-900 text-emerald-500 focus:ring-emerald-500 focus:ring-offset-0 transition-colors cursor-pointer"
                     />
-                    <label htmlFor="isControlled" className="ml-3 block text-sm font-medium text-white">
-                      Controlled Substance
-                    </label>
-                  </div>
+                    <div className="min-w-0">
+                      <span className="block text-xs font-semibold text-slate-200 group-hover:text-white">Controlled Substance</span>
+                      <span className="block text-[11px] text-slate-400">Strict registry & audit trail</span>
+                    </div>
+                  </label>
                 </div>
 
-                <div className="space-y-3 p-4 bg-white/5 rounded-xl border border-white/5">
-                  <label className="block text-sm font-medium text-white">Product Image</label>
-                  <div className="flex items-start gap-4">
+                <div className="p-4 bg-slate-900/60 rounded-2xl border border-white/[0.08] space-y-3">
+                  <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">Product Photo</label>
+                  <div className="flex items-center gap-4">
                     {imagePreview ? (
-                      <div className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-600">
-                        <img src={imagePreview} alt="Product" className="w-full h-full object-cover" />
+                      <div className="relative w-24 h-24 rounded-2xl overflow-hidden border border-emerald-500/30 shadow-lg shadow-black/50">
+                        <img src={imagePreview} alt="Product preview" className="w-full h-full object-cover" />
                         <button
                           type="button"
                           onClick={() => { setProductImage(null); setImagePreview(null); }}
-                          className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                          className="absolute top-1.5 right-1.5 w-6 h-6 bg-rose-500/90 hover:bg-rose-600 text-white rounded-full flex items-center justify-center text-xs shadow-md transition-colors"
+                          aria-label="Remove image"
                         >
-                          x
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     ) : (
-                      <div className="w-24 h-24 rounded-xl border-2 border-dashed border-gray-600 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
+                      <div className="w-24 h-24 rounded-2xl border-2 border-dashed border-white/10 bg-slate-950/40 flex flex-col items-center justify-center text-slate-500 gap-1">
+                        <ImageIcon className="w-6 h-6 text-slate-500" />
+                        <span className="text-[10px]">No image</span>
                       </div>
                     )}
                     <div className="flex flex-col gap-2">
@@ -989,15 +1047,12 @@ export const ProductManagementPage = () => {
                       />
                       <label
                         htmlFor="product-image-input"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-accent-green/10 border border-accent-green/30 rounded-xl text-accent-green hover:bg-accent-green/20 transition-colors cursor-pointer text-sm font-medium"
+                        className="inline-flex items-center gap-2 px-3.5 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-300 hover:bg-emerald-500/20 transition-all cursor-pointer text-xs font-semibold shadow-xs"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        {imagePreview ? 'Change Photo' : 'Take Photo / Upload'}
+                        <Camera className="w-4 h-4" />
+                        {imagePreview ? 'Change Photo' : 'Capture / Upload Photo'}
                       </label>
-                      <p className="text-xs text-gray-400">Camera or gallery, stored locally</p>
+                      <p className="text-[11px] text-slate-400">Stored locally in offline storage</p>
                     </div>
                   </div>
                 </div>
@@ -1042,9 +1097,9 @@ export const ProductManagementPage = () => {
                   label="Supplier"
                   {...register('initialSupplierId')}
                 >
-                  <option value="" className="bg-primary-dark text-white">Select Supplier</option>
+                  <option value="" className="bg-slate-900 text-white">Select Supplier</option>
                   {suppliers?.map((supplier) => (
-                    <option key={supplier._id} value={supplier._id} className="bg-primary-dark text-white">
+                    <option key={supplier._id} value={supplier._id} className="bg-slate-900 text-white">
                       {supplier.name}
                     </option>
                   ))}
@@ -1061,26 +1116,29 @@ export const ProductManagementPage = () => {
                   placeholder="Defaults to selling price above"
                 />
 
-                <div className="space-y-3 p-4 bg-white/5 rounded-xl border border-white/5">
+                <div className="space-y-3 p-4 bg-slate-900/60 rounded-2xl border border-white/[0.08]">
                   <div className="flex items-center justify-between">
-                    <label className="block text-sm font-medium text-white">Pack Sizes / Unit Conversion</label>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">Pack Sizes & Unit Conversions</label>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Sell items in strips, boxes, or cartons with automated stock deduction</p>
+                    </div>
                     <button
                       type="button"
                       onClick={() => setShowPackSizeEditor(!showPackSizeEditor)}
-                      className="text-accent-green text-sm hover:underline"
+                      className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-colors"
                     >
                       {showPackSizeEditor ? 'Done' : 'Edit Pack Sizes'}
                     </button>
                   </div>
-                  <div className="rounded-xl border border-accent-green/20 bg-accent-green/10 p-3 text-xs text-gray-300">
-                    Add pack sizes when the same product is sold in larger or alternate units. Keep stock in the smallest unit above, then define conversions here: example base unit `tablet`, pack `Strip`, qty per pack `10`, selling price for one strip. If a box/strip/bottle has its own barcode, add it here so POS scans select that pack automatically.
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-slate-300 leading-relaxed">
+                    Keep stock in the smallest base unit (e.g. <span className="text-emerald-300 font-mono">tablet</span>), then define conversions here (e.g. <span className="text-emerald-300 font-mono">Strip</span> of 10, or <span className="text-emerald-300 font-mono">Box</span> of 100). Point-of-sale barcode scans for packs will automatically deduct the correct number of base units.
                   </div>
 
                   {!showPackSizeEditor && watch('packSizes') && watch('packSizes').length > 0 && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2 pt-1">
                       {watch('packSizes').map((pack: PackSize, idx: number) => (
-                        <span key={idx} className="px-3 py-1.5 bg-primary-darker rounded-lg text-sm text-gray-300 border border-gray-600">
-                          {pack.name} ({pack.quantityPerPack} x {pack.unit || watch('unit')}) - {format(pack.sellingPrice)}
+                        <span key={idx} className="px-3 py-1.5 bg-slate-950/80 rounded-xl text-xs font-medium text-slate-200 border border-white/[0.08] shadow-xs">
+                          <span className="text-emerald-400 font-semibold">{pack.name}</span> ({pack.quantityPerPack} × {pack.unit || watch('unit')}) — <span className="font-mono text-emerald-300 font-bold">{format(pack.sellingPrice)}</span>
                         </span>
                       ))}
                     </div>
@@ -1088,99 +1146,97 @@ export const ProductManagementPage = () => {
 
                   {showPackSizeEditor && (
                     <>
-                      <div className="space-y-3">
+                      <div className="space-y-3 pt-1">
                         {watch('packSizes').map((pack: PackSize, idx: number) => (
-                          <div key={idx} className="flex items-start gap-2 p-3 bg-primary-darker rounded-lg border border-gray-700">
-                            <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2">
-                              <select
-                                value={pack.name}
-                                onChange={(e) => {
-                                  const updated = [...watch('packSizes')];
-                                  const name = e.target.value;
-                                  updated[idx] = {
-                                    ...updated[idx],
-                                    name,
-                                    unit: name ? name.trim().toLowerCase().replace(/\s+/g, '-') : updated[idx].unit,
-                                  };
-                                  setValue('packSizes', updated as any);
-                                }}
-                                className="px-2 py-1.5 bg-primary-dark border border-gray-600 rounded text-white text-sm"
-                              >
-                                <option value="">Package type</option>
-                                {PACK_TYPE_OPTIONS.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                              <input
-                                placeholder="Custom label"
-                                value={pack.name}
-                                onChange={(e) => {
-                                  const updated = [...watch('packSizes')];
-                                  updated[idx] = {
-                                    ...updated[idx],
-                                    name: e.target.value,
-                                    unit: e.target.value.trim().toLowerCase().replace(/\s+/g, '-'),
-                                  };
-                                  setValue('packSizes', updated as any);
-                                }}
-                                className="px-2 py-1.5 bg-primary-dark border border-gray-600 rounded text-white text-sm"
-                              />
-                              <input
-                                placeholder="Selling unit"
-                                value={pack.unit}
-                                onChange={(e) => {
-                                  const updated = [...watch('packSizes')];
-                                  updated[idx] = { ...updated[idx], unit: e.target.value };
-                                  setValue('packSizes', updated as any);
-                                }}
-                                className="px-2 py-1.5 bg-primary-dark border border-gray-600 rounded text-white text-sm"
-                              />
-                              <input
-                                placeholder="Stable code (optional)"
-                                value={pack.code || ''}
-                                onChange={(e) => {
-                                  const updated = [...watch('packSizes')];
-                                  updated[idx] = { ...updated[idx], code: e.target.value };
-                                  setValue('packSizes', updated as any);
-                                }}
-                                className="px-2 py-1.5 bg-primary-dark border border-gray-600 rounded text-white text-sm"
-                              />
-                              <input
-                                type="number"
-                                placeholder="Qty per pack"
-                                value={pack.quantityPerPack}
-                                onChange={(e) => {
-                                  const updated = [...watch('packSizes')];
-                                  updated[idx] = { ...updated[idx], quantityPerPack: Number(e.target.value) };
-                                  setValue('packSizes', updated as any);
-                                }}
-                                className="px-2 py-1.5 bg-primary-dark border border-gray-600 rounded text-white text-sm"
-                              />
-                              <input
-                                placeholder="Pack barcode (optional)"
-                                value={pack.barcode || ''}
-                                onChange={(e) => {
-                                  const updated = [...watch('packSizes')];
-                                  updated[idx] = { ...updated[idx], barcode: e.target.value };
-                                  setValue('packSizes', updated as any);
-                                }}
-                                className="px-2 py-1.5 bg-primary-dark border border-gray-600 rounded text-white text-sm"
-                              />
-                              <input
-                                type="number"
-                                placeholder="Price"
-                                value={pack.sellingPrice}
-                                onChange={(e) => {
-                                  const updated = [...watch('packSizes')];
-                                  updated[idx] = { ...updated[idx], sellingPrice: Number(e.target.value) };
-                                  setValue('packSizes', updated as any);
-                                }}
-                                className="px-2 py-1.5 bg-primary-dark border border-gray-600 rounded text-white text-sm"
-                              />
-                              <div className="md:col-span-2 rounded-lg bg-black/20 px-3 py-2 text-xs text-gray-400">
-                                {pack.name || 'Pack'} deducts {Number(pack.quantityPerPack) || 1} {watch('unit') || 'base units'} per sale. Unit price per {watch('unit') || 'base unit'}: {format((Number(pack.sellingPrice) || 0) / Math.max(1, Number(pack.quantityPerPack) || 1))}
+                          <div key={idx} className="flex items-start gap-3 p-3.5 bg-slate-950/70 rounded-2xl border border-white/[0.08] shadow-md shadow-black/20">
+                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                              <div>
+                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Type</label>
+                                <select
+                                  value={pack.name}
+                                  onChange={(e) => {
+                                    const updated = [...watch('packSizes')];
+                                    const name = e.target.value;
+                                    updated[idx] = {
+                                      ...updated[idx],
+                                      name,
+                                      unit: name ? name.trim().toLowerCase().replace(/\s+/g, '-') : updated[idx].unit,
+                                    };
+                                    setValue('packSizes', updated as any);
+                                  }}
+                                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none"
+                                >
+                                  <option value="">Package type</option>
+                                  {PACK_TYPE_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custom Label</label>
+                                <input
+                                  placeholder="e.g. Strip"
+                                  value={pack.name}
+                                  onChange={(e) => {
+                                    const updated = [...watch('packSizes')];
+                                    updated[idx] = {
+                                      ...updated[idx],
+                                      name: e.target.value,
+                                      unit: e.target.value.trim().toLowerCase().replace(/\s+/g, '-'),
+                                    };
+                                    setValue('packSizes', updated as any);
+                                  }}
+                                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Qty per Pack</label>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  placeholder="e.g. 10"
+                                  value={pack.quantityPerPack}
+                                  onChange={(e) => {
+                                    const updated = [...watch('packSizes')];
+                                    updated[idx] = { ...updated[idx], quantityPerPack: Number(e.target.value) };
+                                    setValue('packSizes', updated as any);
+                                  }}
+                                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none font-mono"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Pack Barcode (Optional)</label>
+                                <input
+                                  placeholder="Pack Barcode"
+                                  value={pack.barcode || ''}
+                                  onChange={(e) => {
+                                    const updated = [...watch('packSizes')];
+                                    updated[idx] = { ...updated[idx], barcode: e.target.value };
+                                    setValue('packSizes', updated as any);
+                                  }}
+                                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none font-mono"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Pack Selling Price</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="Price"
+                                  value={pack.sellingPrice}
+                                  onChange={(e) => {
+                                    const updated = [...watch('packSizes')];
+                                    updated[idx] = { ...updated[idx], sellingPrice: Number(e.target.value) };
+                                    setValue('packSizes', updated as any);
+                                  }}
+                                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none font-mono text-emerald-300 font-semibold"
+                                />
+                              </div>
+                              <div className="sm:col-span-2 md:col-span-3 rounded-xl bg-slate-900/90 border border-white/[0.04] px-3.5 py-2 text-[11px] text-slate-400 flex items-center justify-between">
+                                <span>1 {pack.name || 'Pack'} = <strong className="text-slate-200">{Number(pack.quantityPerPack) || 1} {watch('unit') || 'units'}</strong></span>
+                                <span className="font-mono text-emerald-400">Unit rate: {format((Number(pack.sellingPrice) || 0) / Math.max(1, Number(pack.quantityPerPack) || 1))}</span>
                               </div>
                             </div>
                             <button
@@ -1189,11 +1245,10 @@ export const ProductManagementPage = () => {
                                 const updated = watch('packSizes').filter((_: any, i: number) => i !== idx);
                                 setValue('packSizes', updated as any);
                               }}
-                              className="p-2 text-red-400 hover:text-red-300"
+                              className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors shrink-0 mt-6"
+                              aria-label="Delete pack size"
                             >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         ))}
@@ -1204,9 +1259,10 @@ export const ProductManagementPage = () => {
                             const current = watch('packSizes') || [];
                             setValue('packSizes', [...current, { code: '', name: '', unit: '', quantityPerPack: 1, sellingPrice: 0 }] as any);
                           }}
-                          className="w-full py-2 border-2 border-dashed border-gray-600 rounded-lg text-gray-400 hover:text-white hover:border-gray-500 transition-colors text-sm"
+                          className="w-full py-2.5 border-2 border-dashed border-white/15 hover:border-emerald-500/40 rounded-xl text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/5 transition-all text-xs font-semibold flex items-center justify-center gap-1.5"
                         >
-                          + Add Pack Size
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Pack Size</span>
                         </button>
                       </div>
                     </>
@@ -1226,7 +1282,7 @@ export const ProductManagementPage = () => {
 
               {wizardStep === 1 ? (
                 <Button type="button" onClick={handleNextStep}>
-                  {editingProduct ? 'Advanced Stock & Units' : 'Next'}
+                  {editingProduct ? 'Next: Advanced Stock & Units' : 'Next Step'}
                 </Button>
               ) : null}
 
@@ -1237,13 +1293,9 @@ export const ProductManagementPage = () => {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={createMutation.isPending || updateMutation.isPending}
+                    isLoading={createMutation.isPending || updateMutation.isPending}
                   >
-                    {createMutation.isPending || updateMutation.isPending
-                      ? 'Saving...'
-                      : editingProduct
-                        ? 'Update Product'
-                        : 'Create Product'}
+                    {editingProduct ? 'Update Product' : 'Create Product'}
                   </Button>
                 </>
               ) : null}

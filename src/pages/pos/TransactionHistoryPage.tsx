@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import apiClient from '../../lib/api-client';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
@@ -9,6 +9,7 @@ import { useToast } from '../../hooks/useToast';
 import { getPaymentMethodLabel } from '../../config/payment-methods';
 import { Error } from '../../components/ui/Error';
 import { queryKeys } from '../../lib/query-keys';
+import { POSLayout } from '../../components/pos/POSLayout';
 
 interface Branch {
   _id: string;
@@ -37,6 +38,8 @@ interface Sale {
 
 export const TransactionHistoryPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith('/admin/');
   const selectedBranch = useBranchStore((state) => state.selectedBranch);
   const user = useAuthStore((state) => state.user);
   const isSuperAdmin = user?.role === 'super_admin';
@@ -154,28 +157,50 @@ export const TransactionHistoryPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-primary-darker flex flex-col pt-safe-top">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800">
-        <button onClick={() => navigate(-1)} className="text-white min-w-11 min-h-11 flex items-center justify-center -ml-2 rounded-lg hover:bg-white/5">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-xl font-bold text-white">Transaction History</h1>
-        <button onClick={() => setShowFilters(true)} className="text-white relative">
-          {activeFiltersCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent-green text-primary-dark text-xs font-bold rounded-full flex items-center justify-center">
-              {activeFiltersCount}
-            </span>
-          )}
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-          </svg>
-        </button>
-      </div>
+    <POSLayout title="Transaction History">
+      <div className={`min-h-screen bg-primary-darker flex flex-col ${isAdmin ? '' : 'pt-safe-top'}`}>
+        {/* Header */}
+        {!isAdmin && (
+          <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800">
+            <button onClick={() => navigate(-1)} className="text-white min-w-11 min-h-11 flex items-center justify-center -ml-2 rounded-lg hover:bg-white/5">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <h1 className="text-xl font-bold text-white">Transaction History</h1>
+            <button onClick={() => setShowFilters(true)} className="text-white relative">
+              {activeFiltersCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-accent-green text-primary-dark text-xs font-bold rounded-full flex items-center justify-center">
+                  {activeFiltersCount}
+                </span>
+              )}
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+            </button>
+          </div>
+        )}
 
-      <div className="flex-1 p-4 space-y-4">
+        <div className="flex-1 p-4 space-y-4">
+          {isAdmin && (
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <div>
+                <h1 className="text-lg font-bold text-slate-100">Transaction History</h1>
+                <p className="text-xs text-slate-400">View and audit all completed sales transactions across branches</p>
+              </div>
+              <button
+                onClick={() => setShowFilters(true)}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl border border-white/10 flex items-center gap-2 text-xs font-medium transition-colors"
+              >
+                <span>Filter Transactions</span>
+                {activeFiltersCount > 0 && (
+                  <span className="w-4 h-4 bg-emerald-400 text-slate-950 text-[10px] font-bold rounded-full flex items-center justify-center">
+                    {activeFiltersCount}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
         {/* Cashier Notice */}
         {user?.role === 'cashier' && (
           <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
@@ -351,6 +376,7 @@ export const TransactionHistoryPage = () => {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </POSLayout>
   );
 };

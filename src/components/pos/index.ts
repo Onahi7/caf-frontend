@@ -8,6 +8,6 @@ export { EmailInputModal } from './EmailInputModal';
 export { ShiftManagement } from './ShiftManagement';
 export { OfflineIndicator } from './OfflineIndicator';
 export { POSSidebar } from './POSSidebar';
-export { POSLayout } from './POSLayout';
+export { POSLayout, usePOSLayout, POSLayoutContext } from './POSLayout';
 export { QRScannerModal } from './QRScannerModal';
 export { UserProfileModal } from './UserProfileModal';

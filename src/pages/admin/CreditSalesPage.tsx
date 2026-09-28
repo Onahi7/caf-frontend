@@ -436,7 +436,7 @@ export function CreditSalesPage() {
   );
 
   return isPos ? (
-    <POSLayout>{pageContent}</POSLayout>
+    <POSLayout title="Credit Sales">{pageContent}</POSLayout>
   ) : (
     <AdminLayout title="Credit Sales">{pageContent}</AdminLayout>
   );

@@ -259,13 +259,9 @@ export const EmailTemplatesPage = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                isLoading={createMutation.isPending || updateMutation.isPending}
               >
-                {createMutation.isPending || updateMutation.isPending
-                  ? 'Saving...'
-                  : editingTemplate
-                  ? 'Update Template'
-                  : 'Create Template'}
+                {editingTemplate ? 'Update Template' : 'Create Template'}
               </Button>
             </div>
 

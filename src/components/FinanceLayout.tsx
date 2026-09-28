@@ -1,5 +1,5 @@
-import { type ReactNode, useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { type ReactNode, useState, useEffect, createContext, useContext } from 'react';
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard,
   Wallet,
@@ -28,8 +28,22 @@ import { OfflineNotification } from './ui/OfflineNotification';
 import { PWAUpdatePrompt } from './ui/PWAUpdatePrompt';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 
+interface FinanceLayoutContextType {
+  isInFinanceLayout: boolean;
+  setTitle: (title: string) => void;
+  title: string;
+}
+
+export const FinanceLayoutContext = createContext<FinanceLayoutContextType>({
+  isInFinanceLayout: false,
+  setTitle: () => {},
+  title: 'Finance Hub',
+});
+
+export const useFinanceLayoutContext = () => useContext(FinanceLayoutContext);
+
 interface FinanceLayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
   title?: string;
 }
 
@@ -64,9 +78,28 @@ export const FinanceLayout = ({ children, title = 'Finance Hub' }: FinanceLayout
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  const parentFinance = useContext(FinanceLayoutContext);
+  const [dynamicTitle, setDynamicTitle] = useState(title);
+
   useEffect(() => {
     setIsMobileMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (title && title !== 'Finance Hub') {
+      setDynamicTitle(title);
+    }
+  }, [title]);
+
+  useEffect(() => {
+    if (parentFinance.isInFinanceLayout && title && title !== 'Finance Hub') {
+      parentFinance.setTitle(title);
+    }
+  }, [parentFinance, title]);
+
+  if (parentFinance.isInFinanceLayout) {
+    return <>{children || <Outlet />}</>;
+  }
 
   const handleLogout = async () => {
     try {
@@ -160,8 +193,9 @@ export const FinanceLayout = ({ children, title = 'Finance Hub' }: FinanceLayout
   );
 
   return (
-    <div className="h-dvh overflow-hidden bg-slate-950">
-      <ConnectionStatus />
+    <FinanceLayoutContext.Provider value={{ isInFinanceLayout: true, setTitle: setDynamicTitle, title: dynamicTitle }}>
+      <div className="h-dvh overflow-hidden bg-slate-950">
+        <ConnectionStatus />
       <OfflineNotification />
       <PWAUpdatePrompt />
 
@@ -290,24 +324,25 @@ export const FinanceLayout = ({ children, title = 'Finance Hub' }: FinanceLayout
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <h1 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight truncate">{title}</h1>
+              <h1 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight truncate">{dynamicTitle}</h1>
             </div>
             <div className="flex items-center gap-3">
               <NotificationBell />
               <div className="hidden sm:block w-56">
-                <BranchSelector />
+                <BranchSelector hideLabel />
               </div>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] lg:pb-8 sm:p-6 lg:p-8">
           <div className="max-w-7xl mx-auto space-y-4">
             <PasskeySetupBanner />
-            {children}
+            {children || <Outlet />}
           </div>
         </main>
       </div>
     </div>
+    </FinanceLayoutContext.Provider>
   );
 };

@@ -1,5 +1,5 @@
-import { type ReactNode, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { type ReactNode, useState, useEffect, createContext, useContext } from 'react';
+import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -16,8 +16,22 @@ import { PWAUpdatePrompt } from './ui/PWAUpdatePrompt';
 import { NotificationBell } from './NotificationBell';
 import { ConfirmDialog } from './ui/ConfirmDialog';
 
+interface MarketerLayoutContextType {
+  isInMarketerLayout: boolean;
+  setTitle: (title: string) => void;
+  title: string;
+}
+
+export const MarketerLayoutContext = createContext<MarketerLayoutContextType>({
+  isInMarketerLayout: false,
+  setTitle: () => {},
+  title: 'Marketer Dashboard',
+});
+
+export const useMarketerLayoutContext = () => useContext(MarketerLayoutContext);
+
 interface MarketerLayoutProps {
-  children: ReactNode;
+  children?: ReactNode;
   title?: string;
 }
 
@@ -27,6 +41,25 @@ export const MarketerLayout = ({ children, title = 'Marketer Dashboard' }: Marke
   const { user, clearAuth } = useAuthStore();
   const { selectedBranch } = useBranchStore();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const parentMarketer = useContext(MarketerLayoutContext);
+  const [dynamicTitle, setDynamicTitle] = useState(title);
+
+  useEffect(() => {
+    if (title && title !== 'Marketer Dashboard') {
+      setDynamicTitle(title);
+    }
+  }, [title]);
+
+  useEffect(() => {
+    if (parentMarketer.isInMarketerLayout && title && title !== 'Marketer Dashboard') {
+      parentMarketer.setTitle(title);
+    }
+  }, [parentMarketer, title]);
+
+  if (parentMarketer.isInMarketerLayout) {
+    return <>{children || <Outlet />}</>;
+  }
 
   const handleLogout = async () => {
     try {
@@ -63,8 +96,9 @@ export const MarketerLayout = ({ children, title = 'Marketer Dashboard' }: Marke
   ];
 
   return (
-    <div className="min-h-dvh bg-slate-950 flex flex-col">
-      <PWAUpdatePrompt />
+    <MarketerLayoutContext.Provider value={{ isInMarketerLayout: true, setTitle: setDynamicTitle, title: dynamicTitle }}>
+      <div className="min-h-dvh bg-slate-950 flex flex-col">
+        <PWAUpdatePrompt />
 
       {/* Modern Top Header */}
       <header className="bg-slate-900/80 backdrop-blur-xl border-b border-white/[0.08] sticky top-0 z-30 pt-safe-top">
@@ -135,12 +169,12 @@ export const MarketerLayout = ({ children, title = 'Marketer Dashboard' }: Marke
 
         <main className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight">{title}</h2>
+            <h2 className="text-base sm:text-lg font-bold text-slate-100 tracking-tight">{dynamicTitle}</h2>
           </div>
 
           <PasskeySetupBanner />
 
-          {children}
+          {children || <Outlet />}
         </main>
       </div>
 
@@ -154,5 +188,6 @@ export const MarketerLayout = ({ children, title = 'Marketer Dashboard' }: Marke
         variant="danger"
       />
     </div>
+    </MarketerLayoutContext.Provider>
   );
 };

@@ -24,7 +24,10 @@ import { ParkedSalesBar } from '../../components/pos/ParkedSalesBar';
 import { QuickKeysGrid } from '../../components/pos/QuickKeysGrid';
 import type { QuickKeyProduct } from '../../stores/quick-keys-store';
 import { queryKeys } from '../../lib/query-keys';
+import { NotificationBell } from '../../components/NotificationBell';
+import { usePOSSidebarStore } from '../../stores/pos-sidebar-store';
 import {
+  Menu,
   Search,
   ScanLine,
   LayoutGrid,
@@ -37,6 +40,9 @@ import {
   Percent,
   ArrowRight,
   Package,
+  AlertCircle,
+  Clock,
+  RotateCcw,
 } from 'lucide-react';
 
 interface Shift {
@@ -101,15 +107,21 @@ export const POSPage = () => {
     updateQuantity, 
     total, 
     subtotal, 
-    discount 
+    discount,
+    manualDiscount,
+    promotionId,
+    prescriptionUrl,
+    clearCart 
   } = useCartStore();
   const heldSales = useHeldSalesStore((s) => s.heldSales);
+  const holdSale = useHeldSalesStore((s) => s.holdSale);
   const recallHeldSale = useHeldSalesStore((s) => s.recallSale);
   const discardHeldSale = useHeldSalesStore((s) => s.discardSale);
   const restoreCart = useCartStore((s) => s.restoreCart);
   const { showSuccess, showError } = useToast();
   const requestConfirmation = useConfirm();
   const { format, symbol } = useCurrency();
+  const openPOSSidebar = usePOSSidebarStore((s) => s.openSidebar);
   
   // Helper to convert stock to readable units
   const getStockDisplay = (stock: number, unit: string, packSizes?: PackSize[]): string => {
@@ -170,8 +182,22 @@ export const POSPage = () => {
   const [scanFeedback, setScanFeedback] = useState<{ message: string; ok: boolean } | null>(null);
   const [showPackSizeModal, setShowPackSizeModal] = useState(false);
   const [selectedProductForPack, setSelectedProductForPack] = useState<Product | null>(null);
+  const [packSelectionQty, setPackSelectionQty] = useState(1);
   const [productViewMode, setProductViewMode] = useState<'grid' | 'list'>('grid');
   const scanFeedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevBranchIdRef = useRef<string | undefined>(selectedBranch?._id);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // When branch changes, reset active cart to prevent cross-branch inventory conflicts
+  useEffect(() => {
+    if (prevBranchIdRef.current && selectedBranch?._id && prevBranchIdRef.current !== selectedBranch._id) {
+      if (items.length > 0) {
+        clearCart();
+        alertInfo('Switched branch: active cart was cleared to match the new branch inventory.');
+      }
+    }
+    prevBranchIdRef.current = selectedBranch?._id;
+  }, [selectedBranch?._id, items.length, clearCart, alertInfo]);
 
   const { isAvailable: cameraAvailable, startContinuousScan, stopContinuousScan } = useBarcodeScanner();
 
@@ -573,10 +599,11 @@ export const POSPage = () => {
     });
   };
 
-  const handleAddToCart = (product: Product, packSize?: PackSize) => {
+  const handleAddToCart = (product: Product, packSize?: PackSize, customQty = 1) => {
     if (product.stock <= 0) return;
-    if (packSize && product.stock < packSize.quantityPerPack) {
-      alertWarning(`Not enough stock for ${packSize.name}. Available: ${getStockDisplay(product.stock, product.unit, product.packSizes)}.`);
+    const requiredStock = (packSize ? packSize.quantityPerPack : 1) * customQty;
+    if (product.stock < requiredStock) {
+      alertWarning(`Not enough stock for ${customQty}x ${packSize ? packSize.name : product.unit}. Available: ${getStockDisplay(product.stock, product.unit, product.packSizes)}.`);
       return;
     }
     if (!currentShift || currentShift.status !== 'open') {
@@ -588,6 +615,7 @@ export const POSPage = () => {
     const hasPackSizes = product.packSizes && product.packSizes.length > 0;
     if (hasPackSizes && !packSize) {
       setSelectedProductForPack(product);
+      setPackSelectionQty(1);
       setShowPackSizeModal(true);
       return;
     }
@@ -602,12 +630,12 @@ export const POSPage = () => {
       brand: product.brand,
       sku: product.sku,
       barcode: packSize?.barcode || product.barcode || '',
-      quantity: 1,
+      quantity: customQty,
       unitPrice,
       requiresPrescription: product.requiresPrescription,
       baseUnit,
       packSize: packSize || undefined,
-      quantityInBaseUnits: quantityPerPack,
+      quantityInBaseUnits: quantityPerPack * customQty,
     });
   };
 
@@ -623,6 +651,74 @@ export const POSPage = () => {
       : undefined;
     handleAddToCart(product, packSize);
   };
+
+  const handleParkSale = useCallback(() => {
+    if (items.length === 0) return;
+    const branchId = getBranchId(selectedBranch) || user?.branchId || '';
+    const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const label = `Sale (${items.length} item${items.length > 1 ? 's' : ''}) · ${timestamp}`;
+    
+    holdSale({
+      label,
+      items: [...items],
+      discount,
+      manualDiscount,
+      promotionId,
+      prescriptionUrl,
+      heldBy: user?.id || 'cashier',
+      branchId,
+      subtotal,
+      total,
+    });
+    clearCart();
+    showSuccess(`Parked sale: "${label}". Register is ready for the next customer.`);
+  }, [items, selectedBranch, user, discount, manualDiscount, promotionId, prescriptionUrl, subtotal, total, holdSale, clearCart, showSuccess]);
+
+  // Global POS Keyboard Shortcuts (F1/slash for search, F4/Ctrl+Enter for checkout, F8 for park sale, Esc to clear)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInput = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT';
+
+      // Focus search: '/' (when not typing) or 'Ctrl+K' / 'Cmd+K' or 'F1'
+      if ((e.key === '/' && !isInput) || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || e.key === 'F1') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
+      // Escape: clear search query or blur search input
+      if (e.key === 'Escape' && document.activeElement === searchInputRef.current) {
+        if (searchQuery) {
+          setSearchQuery('');
+        }
+        searchInputRef.current?.blur();
+        return;
+      }
+
+      // Quick checkout: F4 or (Ctrl+Enter / Cmd+Enter)
+      if (e.key === 'F4' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) {
+        if (items.length > 0) {
+          e.preventDefault();
+          navigate('/pos/payment');
+        }
+        return;
+      }
+
+      // Quick park sale: F8
+      if (e.key === 'F8') {
+        if (items.length > 0) {
+          e.preventDefault();
+          handleParkSale();
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [items, searchQuery, navigate, handleParkSale]);
 
 
   const categories = [
@@ -676,39 +772,101 @@ export const POSPage = () => {
   }
 
   return (
-    <POSLayout>
+    <POSLayout hideHeader>
       <div className="flex flex-col h-full overflow-hidden">
         {/* Top Bar */}
-        <div className="bg-linear-to-r from-primary-dark to-primary-darker border-b border-gray-700 px-4 sm:px-6 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-y-2 gap-x-4">
-          {/* Left: Branch Info */}
-          <div className="flex items-center space-x-3 min-w-0">
-            <div className="w-12 h-12 rounded-xl bg-linear-to-br from-accent-green to-emerald-600 flex items-center justify-center text-primary-dark font-bold text-lg shrink-0">
-              {selectedBranch?.name?.charAt(0) || 'N'}
+        <div className="bg-linear-to-r from-primary-dark to-primary-darker border-b border-gray-700 px-3 sm:px-6 py-2.5 sm:py-3 shrink-0">
+          <div className="flex items-center justify-between gap-2 sm:gap-4">
+            {/* Left: Menu Toggle (mobile) + Branch Info */}
+            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+              <button
+                type="button"
+                onClick={openPOSSidebar}
+                className="lg:hidden p-2 -ml-1 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors active:scale-95 shrink-0"
+                aria-label="Open navigation menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
+              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-linear-to-br from-accent-green to-emerald-600 flex items-center justify-center text-primary-dark font-bold text-sm sm:text-base shrink-0 shadow-sm">
+                {selectedBranch?.name?.charAt(0) || 'N'}
+              </div>
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-base font-bold text-white truncate leading-tight">
+                  {selectedBranch?.name || 'No Branch'}
+                </h1>
+                <p className="text-[11px] sm:text-xs text-gray-400 truncate">
+                  Terminal - {currentShift?.status === 'open' ? 'Shift Open' : 'No Shift'}
+                </p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <h1 className="text-base font-bold text-white truncate">{selectedBranch?.name || 'No Branch'}</h1>
-              <p className="text-xs text-gray-400 truncate">Terminal - {currentShift?.status === 'open' ? 'Shift Open' : 'No Shift'}</p>
+
+            {/* Center: Shift Status (hidden on small mobile, shown on md/lg) */}
+            <div className="hidden md:flex items-center gap-2">
+              {currentShift?.status === 'open' ? (
+                <>
+                  <div className="flex items-center space-x-2 px-3 py-1.5 min-h-10 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                    <span className="text-green-400 text-xs font-medium">Shift Active</span>
+                  </div>
+                  <button
+                    onClick={() => setShowCloseShiftModal(true)}
+                    className="px-3.5 py-1.5 min-h-10 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-xs font-medium hover:bg-red-500/20 transition-colors cursor-pointer"
+                  >
+                    Close Shift
+                  </button>
+                  <button
+                    onClick={() => setShowExpenseModal(true)}
+                    className="px-3.5 py-1.5 min-h-10 bg-orange-500/10 border border-orange-500/30 rounded-lg text-orange-300 text-xs font-medium hover:bg-orange-500/20 transition-colors cursor-pointer"
+                  >
+                    Log Expense
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setShowShiftModal(true)}
+                  className="px-4 py-1.5 min-h-10 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-colors cursor-pointer"
+                >
+                  Open Shift
+                </button>
+              )}
+            </div>
+
+            {/* Right: Online Status + Notifications + User Avatar */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className={`flex items-center space-x-1.5 px-2 py-1 rounded-lg ${wsConnected ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
+                <span className="text-[11px] font-medium hidden sm:inline">{wsConnected ? 'Online' : 'Offline'}</span>
+              </div>
+              <div className="lg:hidden">
+                <NotificationBell />
+              </div>
+              <button 
+                onClick={() => setShowProfile(true)}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-linear-to-br from-accent-green to-emerald-600 flex items-center justify-center text-primary-dark font-bold text-xs sm:text-sm hover:shadow-lg hover:shadow-accent-green/50 transition-shadow active:scale-95 shrink-0 cursor-pointer"
+                aria-label="User Profile"
+              >
+                {user?.firstName?.[0]}{user?.lastName?.[0]}
+              </button>
             </div>
           </div>
 
-          {/* Center: Shift Status */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Mobile Shift Status Bar (Row 2 - on mobile < md) */}
+          <div className="md:hidden flex items-center gap-2 overflow-x-auto no-scrollbar pt-2 mt-2 border-t border-white/[0.08]">
             {currentShift?.status === 'open' ? (
               <>
-                <div className="flex items-center space-x-2 px-3 py-1.5 min-h-10 bg-green-500/10 border border-green-500/30 rounded-lg">
-                  <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                <div className="flex items-center space-x-1.5 px-2.5 py-1 bg-green-500/10 border border-green-500/30 rounded-lg shrink-0">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                   <span className="text-green-400 text-xs font-medium">Shift Active</span>
                 </div>
                 <button
                   onClick={() => setShowCloseShiftModal(true)}
-                  className="px-4 py-1.5 min-h-10 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-xs font-medium hover:bg-red-500/20 transition-colors"
+                  className="px-3 py-1 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-xs font-medium hover:bg-red-500/20 transition-colors shrink-0"
                 >
                   Close Shift
                 </button>
                 <button
                   onClick={() => setShowExpenseModal(true)}
-                  className="px-4 py-1.5 min-h-10 bg-orange-500/10 border border-orange-500/30 rounded-lg text-orange-300 text-xs font-medium hover:bg-orange-500/20 transition-colors"
+                  className="px-3 py-1 bg-orange-500/10 border border-orange-500/30 rounded-lg text-orange-300 text-xs font-medium hover:bg-orange-500/20 transition-colors shrink-0"
                 >
                   Log Expense
                 </button>
@@ -716,28 +874,13 @@ export const POSPage = () => {
             ) : (
               <button
                 onClick={() => setShowShiftModal(true)}
-                className="px-4 py-1.5 min-h-10 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-colors"
+                className="px-3.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 text-xs font-medium hover:bg-amber-500/20 transition-colors shrink-0"
               >
                 Open Shift
               </button>
             )}
           </div>
-
-          {/* Right: User & Status */}
-          <div className="flex items-center gap-2">
-            <div className={`flex items-center space-x-2 px-2 py-1 min-h-10 rounded-lg ${wsConnected ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-              <div className={`w-2 h-2 rounded-full ${wsConnected ? 'bg-green-400' : 'bg-red-400'} ${wsConnected ? 'animate-pulse' : ''}`} />
-              <span className={`text-xs font-medium ${wsConnected ? 'text-green-400' : 'text-red-400'}`}>{wsConnected ? 'Online' : 'Offline'}</span>
-            </div>
-            <button 
-              onClick={() => setShowProfile(true)}
-              className="w-12 h-12 rounded-xl bg-linear-to-br from-accent-green to-emerald-600 flex items-center justify-center text-primary-dark font-bold text-sm hover:shadow-lg hover:shadow-accent-green/50 transition-shadow"
-            >
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
-            </button>
-          </div>
         </div>
-      </div>
 
       {/* Parked Sales Banner */}
       {heldSales.length > 0 && (
@@ -788,12 +931,32 @@ export const POSPage = () => {
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search drug name, brand, SKU, or barcode..."
-                  className="w-full pl-11 pr-4 py-2.5 bg-slate-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 text-sm transition-all shadow-xs"
+                  className="w-full pl-11 pr-16 py-2.5 bg-slate-900/80 border border-white/10 rounded-xl text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 text-sm transition-all shadow-xs"
                 />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        searchInputRef.current?.focus();
+                      }}
+                      className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                      title="Clear search (Esc)"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <kbd className="hidden sm:inline-flex items-center px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-white/5 border border-white/10 rounded">
+                      /
+                    </kbd>
+                  )}
+                </div>
               </div>
 
               {/* Scan Mode Toggle - native only */}
@@ -936,6 +1099,34 @@ export const POSPage = () => {
                           </span>
                         )}
                       </div>
+
+                      {/* 1-Tap Quick Packaging Chips */}
+                      {product.packSizes && product.packSizes.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2 pt-1.5 border-t border-white/[0.04]" onClick={(e) => e.stopPropagation()}>
+                          {product.packSizes.slice(0, 3).map((pack) => {
+                            const hasStock = product.stock >= pack.quantityPerPack;
+                            return (
+                              <button
+                                key={pack.unit}
+                                type="button"
+                                disabled={!hasStock}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleAddToCart(product, pack, 1);
+                                }}
+                                className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold transition-all border ${
+                                  hasStock
+                                    ? 'bg-emerald-500/10 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-300 hover:scale-105 active:scale-95'
+                                    : 'bg-slate-900 border-white/5 text-slate-500 opacity-50 cursor-not-allowed'
+                                }`}
+                                title={`1-Tap Add: 1 ${pack.name} (${pack.quantityPerPack} ${product.unit}s)`}
+                              >
+                                {pack.name}: {format(pack.sellingPrice)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -989,9 +1180,33 @@ export const POSPage = () => {
                             <span>Stock: {getStockDisplay(product.stock, product.unit, product.packSizes)}</span>
                           </div>
                           {product.packSizes && product.packSizes.length > 0 && (
-                            <p className="mt-1 text-[11px] font-medium text-slate-500">
-                              Packs: {product.packSizes.map((pack) => pack.name).join(', ')}
-                            </p>
+                            <div className="mt-2.5 flex flex-wrap items-center gap-1.5 pt-2 border-t border-white/[0.04]" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Quick Add:</span>
+                              {product.packSizes.map((pack) => {
+                                const hasStock = product.stock >= pack.quantityPerPack;
+                                return (
+                                  <button
+                                    key={pack.unit}
+                                    type="button"
+                                    disabled={!hasStock}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddToCart(product, pack, 1);
+                                    }}
+                                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all border ${
+                                      hasStock
+                                        ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/25 text-emerald-300 hover:scale-[1.02] active:scale-95'
+                                        : 'bg-slate-950 border-white/5 text-slate-500 opacity-50 cursor-not-allowed'
+                                    }`}
+                                    title={`1-Tap Add: 1 ${pack.name} (${pack.quantityPerPack} ${product.unit}s)`}
+                                  >
+                                    <span className="font-semibold text-white">{pack.name}</span>
+                                    <span className="text-slate-400 text-[10px]">({pack.quantityPerPack} {product.unit}s)</span>
+                                    <span className="text-emerald-400 font-mono font-bold ml-0.5">{format(pack.sellingPrice)}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
                           )}
                         </div>
                       </button>
@@ -1012,12 +1227,30 @@ export const POSPage = () => {
               </div>
             ) : (
               <div className="flex items-center justify-center h-full py-12">
-                <div className="text-center">
+                <div className="text-center max-w-xs">
                   <div className="w-14 h-14 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mx-auto mb-3 text-slate-500">
                     <Package className="w-6 h-6 stroke-[1.5]" />
                   </div>
                   <p className="text-slate-300 font-semibold text-sm">No products found</p>
-                  <p className="text-slate-500 text-xs mt-1">Try adjusting your search or filters</p>
+                  <p className="text-slate-500 text-xs mt-1">
+                    {searchQuery
+                      ? `No items matching "${searchQuery}"`
+                      : 'Try adjusting your category or stock filter'}
+                  </p>
+                  {(searchQuery || selectedCategory !== 'all') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSelectedCategory('all');
+                        searchInputRef.current?.focus();
+                      }}
+                      className="mt-3 px-3.5 py-1.5 text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      Reset filters
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -1129,19 +1362,34 @@ export const POSPage = () => {
 
               {/* Action Buttons */}
               <div className="border-t border-white/[0.08] px-5 py-4 space-y-2 bg-slate-900/90">
-                <button
-                  onClick={() => navigate('/pos/discounts')}
-                  className="w-full py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 rounded-xl text-slate-300 hover:text-white font-medium text-xs transition-colors flex items-center justify-center space-x-1.5"
-                >
-                  <Percent className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Apply Discount</span>
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => navigate('/pos/discounts')}
+                    className="py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 rounded-xl text-slate-300 hover:text-white font-medium text-xs transition-colors flex items-center justify-center space-x-1.5"
+                  >
+                    <Percent className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Discount</span>
+                  </button>
+                  <button
+                    onClick={handleParkSale}
+                    title="Park active sale (F8)"
+                    className="py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 rounded-xl text-amber-300 hover:text-amber-200 font-medium text-xs transition-colors flex items-center justify-center space-x-1.5"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Park (F8)</span>
+                  </button>
+                </div>
                 <button
                   onClick={() => navigate('/pos/payment')}
-                  className="w-full py-2.5 bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center space-x-1.5 active:scale-[0.99]"
+                  className="w-full py-2.5 bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-xl text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-between px-4 active:scale-[0.99]"
                 >
-                  <span>Proceed to Checkout</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <div className="flex items-center space-x-1.5">
+                    <span>Proceed to Checkout</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </div>
+                  <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-black/15 text-slate-950 rounded font-bold">
+                    F4
+                  </kbd>
                 </button>
               </div>
             </>
@@ -1270,16 +1518,28 @@ export const POSPage = () => {
             </div>
 
             <div className="px-4 pb-6 pb-safe-bottom space-y-2">
-              <button
-                onClick={() => {
-                  setShowMobileCart(false);
-                  navigate('/pos/discounts');
-                }}
-                className="w-full py-2.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 rounded-xl text-slate-300 hover:text-white font-medium text-xs transition-colors flex items-center justify-center space-x-1.5"
-              >
-                <Percent className="w-3.5 h-3.5 text-slate-400" />
-                <span>Apply Discount</span>
-              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    setShowMobileCart(false);
+                    navigate('/pos/discounts');
+                  }}
+                  className="py-2.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 rounded-xl text-slate-300 hover:text-white font-medium text-xs transition-colors flex items-center justify-center space-x-1.5"
+                >
+                  <Percent className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Discount</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMobileCart(false);
+                    handleParkSale();
+                  }}
+                  className="py-2.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 rounded-xl text-amber-300 hover:text-amber-200 font-medium text-xs transition-colors flex items-center justify-center space-x-1.5"
+                >
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Park Sale</span>
+                </button>
+              </div>
               <button
                 onClick={() => {
                   setShowMobileCart(false);
@@ -1297,19 +1557,21 @@ export const POSPage = () => {
 
       {/* Stock Warning Toast */}
       {stockWarning && (
-        <div className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-4 z-50 max-w-sm">
-          <div className="bg-yellow-500 text-primary-dark px-4 py-3 rounded-xl shadow-lg flex items-start space-x-3">
-            <svg className="w-6 h-6 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <div className="flex-1">
-              <p className="font-semibold">Stock Update</p>
-              <p className="text-sm">{stockWarning.message}</p>
+        <div className="fixed top-[calc(1rem+env(safe-area-inset-top))] right-4 z-50 max-w-sm animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="bg-amber-950/80 border border-amber-500/40 text-amber-100 px-4 py-3.5 rounded-2xl shadow-2xl shadow-black/80 backdrop-blur-xl flex items-start space-x-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+              <AlertCircle className="w-4 h-4" />
             </div>
-            <button onClick={() => setStockWarning(null)} className="text-primary-dark/70 hover:text-primary-dark">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            <div className="flex-1 min-w-0 pt-0.5">
+              <p className="text-xs font-bold text-amber-300">Stock Update</p>
+              <p className="text-xs text-amber-200/90 mt-0.5 leading-relaxed">{stockWarning.message}</p>
+            </div>
+            <button
+              onClick={() => setStockWarning(null)}
+              className="text-amber-400/60 hover:text-amber-200 hover:bg-amber-500/10 p-1.5 rounded-lg transition-colors shrink-0"
+              aria-label="Dismiss stock update"
+            >
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -1358,68 +1620,205 @@ export const POSPage = () => {
       <Modal
         isOpen={showPackSizeModal && !!selectedProductForPack}
         onClose={() => setShowPackSizeModal(false)}
-        title="Select Pack Size"
-        size="sm"
+        title="Select Packaging & Quantity"
+        size="md"
       >
         {selectedProductForPack && (
           <div className="space-y-4">
-            <p className="text-xs text-slate-400 -mt-2">{selectedProductForPack.name}</p>
-
-            <div className="space-y-2.5 max-h-[60vh] overflow-y-auto pr-1">
-              {/* Base unit option */}
-              <button
-                type="button"
-                onClick={() => {
-                  handleAddToCart(selectedProductForPack, undefined);
-                  setShowPackSizeModal(false);
-                }}
-                className="w-full p-3.5 bg-slate-950/60 border border-white/10 rounded-xl text-left hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all group"
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-white font-medium text-sm group-hover:text-emerald-300 transition-colors">
-                      {selectedProductForPack.unit || 'Unit'}
-                    </p>
-                    <p className="text-slate-400 text-xs mt-0.5">1 {selectedProductForPack.unit || 'unit'}</p>
-                  </div>
-                  <p className="text-emerald-400 font-bold font-mono text-sm">{format(selectedProductForPack.price)}</p>
+            {/* Header info */}
+            <div className="p-3.5 bg-slate-950/70 border border-white/10 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-white font-semibold text-base truncate">
+                    {selectedProductForPack.name}
+                  </h3>
+                  {selectedProductForPack.brand && (
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-white/10">
+                      {selectedProductForPack.brand}
+                    </span>
+                  )}
+                  {selectedProductForPack.sku && (
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-slate-900 text-slate-400 border border-white/5">
+                      SKU: {selectedProductForPack.sku}
+                    </span>
+                  )}
                 </div>
-              </button>
+                <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-400">
+                  <span className="inline-flex items-center gap-1">
+                    <Package className="w-3.5 h-3.5 text-emerald-400" />
+                    Available Stock:
+                  </span>
+                  <span className="font-medium text-emerald-300">
+                    {getStockDisplay(selectedProductForPack.stock, selectedProductForPack.unit, selectedProductForPack.packSizes)}
+                  </span>
+                  <span className="text-slate-500">({selectedProductForPack.stock} base {selectedProductForPack.unit}s)</span>
+                </div>
+              </div>
 
-              {/* Pack size options */}
+              {/* Quantity Stepper */}
+              <div className="flex items-center gap-2 bg-slate-900/90 border border-white/10 rounded-xl p-1.5 self-start sm:self-auto">
+                <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold px-2">Qty:</span>
+                <button
+                  type="button"
+                  onClick={() => setPackSelectionQty((prev) => Math.max(1, prev - 1))}
+                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-colors disabled:opacity-30"
+                  disabled={packSelectionQty <= 1}
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className="w-8 text-center font-bold font-mono text-white text-sm">
+                  {packSelectionQty}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setPackSelectionQty((prev) => prev + 1)}
+                  className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 text-white flex items-center justify-center transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Packaging Option Cards */}
+            <div className="space-y-2.5 max-h-[55vh] overflow-y-auto pr-1">
+              {/* Base unit option */}
+              {(() => {
+                const baseStockRequired = 1 * packSelectionQty;
+                const hasBaseStock = selectedProductForPack.stock >= baseStockRequired;
+                const totalBasePrice = selectedProductForPack.price * packSelectionQty;
+
+                return (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!hasBaseStock) return;
+                      handleAddToCart(selectedProductForPack, undefined, packSelectionQty);
+                      setShowPackSizeModal(false);
+                    }}
+                    disabled={!hasBaseStock}
+                    className={`w-full p-4 rounded-2xl border text-left transition-all group flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      !hasBaseStock
+                        ? 'bg-slate-950/40 border-rose-500/20 opacity-50 cursor-not-allowed'
+                        : 'bg-slate-950/70 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/[0.04]'
+                    }`}
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-semibold text-sm group-hover:text-emerald-300 transition-colors">
+                          Single {selectedProductForPack.unit || 'Unit'}
+                        </span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-white/10">
+                          Base Unit
+                        </span>
+                      </div>
+                      <p className="text-slate-400 text-xs">
+                        1 {selectedProductForPack.unit || 'unit'} per item
+                      </p>
+                      <p className="text-[11px] text-slate-400">
+                        Stock: <span className={hasBaseStock ? 'text-emerald-400 font-medium' : 'text-rose-400 font-medium'}>{selectedProductForPack.stock} available</span>
+                      </p>
+                      {!hasBaseStock && (
+                        <p className="text-[11px] text-rose-400 font-medium">
+                          Insufficient stock for {packSelectionQty} {selectedProductForPack.unit || 'unit'}(s)
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="text-right sm:self-center">
+                      <p className="text-emerald-400 font-bold font-mono text-base">
+                        {format(totalBasePrice)}
+                      </p>
+                      {packSelectionQty > 1 && (
+                        <p className="text-[11px] text-slate-400 font-mono">
+                          {format(selectedProductForPack.price)} each
+                        </p>
+                      )}
+                      {hasBaseStock && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400/80 font-medium mt-1 group-hover:text-emerald-300">
+                          Add {packSelectionQty} to cart <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                );
+              })()}
+
+              {/* Pack sizes options */}
               {selectedProductForPack.packSizes?.map((pack) => {
-                const hasStock = selectedProductForPack.stock >= pack.quantityPerPack;
+                const stockRequired = pack.quantityPerPack * packSelectionQty;
+                const availablePacks = Math.floor(selectedProductForPack.stock / pack.quantityPerPack);
+                const hasPackStock = selectedProductForPack.stock >= stockRequired;
+                const totalPackPrice = pack.sellingPrice * packSelectionQty;
+
+                // Bulk price & savings comparison
+                const effectiveUnitPrice = pack.quantityPerPack > 0 ? pack.sellingPrice / pack.quantityPerPack : pack.sellingPrice;
+                const regularPrice = selectedProductForPack.price || 0;
+                const savingsPercent =
+                  regularPrice > 0 && effectiveUnitPrice < regularPrice
+                    ? Math.round(((regularPrice - effectiveUnitPrice) / regularPrice) * 100)
+                    : 0;
+
                 return (
                   <button
                     key={pack.unit}
                     type="button"
                     onClick={() => {
-                      if (!hasStock) return;
-                      handleAddToCart(selectedProductForPack, pack);
+                      if (!hasPackStock) return;
+                      handleAddToCart(selectedProductForPack, pack, packSelectionQty);
                       setShowPackSizeModal(false);
                     }}
-                    disabled={!hasStock}
-                    className={`w-full p-3.5 bg-slate-950/60 border rounded-xl text-left transition-all group ${
-                      !hasStock
-                        ? 'cursor-not-allowed border-rose-500/20 opacity-50'
-                        : 'border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/5'
+                    disabled={!hasPackStock}
+                    className={`w-full p-4 rounded-2xl border text-left transition-all group flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      !hasPackStock
+                        ? 'bg-slate-950/40 border-rose-500/20 opacity-50 cursor-not-allowed'
+                        : 'bg-slate-950/70 border-white/10 hover:border-emerald-500/50 hover:bg-emerald-500/[0.04]'
                     }`}
                   >
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <p className={`font-medium text-sm transition-colors ${hasStock ? 'text-white group-hover:text-emerald-300' : 'text-slate-400'}`}>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`font-semibold text-sm transition-colors ${hasPackStock ? 'text-white group-hover:text-emerald-300' : 'text-slate-400'}`}>
                           {pack.name}
-                        </p>
-                        <p className="text-slate-400 text-xs mt-0.5">
-                          {pack.quantityPerPack} {selectedProductForPack.unit}s per {pack.name.toLowerCase()}
-                        </p>
-                        {!hasStock && (
-                          <p className="mt-1 text-[11px] text-rose-400 font-medium">Not enough stock for this pack</p>
+                        </span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                          {pack.quantityPerPack} {selectedProductForPack.unit}s
+                        </span>
+                        {savingsPercent > 0 && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-0.5">
+                            <Percent className="w-2.5 h-2.5" />
+                            SAVE {savingsPercent}%
+                          </span>
                         )}
                       </div>
-                      <p className={`font-bold font-mono text-sm ${hasStock ? 'text-emerald-400' : 'text-slate-500'}`}>
-                        {format(pack.sellingPrice)}
+
+                      <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <span>≈ {format(effectiveUnitPrice)} / {selectedProductForPack.unit}</span>
+                        <span className="text-slate-600">·</span>
+                        <span className={availablePacks > 0 ? 'text-slate-300' : 'text-rose-400'}>
+                          {availablePacks} {pack.name.toLowerCase()}(s) in stock
+                        </span>
+                      </div>
+
+                      {!hasPackStock && (
+                        <p className="text-[11px] text-rose-400 font-medium pt-0.5">
+                          Insufficient stock for {packSelectionQty} {pack.name.toLowerCase()}(s) ({stockRequired} {selectedProductForPack.unit}s needed)
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="text-right sm:self-center">
+                      <p className={`font-bold font-mono text-base ${hasPackStock ? 'text-emerald-400' : 'text-slate-500'}`}>
+                        {format(totalPackPrice)}
                       </p>
+                      {packSelectionQty > 1 && (
+                        <p className="text-[11px] text-slate-400 font-mono">
+                          {format(pack.sellingPrice)} each
+                        </p>
+                      )}
+                      {hasPackStock && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400/80 font-medium mt-1 group-hover:text-emerald-300">
+                          Add {packSelectionQty} to cart <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                        </span>
+                      )}
                     </div>
                   </button>
                 );

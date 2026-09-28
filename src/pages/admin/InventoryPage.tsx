@@ -133,26 +133,26 @@ export function InventoryPage() {
 
   return (
     <AdminLayout title="Inventory" showMobileBranchSelector={false}>
-      <div className="mx-auto w-full max-w-6xl pb-24 sm:pb-0">
-        <header className="mb-4 sm:mb-8">
-          <p className="mb-2 hidden text-xs font-semibold uppercase tracking-[0.2em] text-accent-green sm:block">
-            Stock control
+      <div className="mx-auto w-full max-w-6xl pb-24 sm:pb-0 space-y-6 sm:space-y-8">
+        <header className="mb-2 sm:mb-4">
+          <p className="mb-2 hidden text-xs font-bold uppercase tracking-widest text-emerald-400 sm:block">
+            Stock Control & Logistics
           </p>
-          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-4xl">
-            Inventory Management
+          <h1 className="text-2xl font-extrabold tracking-tight text-white sm:text-4xl">
+            Inventory Hub
           </h1>
-          <p className="mt-2 hidden max-w-2xl text-sm leading-6 text-gray-400 sm:block sm:text-base">
-            Manage products, incoming stock, adjustments, transfers, and inventory reporting.
+          <p className="mt-2 hidden max-w-2xl text-xs leading-relaxed text-slate-400 sm:block sm:text-sm">
+            Manage product catalog, purchase orders, cycle audits, multi-branch stock transfers, and valuation reports.
           </p>
         </header>
 
         {visibleActions.length > 0 ? (
           <section aria-labelledby="inventory-actions-heading">
             <div className="mb-4 hidden items-center justify-between sm:flex">
-              <h2 id="inventory-actions-heading" className="text-sm font-semibold text-gray-300">
-                Inventory tools
+              <h2 id="inventory-actions-heading" className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Core Operations
               </h2>
-              <span className="text-xs text-gray-500">Choose an action</span>
+              <span className="text-xs text-slate-500">Select an action</span>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
@@ -162,29 +162,29 @@ export function InventoryPage() {
                   <Link
                     key={module.path}
                     to={module.path}
-                    className={`group flex min-h-44 flex-col items-center justify-center rounded-2xl border px-3 py-4 text-center transition duration-200 focus:outline-none focus:ring-2 focus:ring-accent-green/60 focus:ring-offset-2 focus:ring-offset-primary-darker sm:min-h-56 sm:px-6 sm:py-6 ${
+                    className={`group flex min-h-44 flex-col items-center justify-center rounded-2xl border px-3 py-5 text-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 sm:min-h-56 sm:px-6 sm:py-6 shadow-lg shadow-black/20 ${
                       module.featured
-                        ? 'border-amber-400/80 bg-amber-400/10 hover:border-amber-300 hover:bg-amber-400/15'
-                        : 'border-emerald-400/30 bg-primary-dark/70 hover:border-accent-green/70 hover:bg-primary-dark'
+                        ? 'border-amber-500/30 bg-amber-500/10 hover:border-amber-400 hover:bg-amber-500/15'
+                        : 'border-white/[0.08] bg-slate-900/80 hover:border-emerald-500/40 hover:bg-slate-850'
                     }`}
                   >
                     <span
-                      className={`mb-4 flex h-14 w-14 items-center justify-center rounded-full border transition-transform duration-200 group-hover:scale-105 sm:mb-5 sm:h-20 sm:w-20 ${
+                      className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border transition-transform duration-200 group-hover:scale-110 sm:mb-5 sm:h-16 sm:w-16 ${
                         module.featured
-                          ? 'border-amber-400/50 bg-amber-400/10 text-amber-300'
-                          : 'border-accent-green/25 bg-accent-green/5 text-emerald-300'
+                          ? 'border-amber-500/30 bg-amber-500/20 text-amber-300'
+                          : 'border-emerald-500/20 bg-emerald-500/10 text-emerald-400'
                       }`}
                     >
-                      <Icon className="h-7 w-7 sm:h-10 sm:w-10" strokeWidth={1.8} aria-hidden="true" />
+                      <Icon className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={1.8} aria-hidden="true" />
                     </span>
                     <h3
-                      className={`text-base font-bold leading-tight sm:text-lg ${
+                      className={`text-sm font-bold tracking-tight sm:text-base ${
                         module.featured ? 'text-amber-300' : 'text-white'
                       }`}
                     >
                       {module.title}
                     </h3>
-                    <p className="mt-2 text-xs leading-5 text-gray-400 sm:text-sm">
+                    <p className="mt-1.5 text-xs text-slate-400 leading-relaxed max-w-[200px]">
                       {module.description}
                     </p>
                   </Link>
@@ -197,33 +197,38 @@ export function InventoryPage() {
         {visibleReports.length > 0 ? (
           <section
             aria-labelledby="inventory-reports-heading"
-            className={`${visibleActions.length > 0 ? 'mt-6 sm:mt-8' : ''} rounded-2xl border border-emerald-400/25 bg-primary-dark/55 p-3 sm:p-5`}
+            className="rounded-2xl border border-white/[0.08] bg-slate-900/80 p-4 sm:p-6 shadow-lg backdrop-blur-md"
           >
-            <h2 id="inventory-reports-heading" className="mb-2 text-lg font-bold text-emerald-300 sm:mb-3">
-              Reports
-            </h2>
-            <div className="overflow-hidden rounded-xl border border-white/10 bg-black/10">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 id="inventory-reports-heading" className="text-base font-bold text-white tracking-tight">
+                  Inventory Reports & Audits
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">Automated valuation, movement, and expiry telemetry</p>
+              </div>
+            </div>
+            <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-slate-950/40">
               {visibleReports.map((module, index) => {
                 const Icon = module.icon;
                 return (
                   <Link
                     key={module.path}
                     to={module.path}
-                    className={`group flex min-h-14 items-center gap-3 px-3 py-2 transition-colors hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-green/60 sm:min-h-20 sm:gap-4 sm:px-5 sm:py-3 ${
-                      index > 0 ? 'border-t border-white/10' : ''
+                    className={`group flex min-h-14 items-center gap-3.5 px-4 py-3 transition-colors hover:bg-white/[0.04] focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500/60 sm:min-h-16 sm:gap-4 sm:px-5 ${
+                      index > 0 ? 'border-t border-white/[0.06]' : ''
                     }`}
                   >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-accent-green/10 text-emerald-300 sm:h-11 sm:w-11">
-                      <Icon className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={1.8} aria-hidden="true" />
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                      <Icon className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block font-semibold text-white">{module.title}</span>
-                      <span className="mt-0.5 hidden text-sm text-gray-400 sm:block">
+                      <span className="block font-semibold text-white text-sm">{module.title}</span>
+                      <span className="mt-0.5 hidden text-xs text-slate-400 sm:block">
                         {module.description}
                       </span>
                     </span>
                     <ChevronRight
-                      className="h-5 w-5 shrink-0 text-gray-500 transition group-hover:translate-x-0.5 group-hover:text-accent-green"
+                      className="h-5 w-5 shrink-0 text-slate-500 transition-transform group-hover:translate-x-1 group-hover:text-emerald-400"
                       aria-hidden="true"
                     />
                   </Link>
@@ -233,23 +238,23 @@ export function InventoryPage() {
           </section>
         ) : null}
 
-        <details className="group mt-4 rounded-2xl border border-emerald-400/25 bg-primary-dark/55 open:border-accent-green/40">
-          <summary className="flex min-h-16 cursor-pointer list-none items-center gap-3 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-green/60 sm:min-h-20 sm:gap-4 sm:px-5 sm:py-3 [&::-webkit-details-marker]:hidden">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent-green/10 text-emerald-300">
-              <Lightbulb className="h-6 w-6" strokeWidth={1.8} aria-hidden="true" />
+        <details className="group rounded-2xl border border-white/[0.08] bg-slate-900/60 open:border-emerald-500/30 transition-all">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center gap-3.5 px-4 py-3.5 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500/50 sm:px-5 [&::-webkit-details-marker]:hidden">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              <Lightbulb className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-semibold text-white">Quick Tips</span>
-              <span className="mt-0.5 block text-xs text-gray-400 sm:text-sm">
-                Best practices and helpful guidance
+              <span className="block font-semibold text-white text-sm">Best Practices & Guidelines</span>
+              <span className="mt-0.5 block text-xs text-slate-400">
+                Operating rules for high pharmacy inventory accuracy
               </span>
             </span>
-            <ChevronDown className="h-5 w-5 text-emerald-300 transition-transform group-open:rotate-180" aria-hidden="true" />
+            <ChevronDown className="h-5 w-5 text-emerald-400 transition-transform group-open:rotate-180" aria-hidden="true" />
           </summary>
-          <ul className="space-y-3 border-t border-white/10 px-5 py-4 text-sm leading-6 text-gray-300">
+          <ul className="space-y-2.5 border-t border-white/[0.06] px-5 py-4 text-xs leading-relaxed text-slate-300">
             {quickTips.map((tip) => (
-              <li key={tip} className="flex gap-3">
-                <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent-green" />
+              <li key={tip} className="flex gap-2.5 items-start">
+                <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
                 <span>{tip}</span>
               </li>
             ))}

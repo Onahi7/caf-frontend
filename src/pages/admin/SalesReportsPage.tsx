@@ -244,16 +244,16 @@ export default function SalesReportsPage() {
       </div>
     );
     return isPosContext ? (
-      <POSLayout>{noBranchContent}</POSLayout>
+      <POSLayout title="Sales Reports">{noBranchContent}</POSLayout>
     ) : (
-      <AdminLayout>{noBranchContent}</AdminLayout>
+      <AdminLayout title="Sales Reports">{noBranchContent}</AdminLayout>
     );
   }
 
   const pageContent = (
     <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-white">Sales Reports</h1>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Sales Reports</h1>
           <SaveReportButton
             reportKey="sales"
             route="/admin/reports/sales"
@@ -444,8 +444,8 @@ export default function SalesReportsPage() {
   );
 
   return isPosContext ? (
-    <POSLayout>{pageContent}</POSLayout>
+    <POSLayout title="Sales Reports">{pageContent}</POSLayout>
   ) : (
-    <AdminLayout>{pageContent}</AdminLayout>
+    <AdminLayout title="Sales Reports">{pageContent}</AdminLayout>
   );
 }

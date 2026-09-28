@@ -118,13 +118,13 @@ const Metric = ({
   label: string;
   value: string | number;
 }) => (
-  <div className="flex min-h-24 items-center gap-3 rounded-2xl border border-white/10 bg-primary-dark/55 p-3 sm:min-h-28 sm:p-4">
-    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-accent-green/25 bg-accent-green/5 text-accent-green">
+  <div className="flex min-h-24 items-center gap-3.5 rounded-2xl border border-white/[0.08] bg-slate-900/80 backdrop-blur-md hover:border-emerald-500/30 transition-all p-3.5 sm:min-h-28 sm:p-4 shadow-lg shadow-black/20">
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
       <Icon className="h-5 w-5" aria-hidden="true" />
     </div>
     <div className="min-w-0">
-      <p className="text-xs leading-tight text-gray-400 sm:text-sm">{label}</p>
-      <p className="mt-1 truncate text-lg font-bold text-white sm:text-xl">{value}</p>
+      <p className="text-xs leading-tight text-slate-400 font-medium sm:text-sm">{label}</p>
+      <p className="mt-1 truncate text-lg font-bold text-white tracking-tight tabular-nums sm:text-xl">{value}</p>
     </div>
   </div>
 );
@@ -139,15 +139,15 @@ const SectionHeader = ({
   onAction?: () => void;
 }) => (
   <div className="flex items-center justify-between gap-3">
-    <h2 className="text-lg font-bold text-white sm:text-xl">{title}</h2>
+    <h2 className="text-base font-bold text-white tracking-tight sm:text-lg">{title}</h2>
     {action && onAction ? (
       <button
         type="button"
         onClick={onAction}
-        className="flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-semibold text-accent-green hover:bg-accent-green/5"
+        className="flex min-h-9 items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
       >
         {action}
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
       </button>
     ) : null}
   </div>
@@ -214,7 +214,7 @@ export default function HQDashboardPage() {
       header: 'Low Stock',
       mobileVisible: true,
       render: (item: BranchInventory) => (
-        <span className={item.lowStockItems > 0 ? 'font-semibold text-amber-300' : 'text-accent-green'}>
+        <span className={item.lowStockItems > 0 ? 'font-semibold text-amber-300' : 'text-emerald-400'}>
           {item.lowStockItems}
         </span>
       ),
@@ -229,7 +229,7 @@ export default function HQDashboardPage() {
       header: 'Revenue',
       mobileVisible: true,
       render: (item: BranchSales) => (
-        <span className="font-semibold text-accent-green">
+        <span className="font-semibold text-emerald-400 tabular-nums font-mono">
           {item.totalRevenueFormatted || format(item.totalRevenue)}
         </span>
       ),
@@ -299,28 +299,28 @@ export default function HQDashboardPage() {
             <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Company Overview</h1>
             <p className="mt-1 text-sm text-gray-400">Multi-branch performance at a glance</p>
           </div>
-          <div className="flex min-h-11 items-center gap-2 rounded-xl border border-white/10 bg-primary-dark/50 px-3 text-sm text-gray-300">
-            <CalendarDays className="h-4 w-4 text-accent-green" aria-hidden="true" />
+          <div className="flex min-h-10 items-center gap-2 rounded-xl border border-white/[0.08] bg-slate-900/60 px-3.5 py-1.5 text-xs font-medium text-slate-300 shadow-sm">
+            <CalendarDays className="h-4 w-4 text-emerald-400" aria-hidden="true" />
             Last 30 days
           </div>
         </div>
 
-        <div className="hidden items-center gap-2 border-b border-white/10 lg:flex">
+        <div className="hidden items-center gap-2 border-b border-white/[0.08] lg:flex">
           {tabs.map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               type="button"
               onClick={() => setActiveTab(key)}
-              className={`relative flex min-h-12 items-center gap-2 border-b-2 px-4 text-sm font-semibold transition-colors ${
+              className={`relative flex min-h-12 items-center gap-2 border-b-2 px-4 text-sm font-semibold transition-all ${
                 activeTab === key
-                  ? 'border-accent-green text-white'
-                  : 'border-transparent text-gray-400 hover:text-white'
+                  ? 'border-emerald-500 text-white font-bold'
+                  : 'border-transparent text-slate-400 hover:text-white'
               }`}
             >
               <Icon className="h-4 w-4" aria-hidden="true" />
               {label}
               {key === 'alerts' && alertCount > 0 ? (
-                <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">{alertCount}</span>
+                <span className="rounded-full bg-rose-500 px-2 py-0.5 text-xs text-white font-bold shadow-xs shadow-rose-500/30">{alertCount}</span>
               ) : null}
             </button>
           ))}
@@ -329,25 +329,25 @@ export default function HQDashboardPage() {
         {activeTab === 'overview' ? (
           <div className="space-y-6">
             <section className="grid gap-4 lg:grid-cols-[1.45fr_1fr]">
-              <div className="flex min-h-52 flex-col justify-between rounded-2xl border border-accent-green/20 bg-primary-dark/65 p-5 sm:p-6">
+              <div className="flex min-h-52 flex-col justify-between rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-slate-900 via-slate-900/90 to-emerald-950/20 p-5 sm:p-6 shadow-xl shadow-black/30 backdrop-blur-xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-400">Revenue</p>
-                    <p className="mt-3 break-words text-3xl font-bold tracking-tight text-white sm:text-4xl">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Total Revenue</p>
+                    <p className="mt-3 break-words text-3xl font-extrabold tracking-tight text-white tabular-nums font-mono sm:text-4xl">
                       {primaryRevenue?.totalRevenueFormatted || format(primaryRevenue?.totalRevenue || 0)}
                     </p>
-                    <p className="mt-2 text-sm text-gray-400">
-                      {totalSales.toLocaleString()} transactions in the last 30 days
+                    <p className="mt-2 text-xs text-slate-400">
+                      <span className="text-slate-200 font-semibold">{totalSales.toLocaleString()}</span> transactions recorded in the last 30 days
                     </p>
                   </div>
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-accent-green/10 text-accent-green">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 shadow-md">
                     <TrendingUp className="h-6 w-6" aria-hidden="true" />
                   </div>
                 </div>
-                <div className="mt-6 flex flex-wrap gap-2 text-xs text-gray-400">
+                <div className="mt-6 flex flex-wrap gap-2 text-xs text-slate-400">
                   {salesTotalsByCurrency.map((total) => (
-                    <span key={total.currencyCode} className="rounded-full border border-white/10 px-3 py-1.5">
-                      {total.currencyCode}: {total.totalRevenueFormatted || format(total.totalRevenue || 0)}
+                    <span key={total.currencyCode} className="rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 tabular-nums">
+                      {total.currencyCode}: <span className="font-semibold text-slate-200">{total.totalRevenueFormatted || format(total.totalRevenue || 0)}</span>
                     </span>
                   ))}
                 </div>
@@ -368,76 +368,76 @@ export default function HQDashboardPage() {
             <section className="grid gap-6 lg:grid-cols-2">
               <div className="space-y-3">
                 <SectionHeader title="Attention needed" />
-                <div className="overflow-hidden rounded-2xl border border-white/10 bg-primary-dark/55">
+                <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-900/70 shadow-lg backdrop-blur-md">
                   {[
-                    { label: 'Low stock items', count: lowStockAlerts.length, icon: AlertTriangle, tone: 'text-amber-300 bg-amber-500/10' },
-                    { label: 'Expiring batches', count: expiryAlerts.length, icon: CalendarDays, tone: 'text-red-300 bg-red-500/10' },
-                    { label: 'Transfer approvals', count: pendingTransfers.length, icon: ArrowRightLeft, tone: 'text-yellow-300 bg-yellow-500/10' },
+                    { label: 'Low stock items', count: lowStockAlerts.length, icon: AlertTriangle, tone: 'text-amber-300 bg-amber-500/15 border-amber-500/25' },
+                    { label: 'Expiring batches', count: expiryAlerts.length, icon: CalendarDays, tone: 'text-rose-300 bg-rose-500/15 border-rose-500/25' },
+                    { label: 'Transfer approvals', count: pendingTransfers.length, icon: ArrowRightLeft, tone: 'text-sky-300 bg-sky-500/15 border-sky-500/25' },
                   ].map(({ label, count, icon: Icon, tone }) => (
                     <button
                       key={label}
                       type="button"
                       onClick={() => setActiveTab('alerts')}
-                      className="flex min-h-16 w-full items-center gap-3 border-b border-white/10 px-4 text-left last:border-b-0 hover:bg-white/[0.03]"
+                      className="flex min-h-16 w-full items-center gap-3 border-b border-white/[0.06] px-4 text-left last:border-b-0 hover:bg-white/[0.04] transition-colors"
                     >
-                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${tone}`}>
+                      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${tone}`}>
                         <Icon className="h-5 w-5" aria-hidden="true" />
                       </span>
-                      <span className="flex-1 font-medium text-white">{label}</span>
-                      <span className="rounded-full bg-white/10 px-3 py-1 text-sm font-bold text-white">{count}</span>
-                      <ArrowRight className="h-4 w-4 text-gray-500" aria-hidden="true" />
+                      <span className="flex-1 font-medium text-slate-200 text-sm">{label}</span>
+                      <span className="rounded-full bg-white/[0.08] border border-white/[0.06] px-3 py-0.5 text-xs font-bold text-white tabular-nums">{count}</span>
+                      <ArrowRight className="h-4 w-4 text-slate-500" aria-hidden="true" />
                     </button>
                   ))}
                 </div>
                 <button
                   type="button"
                   onClick={() => setActiveTab('alerts')}
-                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-accent-green/70 text-sm font-semibold text-accent-green hover:bg-accent-green/5"
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-xs font-semibold text-emerald-400 hover:bg-emerald-500/20 transition-all cursor-pointer"
                 >
-                  <ClipboardList className="h-5 w-5" aria-hidden="true" />
+                  <ClipboardList className="h-4 w-4" aria-hidden="true" />
                   Review alerts
                 </button>
               </div>
 
               <div className="space-y-3">
                 <SectionHeader title="Branch performance" action="View all" onAction={() => setActiveTab('sales')} />
-                <div className="overflow-hidden rounded-2xl border border-white/10 bg-primary-dark/55">
+                <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-slate-900/70 shadow-lg backdrop-blur-md">
                   {sales.slice(0, 3).map((branch) => (
                     <button
                       key={branch.branchId}
                       type="button"
                       onClick={() => setActiveTab('sales')}
-                      className="flex min-h-20 w-full items-center gap-3 border-b border-white/10 px-4 text-left last:border-b-0 hover:bg-white/[0.03]"
+                      className="flex min-h-20 w-full items-center gap-3 border-b border-white/[0.06] px-4 text-left last:border-b-0 hover:bg-white/[0.04] transition-colors"
                     >
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent-green/10 text-accent-green">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                         <Building2 className="h-5 w-5" aria-hidden="true" />
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-semibold text-white">{branch.branchName}</span>
-                        <span className="mt-1 block text-xs text-gray-400">{branch.totalSales.toLocaleString()} sales</span>
+                        <span className="block truncate font-semibold text-slate-100 text-sm">{branch.branchName}</span>
+                        <span className="mt-1 block text-xs text-slate-400">{branch.totalSales.toLocaleString()} sales</span>
                       </span>
-                      <span className="text-right text-sm font-semibold text-accent-green">
+                      <span className="text-right text-sm font-bold text-emerald-400 tabular-nums font-mono">
                         {branch.totalRevenueFormatted || format(branch.totalRevenue)}
                       </span>
                     </button>
                   ))}
-                  {sales.length === 0 ? <p className="p-6 text-center text-sm text-gray-400">No branch sales data available</p> : null}
+                  {sales.length === 0 ? <p className="p-6 text-center text-sm text-slate-400">No branch sales data available</p> : null}
                 </div>
               </div>
             </section>
 
-            <section className="rounded-2xl border border-white/10 bg-primary-dark/45 p-4 sm:p-5">
+            <section className="rounded-2xl border border-white/[0.08] bg-slate-900/70 p-4 sm:p-5 shadow-lg backdrop-blur-md">
               <SectionHeader title="Company totals by currency" />
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {inventoryTotalsByCurrency.map((total) => (
-                  <div key={`inventory-${total.currencyCode}`} className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] p-3">
-                    <span className="text-sm text-gray-400">Inventory · {total.currencyCode}</span>
-                    <span className="font-semibold text-white">{total.totalValueFormatted || format(total.totalValue || 0)}</span>
+                  <div key={`inventory-${total.currencyCode}`} className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/[0.05] p-3.5">
+                    <span className="text-xs text-slate-400 font-medium">Inventory · {total.currencyCode}</span>
+                    <span className="font-bold text-white tabular-nums">{total.totalValueFormatted || format(total.totalValue || 0)}</span>
                   </div>
                 ))}
-                <div className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] p-3">
-                  <span className="text-sm text-gray-400">Products</span>
-                  <span className="font-semibold text-white">{totalProducts.toLocaleString()}</span>
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/[0.05] p-3.5">
+                  <span className="text-xs text-slate-400 font-medium">Total Products</span>
+                  <span className="font-bold text-white tabular-nums">{totalProducts.toLocaleString()}</span>
                 </div>
               </div>
             </section>
@@ -448,8 +448,8 @@ export default function HQDashboardPage() {
           <section className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-xl font-bold text-white">Inventory by branch</h2>
-                <p className="mt-1 text-sm text-gray-400">Stock position and value across every location</p>
+                <h2 className="text-xl font-bold text-white tracking-tight">Inventory by branch</h2>
+                <p className="mt-1 text-sm text-slate-400">Stock position and value across every location</p>
               </div>
               <Button variant="secondary" onClick={() => navigate('/admin/inventory')}>Manage Inventory</Button>
             </div>
@@ -461,8 +461,8 @@ export default function HQDashboardPage() {
           <section className="space-y-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-xl font-bold text-white">Sales by branch</h2>
-                <p className="mt-1 text-sm text-gray-400">Last 30 days performance</p>
+                <h2 className="text-xl font-bold text-white tracking-tight">Sales by branch</h2>
+                <p className="mt-1 text-sm text-slate-400">Last 30 days performance</p>
               </div>
               <Button variant="secondary" onClick={() => navigate('/admin/reports')}>View Reports</Button>
             </div>
@@ -475,11 +475,11 @@ export default function HQDashboardPage() {
             <section className="space-y-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="flex items-center gap-2 text-xl font-bold text-white">
-                    <ArrowRightLeft className="h-5 w-5 text-yellow-300" aria-hidden="true" />
+                  <h2 className="flex items-center gap-2 text-xl font-bold text-white tracking-tight">
+                    <ArrowRightLeft className="h-5 w-5 text-sky-400" aria-hidden="true" />
                     Pending transfer approvals
                   </h2>
-                  <p className="mt-1 text-sm text-gray-400">Requires HQ review</p>
+                  <p className="mt-1 text-sm text-slate-400">Requires HQ review</p>
                 </div>
                 <Button variant="secondary" onClick={() => navigate('/admin/transfers')}>Review All</Button>
               </div>
@@ -487,16 +487,16 @@ export default function HQDashboardPage() {
             </section>
 
             <section className="space-y-4">
-              <h2 className="flex items-center gap-2 text-xl font-bold text-white">
-                <AlertTriangle className="h-5 w-5 text-amber-300" aria-hidden="true" />
+              <h2 className="flex items-center gap-2 text-xl font-bold text-white tracking-tight">
+                <AlertTriangle className="h-5 w-5 text-amber-400" aria-hidden="true" />
                 Low stock alerts
               </h2>
               <Table data={lowStockAlerts} columns={lowStockColumns} rowKey={(item) => item.id} emptyMessage="No low stock alerts" />
             </section>
 
             <section className="space-y-4">
-              <h2 className="flex items-center gap-2 text-xl font-bold text-white">
-                <CalendarDays className="h-5 w-5 text-red-300" aria-hidden="true" />
+              <h2 className="flex items-center gap-2 text-xl font-bold text-white tracking-tight">
+                <CalendarDays className="h-5 w-5 text-rose-400" aria-hidden="true" />
                 Expiry alerts
               </h2>
               <Table data={expiryAlerts} columns={expiryColumns} rowKey={(item) => item.batchId} emptyMessage="No expiry alerts" />
@@ -505,21 +505,21 @@ export default function HQDashboardPage() {
         ) : null}
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-white/10 bg-primary-darker/95 pb-safe-bottom backdrop-blur-xl lg:hidden" aria-label="Dashboard sections">
+      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-white/[0.08] bg-slate-950/90 pb-safe-bottom backdrop-blur-xl lg:hidden" aria-label="Dashboard sections">
         {tabs.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             type="button"
             onClick={() => setActiveTab(key)}
-            className={`relative flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium ${
-              activeTab === key ? 'text-accent-green' : 'text-gray-400'
+            className={`relative flex min-h-16 flex-col items-center justify-center gap-1 text-xs font-medium transition-colors ${
+              activeTab === key ? 'text-emerald-400 font-semibold' : 'text-slate-400'
             }`}
           >
-            {activeTab === key ? <span className="absolute inset-x-6 top-0 h-0.5 bg-accent-green" /> : null}
+            {activeTab === key ? <span className="absolute inset-x-6 top-0 h-0.5 bg-emerald-500 rounded-full" /> : null}
             <Icon className="h-5 w-5" aria-hidden="true" />
             <span>{label}</span>
             {key === 'alerts' && alertCount > 0 ? (
-              <span className="absolute right-[24%] top-2 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+              <span className="absolute right-[24%] top-2 rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-xs shadow-rose-500/30">
                 {alertCount}
               </span>
             ) : null}

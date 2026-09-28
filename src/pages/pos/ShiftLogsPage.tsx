@@ -8,6 +8,7 @@ import { useCurrency } from '../../hooks/useCurrency';
 import { useAlertReplacement } from '../../hooks/useAlertReplacement';
 import { useToast } from '../../hooks/useToast';
 import { POSLayout } from '../../components/pos';
+import { Button } from '../../components/ui/Button';
 import { queryKeys } from '../../lib/query-keys';
 
 interface Shift {
@@ -155,12 +156,12 @@ export const ShiftLogsPage = () => {
   };
 
   return (
-    <POSLayout>
+    <POSLayout title="Shift Logs">
     <div className="min-h-screen bg-primary-darker">
       {/* Header */}
-      <div className="flex items-center px-4 py-4 border-b border-gray-800">
-        <h1 className="text-xl font-bold text-white">Shift Management</h1>
-        <span className="text-gray-400 ml-2">- {selectedBranch?.name}</span>
+      <div className="flex items-center px-4 py-3.5 border-b border-gray-800 min-w-0">
+        <h1 className="text-lg sm:text-xl font-bold text-white truncate">Shift History</h1>
+        <span className="text-gray-400 ml-2 text-xs sm:text-sm truncate">- {selectedBranch?.name}</span>
       </div>
 
       <div className="p-4 space-y-6">
@@ -201,13 +202,15 @@ export const ShiftLogsPage = () => {
               />
             </div>
 
-            <button 
+            <Button 
               onClick={handleCloseShift}
+              isLoading={closeShiftMutation.isPending}
               disabled={closeShiftMutation.isPending}
-              className="w-full mt-4 py-4 bg-accent-green text-primary-dark font-semibold rounded-xl hover:bg-accent-light transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full mt-4"
+              size="lg"
             >
-              {closeShiftMutation.isPending ? 'Closing Shift...' : 'Close Shift'}
-            </button>
+              Close Shift
+            </Button>
           </div>
         )}
 

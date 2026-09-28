@@ -146,8 +146,8 @@ export const CustomerManagementPage = () => {
     }
   };
 
-  if (isLoading) return <AdminLayout><Loading /></AdminLayout>;
-  if (error) return <AdminLayout><Error message="Failed to load customers" /></AdminLayout>;
+  if (isLoading) return <AdminLayout title="Customers"><Loading /></AdminLayout>;
+  if (error) return <AdminLayout title="Customers"><Error message="Failed to load customers" /></AdminLayout>;
 
   const columns = [
     { key: 'name', header: 'Customer Name' },
@@ -221,15 +221,15 @@ export const CustomerManagementPage = () => {
   ];
 
   return (
-    <AdminLayout>
+    <AdminLayout title="Customers">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-white tracking-tight">Customers</h2>
-            <p className="text-gray-400 mt-1">Manage customer database and loyalty program</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Customers</h2>
+            <p className="text-xs sm:text-sm text-gray-400 mt-1">Manage customer database and loyalty program</p>
           </div>
-          <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-accent-green/20">
+          <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-accent-green/20 w-full sm:w-auto shrink-0">
             Add Customer
           </Button>
         </div>
@@ -314,13 +314,9 @@ export const CustomerManagementPage = () => {
               </Button>
               <Button
                 type="submit"
-                disabled={createMutation.isPending || updateMutation.isPending}
+                isLoading={createMutation.isPending || updateMutation.isPending}
               >
-                {createMutation.isPending || updateMutation.isPending
-                  ? 'Saving...'
-                  : editingCustomer
-                  ? 'Update Customer'
-                  : 'Add Customer'}
+                {editingCustomer ? 'Update Customer' : 'Add Customer'}
               </Button>
             </div>
 

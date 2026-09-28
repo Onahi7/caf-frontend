@@ -13,7 +13,8 @@ import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
 import { CustomerTypeahead, type CustomerOption } from '../../components/ui/CustomerTypeahead';
 import { useHeldSalesStore } from '../../stores/held-sales-store';
-import { AlertTriangle, Clock, ArrowLeft, Receipt, CreditCard, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Clock, ArrowLeft, Receipt, CreditCard, CheckCircle2, X } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
 import { OpenShiftModal } from '../../components/pos/ShiftModals';
 import { 
   CartSummary, 
@@ -1028,56 +1029,46 @@ export const PaymentPage = () => {
       {/* Email Modal */}
       {showEmailModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowEmailModal(false)} />
-          <div className="relative bg-primary-dark border border-gray-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-white">Email Receipt</h3>
+          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setShowEmailModal(false)} />
+          <div className="relative bg-slate-900/95 border border-white/[0.1] rounded-2xl shadow-2xl shadow-black/80 max-w-md w-full p-6 animate-in zoom-in-95 duration-200 backdrop-blur-2xl">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-base font-bold text-white tracking-tight">Email Receipt</h3>
               <button
                 onClick={() => setShowEmailModal(false)}
-                className="text-gray-400 hover:text-white transition-colors"
+                className="w-8 h-8 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
                 aria-label="Close"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <X className="w-4 h-4" />
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">Email Address</label>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Email Address</label>
                 <input
                   type="email"
                   value={emailAddress}
                   onChange={(e) => setEmailAddress(e.target.value)}
                   placeholder="customer@example.com"
-                  className="w-full px-4 py-3 bg-primary-darker border border-gray-800 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-green focus:ring-2 focus:ring-accent-green/30 transition-all"
+                  className="w-full px-3.5 py-2.5 bg-slate-950/70 border border-white/10 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 transition-all"
                   autoFocus
                 />
               </div>
-              <div className="flex gap-3">
-                <button
+              <div className="flex gap-3 pt-2">
+                <Button
+                  variant="secondary"
                   onClick={() => setShowEmailModal(false)}
-                  className="flex-1 py-3 bg-primary-darker border border-gray-800 text-gray-300 font-semibold rounded-xl hover:border-gray-700 hover:text-white transition-all"
+                  className="flex-1"
                 >
                   Cancel
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   onClick={handleEmailReceipt}
-                  disabled={emailReceiptMutation.isPending}
-                  className="flex-1 py-3 bg-accent-green text-primary-dark font-bold rounded-xl hover:bg-accent-light active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  isLoading={emailReceiptMutation.isPending}
+                  className="flex-1"
                 >
-                  {emailReceiptMutation.isPending ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                      </svg>
-                      Sending...
-                    </>
-                  ) : (
-                    'Send'
-                  )}
-                </button>
+                  Send Receipt
+                </Button>
               </div>
             </div>
           </div>

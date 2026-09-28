@@ -229,7 +229,7 @@ export function ReportsPage() {
   );
 
   return isPosContext ? (
-    <POSLayout>{pageContent}</POSLayout>
+    <POSLayout title="Reports">{pageContent}</POSLayout>
   ) : (
     <AdminLayout title="Reports">{pageContent}</AdminLayout>
   );
