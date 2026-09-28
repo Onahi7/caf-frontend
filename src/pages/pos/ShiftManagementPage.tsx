@@ -136,6 +136,14 @@ export const ShiftManagementPage = () => {
     refetchInterval: 30_000, // refresh every 30s for live totals
   });
 
+  const totalShiftExpenses = (expenses || []).reduce((sum, exp) => sum + (exp.amount || 0), 0);
+  const totalShiftCashSales = shiftReport?.totalCashSales ?? currentShift?.totalSales ?? 0;
+  const expectedShiftCash =
+    shiftReport?.expectedCash !== undefined &&
+    Math.abs(shiftReport.expectedCash - ((currentShift?.openingCash || 0) + totalShiftCashSales - totalShiftExpenses)) < 0.01
+      ? shiftReport.expectedCash
+      : Math.max(0, (currentShift?.openingCash || 0) + totalShiftCashSales - totalShiftExpenses);
+
   // Open shift mutation
   const openShiftMutation = useMutation({
     mutationFn: async (data: { openingCash: number }) => {
@@ -380,7 +388,7 @@ export const ShiftManagementPage = () => {
                         </div>
                       </div>
                       <p className="text-2xl font-bold text-white tracking-tight tabular-nums font-mono">
-                        {format(shiftReport?.expectedCash ?? currentShift.expectedCash ?? currentShift.openingCash)}
+                        {format(expectedShiftCash)}
                       </p>
                     </div>
 
@@ -590,9 +598,9 @@ export const ShiftManagementPage = () => {
             }
             isLoading={closeShiftMutation.isPending}
             openingCash={currentShift.openingCash}
-            totalSales={shiftReport?.totalSales ?? currentShift.totalSales ?? 0}
-            totalExpenses={(expenses || []).reduce((sum, exp) => sum + (exp.amount || 0), 0)}
-            expectedCash={shiftReport?.expectedCash ?? currentShift.expectedCash ?? currentShift.openingCash}
+            totalSales={totalShiftCashSales}
+            totalExpenses={totalShiftExpenses}
+            expectedCash={expectedShiftCash}
             salesCount={shiftReport?.salesCount ?? currentShift.salesCount ?? 0}
           />
         )}

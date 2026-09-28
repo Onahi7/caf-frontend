@@ -127,7 +127,15 @@ export const CloseShiftModal = ({
 
   const parsedClosing = parseFloat(closingCash);
   const hasEnteredCash = !isNaN(parsedClosing);
-  const discrepancy = hasEnteredCash ? parsedClosing - expectedCash : 0;
+  const computedExpectedCash =
+    expectedCash !== undefined &&
+    totalExpenses > 0 &&
+    Math.abs(expectedCash - (openingCash + totalSales)) < 0.01
+      ? Math.max(0, openingCash + totalSales - totalExpenses)
+      : expectedCash !== undefined
+      ? expectedCash
+      : Math.max(0, openingCash + totalSales - totalExpenses);
+  const discrepancy = hasEnteredCash ? parsedClosing - computedExpectedCash : 0;
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Close Register Shift" size="sm">
@@ -156,7 +164,7 @@ export const CloseShiftModal = ({
           )}
           <div className="flex justify-between text-sm font-semibold pt-2 border-t border-white/[0.08]">
             <span className="text-white">Expected in Drawer</span>
-            <span className="font-mono text-emerald-400 font-bold">{format(expectedCash)}</span>
+            <span className="font-mono text-emerald-400 font-bold">{format(computedExpectedCash)}</span>
           </div>
         </div>
 

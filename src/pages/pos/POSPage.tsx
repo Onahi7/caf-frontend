@@ -62,6 +62,8 @@ interface Expense {
 interface ShiftSale {
   _id: string;
   total: number;
+  paymentMethod?: string;
+  payments?: Array<{ paymentMethod?: string; amount?: number }>;
 }
 
 interface PackSize {
@@ -310,6 +312,8 @@ export const POSPage = () => {
     salesCount: number;
     expectedCash: number;
     openingCash: number;
+    totalCashSales?: number;
+    totalExpenses?: number;
   }>({
     queryKey: queryKeys.shifts.report(currentShift?._id),
     queryFn: async () => {
@@ -743,12 +747,28 @@ export const POSPage = () => {
     (sum, sale) => sum + (Number(sale.total) || 0),
     0,
   );
+  const clientCashSales = (shiftSales || []).reduce((sum, sale) => {
+    if (sale.payments && sale.payments.length > 0) {
+      return (
+        sum +
+        sale.payments
+          .filter((p: any) => p.paymentMethod === 'cash')
+          .reduce((pSum: number, p: any) => pSum + (Number(p.amount) || 0), 0)
+      );
+    }
+    return sum + (sale.paymentMethod === 'cash' ? (Number(sale.total) || 0) : 0);
+  }, 0);
   const totalSales = shiftReport?.totalSales ?? clientTotalSales;
+  const totalCashSales = shiftReport?.totalCashSales ?? clientCashSales;
   const totalExpenses = (shiftExpenses || []).reduce(
     (sum, expense) => sum + (Number(expense.amount) || 0),
     0,
   );
-  const expectedCash = shiftReport?.expectedCash ?? ((currentShift?.openingCash || 0) + totalSales - totalExpenses);
+  const expectedCash =
+    shiftReport?.expectedCash !== undefined &&
+    Math.abs(shiftReport.expectedCash - ((currentShift?.openingCash || 0) + totalCashSales - totalExpenses)) < 0.01
+      ? shiftReport.expectedCash
+      : Math.max(0, (currentShift?.openingCash || 0) + totalCashSales - totalExpenses);
   const salesCount = shiftReport?.salesCount;
 
   // Guard: Redirect to branch selection if no branch is selected
@@ -1599,7 +1619,7 @@ export const POSPage = () => {
           }
           isLoading={closeShiftMutation.isPending}
           openingCash={currentShift.openingCash}
-          totalSales={totalSales}
+          totalSales={totalCashSales}
           totalExpenses={totalExpenses}
           expectedCash={expectedCash}
           salesCount={salesCount}
