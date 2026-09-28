@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { SlidersHorizontal } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
@@ -9,6 +10,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
+import { BranchSelector } from '../../components/BranchSelector';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useToast } from '../../hooks/useToast';
 import { queryKeys } from '../../lib/query-keys';
@@ -159,15 +161,35 @@ export default function StockAdjustmentPage() {
   const handleCloseModal = () => { setIsModalOpen(false); setSelectedProduct(null); reset(); };
   const onSubmit = (data: AdjustmentFormData) => {
     if (!selectedProduct) return;
-    adjustmentMutation.mutate({ ...data, productId: selectedProduct._id, quantityChange: Number(data.quantityChange) });
+    adjustmentMutation.mutate({
+      productId: selectedProduct._id,
+      batchId: data.batchId,
+      quantityChange: Number(data.quantityChange),
+      reason: data.reason.trim(),
+    });
   };
 
   if (!selectedBranch) {
-    return <AdminLayout><div className="py-12 text-center"><p className="text-gray-400">Please select a branch to manage stock adjustments</p></div></AdminLayout>;
+    return (
+      <AdminLayout title="Stock Adjustments">
+        <div className="max-w-md mx-auto text-center py-16 px-4">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <SlidersHorizontal className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Select a Branch</h2>
+          <p className="text-sm text-slate-400 mb-6">
+            Stock adjustments are recorded per branch. Choose a branch to review and manage stock levels.
+          </p>
+          <div className="flex justify-center">
+            <BranchSelector />
+          </div>
+        </div>
+      </AdminLayout>
+    );
   }
 
-  if (isLoading) return <AdminLayout><Loading /></AdminLayout>;
-  if (error) return <AdminLayout><Error message="Failed to load products" onRetry={() => queryClient.invalidateQueries({ queryKey: queryKeys.products.list({ branchId }) })} /></AdminLayout>;
+  if (isLoading) return <AdminLayout title="Stock Adjustments"><Loading /></AdminLayout>;
+  if (error) return <AdminLayout title="Stock Adjustments"><Error message="Failed to load products" onRetry={() => queryClient.invalidateQueries({ queryKey: queryKeys.products.list({ branchId }) })} /></AdminLayout>;
 
   const productColumns = [
     { key: 'name', header: 'Product' },
@@ -182,7 +204,7 @@ export default function StockAdjustmentPage() {
   const adjustmentColumns = [
     { key: 'timestamp', header: 'Date', render: (a: StockMovement) => new Date(a.timestamp).toLocaleString() },
     { key: 'productId.name', header: 'Product', render: (a: StockMovement) => a.productId?.name || '-' },
-    { key: 'quantity', header: 'Qty', render: (a: StockMovement) => <span className={a.quantity > 0 ? 'text-green-400' : 'text-red-400'}>{a.quantity > 0 ? '+' : ''}{a.quantity}</span> },
+    { key: 'quantity', header: 'Qty', render: (a: StockMovement) => <span className={a.quantity > 0 ? 'text-emerald-400' : 'text-red-400'}>{a.quantity > 0 ? '+' : ''}{a.quantity}</span> },
     { key: 'reason', header: 'Reason' },
     { key: 'userId', header: 'By', render: (a: StockMovement) => a.userId ? `${a.userId.firstName || ''} ${a.userId.lastName || ''}`.trim() || '-' : '-' },
   ];
@@ -191,20 +213,23 @@ export default function StockAdjustmentPage() {
     <AdminLayout title="Stock Adjustments" showMobileBranchSelector={false}>
       <div className="space-y-6 pb-24 lg:pb-0">
         <div className="lg:hidden">
-          <header className="mb-5">
-            <h1 className="text-2xl font-bold tracking-tight text-white">Stock Action Ledger</h1>
-            <p className="mt-1 text-sm leading-5 text-gray-400">
-              Review current stock and keep every manual change traceable.
-            </p>
+          <header className="mb-5 flex flex-col gap-3">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white">Stock Action Ledger</h1>
+              <p className="mt-1 text-sm leading-5 text-gray-400">
+                Review current stock and keep every manual change traceable.
+              </p>
+            </div>
+            <BranchSelector />
           </header>
 
-          <div className="mb-4 grid grid-cols-2 rounded-xl border border-white/10 bg-primary-dark/70 p-1" role="tablist" aria-label="Stock adjustment views">
+          <div className="mb-4 grid grid-cols-2 rounded-xl border border-slate-800 bg-slate-900/70 p-1" role="tablist" aria-label="Stock adjustment views">
             <button
               type="button"
               role="tab"
               aria-selected={mobileTab === 'products'}
               onClick={() => setMobileTab('products')}
-              className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-accent-green/60 ${mobileTab === 'products' ? 'bg-accent-green text-primary-darker shadow' : 'text-gray-400 hover:text-white'}`}
+              className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500/60 ${mobileTab === 'products' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-gray-400 hover:text-white'}`}
             >
               Product Stock
             </button>
@@ -213,20 +238,20 @@ export default function StockAdjustmentPage() {
               role="tab"
               aria-selected={mobileTab === 'history'}
               onClick={() => setMobileTab('history')}
-              className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-accent-green/60 ${mobileTab === 'history' ? 'bg-accent-green text-primary-darker shadow' : 'text-gray-400 hover:text-white'}`}
+              className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500/60 ${mobileTab === 'history' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-gray-400 hover:text-white'}`}
             >
               Adjustment History
             </button>
           </div>
 
           {mobileTab === 'products' ? (
-            <section aria-labelledby="mobile-product-stock-heading" className="overflow-hidden rounded-2xl border border-emerald-400/25 bg-primary-dark/65 shadow-xl shadow-black/10">
-              <div className="grid grid-cols-[minmax(0,1fr)_64px_74px] items-center gap-2 border-b border-white/10 bg-black/10 px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+            <section aria-labelledby="mobile-product-stock-heading" className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/65 shadow-xl shadow-black/10">
+              <div className="grid grid-cols-[minmax(0,1fr)_64px_74px] items-center gap-2 border-b border-slate-800 bg-slate-950/40 px-4 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 <h2 id="mobile-product-stock-heading">Product</h2>
                 <span className="text-center">Stock</span>
                 <span className="text-right">Action</span>
               </div>
-              <div className="divide-y divide-white/10">
+              <div className="divide-y divide-slate-800">
                 {products.map((product: Product) => (
                   <article key={product._id} className="grid grid-cols-[minmax(0,1fr)_64px_74px] items-center gap-2 px-4 py-4">
                     <div className="min-w-0">
@@ -248,15 +273,15 @@ export default function StockAdjustmentPage() {
               <CompactPagination meta={productPaginationMeta} onPageChange={setProductPage} />
             </section>
           ) : (
-            <section aria-labelledby="mobile-adjustment-history-heading" className="overflow-hidden rounded-2xl border border-emerald-400/25 bg-primary-dark/65 shadow-xl shadow-black/10">
-              <div className="border-b border-white/10 bg-black/10 px-4 py-3">
-                <h2 id="mobile-adjustment-history-heading" className="text-xs font-semibold uppercase tracking-wider text-gray-500">Recorded adjustments</h2>
+            <section aria-labelledby="mobile-adjustment-history-heading" className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/65 shadow-xl shadow-black/10">
+              <div className="border-b border-slate-800 bg-slate-950/40 px-4 py-3">
+                <h2 id="mobile-adjustment-history-heading" className="text-xs font-semibold uppercase tracking-wider text-slate-400">Recorded adjustments</h2>
               </div>
               {adjustmentsLoading ? (
                 <div className="p-6"><Loading /></div>
               ) : (
                 <>
-                  <div className="divide-y divide-white/10">
+                  <div className="divide-y divide-slate-800">
                     {paginatedAdjustments.map((adjustment) => (
                       <article key={adjustment._id} className="px-4 py-4">
                         <div className="flex items-start justify-between gap-4">
@@ -282,37 +307,43 @@ export default function StockAdjustmentPage() {
         </div>
 
         <div className="hidden space-y-6 lg:block">
-          <h1 className="text-2xl font-bold text-white">Stock Adjustments</h1>
-
-        <div className="rounded-xl border border-white/10 bg-white/5 shadow-lg">
-          <div className="border-b border-white/10 px-6 py-4">
-            <h2 className="text-lg font-semibold text-white">Product Stock</h2>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white">Stock Adjustments</h1>
+              <p className="text-sm text-slate-400 mt-1">Review current inventory stock and record manual stock adjustments</p>
+            </div>
+            <BranchSelector />
           </div>
-          <Table
-            data={products}
-            columns={productColumns}
-            pagination={productPaginationMeta}
-            onPageChange={setProductPage}
-            onLimitChange={handleProductLimitChange}
-          />
-        </div>
 
-        <div className="rounded-xl border border-white/10 bg-white/5 shadow-lg">
-          <div className="border-b border-white/10 px-6 py-4">
-            <h2 className="text-lg font-semibold text-white">Adjustment History</h2>
-          </div>
-          {adjustmentsLoading ? (
-            <div className="p-6"><Loading /></div>
-          ) : (
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 shadow-lg">
+            <div className="border-b border-slate-800 px-6 py-4">
+              <h2 className="text-lg font-semibold text-white">Product Stock</h2>
+            </div>
             <Table
-              data={paginatedAdjustments}
-              columns={adjustmentColumns}
-              pagination={adjustmentPaginationMeta}
-              onPageChange={setAdjPage}
-              onLimitChange={handleAdjLimitChange}
+              data={products}
+              columns={productColumns}
+              pagination={productPaginationMeta}
+              onPageChange={setProductPage}
+              onLimitChange={handleProductLimitChange}
             />
-          )}
-        </div>
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 shadow-lg">
+            <div className="border-b border-slate-800 px-6 py-4">
+              <h2 className="text-lg font-semibold text-white">Adjustment History</h2>
+            </div>
+            {adjustmentsLoading ? (
+              <div className="p-6"><Loading /></div>
+            ) : (
+              <Table
+                data={paginatedAdjustments}
+                columns={adjustmentColumns}
+                pagination={adjustmentPaginationMeta}
+                onPageChange={setAdjPage}
+                onLimitChange={handleAdjLimitChange}
+              />
+            )}
+          </div>
         </div>
 
         <Modal isOpen={isModalOpen} onClose={handleCloseModal} title="Adjust Product Stock">
@@ -330,7 +361,7 @@ export default function StockAdjustmentPage() {
                 <select
                   {...register('batchId', { required: 'Batch is required' })}
                   disabled={batchesLoading}
-                  className="w-full rounded-xl border border-white/10 bg-gray-900 px-4 py-2.5 text-white focus:border-accent-green/50 focus:outline-none focus:ring-2 focus:ring-accent-green/20"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
                 >
                   <option value="">{batchesLoading ? 'Loading batches…' : 'Select a batch'}</option>
                   {batches.map((batch) => (
@@ -344,15 +375,32 @@ export default function StockAdjustmentPage() {
                   <p className="mt-1 text-sm text-amber-400">Create a batch before adjusting this product.</p>
                 )}
               </div>
-              <Input label="Quantity Change" type="number" placeholder="+ to add, - to remove" {...register('quantityChange', { required: 'Required', validate: (v) => Number(v) !== 0 || 'Cannot be zero' })} error={errors.quantityChange?.message} />
+              <Input
+                label="Quantity Change"
+                type="number"
+                placeholder="+ to add, - to remove"
+                {...register('quantityChange', {
+                  valueAsNumber: true,
+                  required: 'Required',
+                  validate: (v) => Number(v) !== 0 || 'Cannot be zero'
+                })}
+                error={errors.quantityChange?.message}
+              />
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-300">Reason <span className="text-red-500">*</span></label>
-                <textarea {...register('reason', { required: 'Reason is required' })} className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-white placeholder-gray-500 focus:border-accent-green/50 focus:outline-none focus:ring-2 focus:ring-accent-green/20 resize-none" rows={3} placeholder="Why this adjustment?" />
+                <textarea
+                  {...register('reason', { required: 'Reason is required' })}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none"
+                  rows={3}
+                  placeholder="Why this adjustment?"
+                />
                 {errors.reason && <p className="mt-1 text-sm text-red-500">{errors.reason.message}</p>}
               </div>
               <div className="flex justify-end space-x-3 pt-4">
                 <Button type="button" variant="secondary" onClick={handleCloseModal}>Cancel</Button>
-                <Button type="submit" disabled={adjustmentMutation.isPending || batches.length === 0}>{adjustmentMutation.isPending ? 'Adjusting...' : 'Adjust Stock'}</Button>
+                <Button type="submit" disabled={adjustmentMutation.isPending || batches.length === 0}>
+                  {adjustmentMutation.isPending ? 'Adjusting...' : 'Adjust Stock'}
+                </Button>
               </div>
               {adjustmentMutation.isError && <Error message="Failed to adjust stock. Please try again." />}
             </form>

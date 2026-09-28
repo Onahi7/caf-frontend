@@ -12,6 +12,7 @@ import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { CompactPagination } from '../../components/ui/Pagination';
 import { Modal } from '../../components/ui/Modal';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Loading } from '../../components/ui/Loading';
@@ -1253,6 +1254,25 @@ export const ProductManagementPage = () => {
             )}
           </form>
         </Modal>
+
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
+          isOpen={!!productToDelete}
+          onClose={() => setProductToDelete(null)}
+          onConfirm={() => {
+            const id = productToDelete?._id || (productToDelete as any)?.id;
+            if (id) {
+              deleteMutation.mutate(id, {
+                onSuccess: () => setProductToDelete(null),
+              });
+            }
+          }}
+          title="Delete Product"
+          message={`Are you sure you want to delete "${productToDelete?.name}" (${productToDelete?.sku})? This will permanently remove the product and its inventory records.`}
+          confirmLabel="Delete Product"
+          variant="danger"
+          isLoading={deleteMutation.isPending}
+        />
       </div>
       <AdminMobileBottomNav active="inventory" />
     </AdminLayout>

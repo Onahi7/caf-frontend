@@ -24,6 +24,16 @@ import {
   Menu,
   X,
   LogOut,
+  Settings,
+  Printer,
+  ClipboardList,
+  ArrowRightLeft,
+  SlidersHorizontal,
+  Layers,
+  Tag,
+  Sparkles,
+  Calculator,
+  ShieldAlert,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/auth-store';
 import { useBranchStore } from '../stores/branch-store';
@@ -162,6 +172,55 @@ export const AdminLayout = ({
       roles: ['super_admin', 'branch_manager', 'auditor', 'finance_manager', 'cashier'],
     },
     {
+      name: 'Purchase Orders',
+      path: '/admin/purchase-orders',
+      section: 'Inventory',
+      icon: <ClipboardList className="w-5 h-5" />,
+      roles: ['super_admin', 'branch_manager'],
+    },
+    {
+      name: 'Suppliers',
+      path: '/admin/suppliers',
+      section: 'Inventory',
+      icon: <Truck className="w-5 h-5" />,
+      roles: ['super_admin', 'branch_manager'],
+    },
+    {
+      name: 'Stock Transfers',
+      path: '/admin/transfers',
+      section: 'Inventory',
+      icon: <ArrowRightLeft className="w-5 h-5" />,
+      roles: ['super_admin', 'branch_manager'],
+    },
+    {
+      name: 'Stock Adjustments',
+      path: '/admin/stock-adjustments',
+      section: 'Inventory',
+      icon: <SlidersHorizontal className="w-5 h-5" />,
+      roles: ['super_admin', 'branch_manager'],
+    },
+    {
+      name: 'Batches & Lots',
+      path: '/admin/batches',
+      section: 'Inventory',
+      icon: <Layers className="w-5 h-5" />,
+      roles: ['super_admin', 'branch_manager', 'auditor'],
+    },
+    {
+      name: 'Pricing Rules',
+      path: '/admin/pricing',
+      section: 'Inventory',
+      icon: <Tag className="w-5 h-5" />,
+      roles: ['super_admin', 'branch_manager'],
+    },
+    {
+      name: 'Promotions',
+      path: '/admin/promotions',
+      section: 'Inventory',
+      icon: <Sparkles className="w-5 h-5" />,
+      roles: ['super_admin', 'branch_manager'],
+    },
+    {
       name: 'Branches',
       path: '/admin/branches',
       section: 'Administration',
@@ -174,6 +233,41 @@ export const AdminLayout = ({
       section: 'Administration',
       icon: <UserCog className="w-5 h-5" />,
       roles: ['super_admin', 'branch_manager'],
+    },
+    {
+      name: 'Settings',
+      path: '/admin/settings/system',
+      section: 'Administration',
+      icon: <Settings className="w-5 h-5" />,
+      roles: ['super_admin'],
+    },
+    {
+      name: 'Tax Configuration',
+      path: '/admin/settings/taxes',
+      section: 'Administration',
+      icon: <Calculator className="w-5 h-5" />,
+      roles: ['super_admin', 'branch_manager'],
+    },
+    {
+      name: 'Payment Methods',
+      path: '/admin/settings/payment-methods',
+      section: 'Administration',
+      icon: <CreditCard className="w-5 h-5" />,
+      roles: ['super_admin', 'branch_manager'],
+    },
+    {
+      name: 'Receipt Printers',
+      path: '/admin/printers',
+      section: 'Administration',
+      icon: <Printer className="w-5 h-5" />,
+      roles: ['super_admin', 'branch_manager'],
+    },
+    {
+      name: 'Audit Trail',
+      path: '/admin/audit/trail',
+      section: 'Administration',
+      icon: <ShieldAlert className="w-5 h-5" />,
+      roles: ['super_admin', 'auditor'],
     },
     {
       name: 'Customer Orders',
@@ -337,7 +431,7 @@ export const AdminLayout = ({
   );
 
   return (
-    <div className="h-dvh overflow-hidden bg-primary-darker flex">
+    <div className="h-dvh overflow-hidden bg-slate-950 flex">
       <ConnectionStatus />
       <OfflineNotification />
       <PWAUpdatePrompt />
@@ -456,7 +550,7 @@ export const AdminLayout = ({
       />
 
       {/* Main Content Area */}
-      <div className="flex flex-1 min-w-0 flex-col bg-primary-darker lg:ml-64">
+      <div className="flex flex-1 min-w-0 flex-col bg-slate-950 lg:ml-64">
         <header className="bg-slate-900/60 backdrop-blur-xl border-b border-white/[0.08] px-4 py-3.5 sm:px-6 lg:px-8 sticky top-0 z-20 pt-safe-top">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">

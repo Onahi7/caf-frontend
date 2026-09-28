@@ -20,7 +20,7 @@ export function AdminMobileBottomNav({ active }: AdminMobileBottomNavProps) {
   return (
     <nav
       aria-label="Mobile primary navigation"
-      className="fixed inset-x-0 bottom-0 z-[60] grid grid-cols-4 border-t border-white/10 bg-primary-darker/95 px-2 pb-safe-bottom pt-2 shadow-[0_-12px_30px_rgba(0,0,0,0.28)] backdrop-blur-xl lg:hidden"
+      className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-white/10 bg-primary-darker/95 px-2 pb-safe-bottom pt-2 shadow-[0_-12px_30px_rgba(0,0,0,0.28)] backdrop-blur-xl lg:hidden"
     >
       <Link
         to={dashboardPath}

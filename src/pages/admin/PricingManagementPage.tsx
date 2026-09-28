@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
+import { DollarSign, Layers } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
@@ -9,6 +10,8 @@ import { Select } from '../../components/ui/Select';
 import { Modal } from '../../components/ui/Modal';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
+import { BranchSelector } from '../../components/BranchSelector';
+import { unwrapArray } from '../../lib/unwrap-response';
 import { useToast } from '../../hooks/useToast';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
@@ -65,12 +68,12 @@ export const PricingManagementPage = () => {
 
   // Fetch products for selection
   const { data: products, isLoading: productsLoading } = useQuery({
-    queryKey: queryKeys.products.list({ branchId }),
+    queryKey: queryKeys.products.list({ branchId, limit: 1000 }),
     queryFn: async () => {
       const response = await apiClient.get('/products', {
-        params: branchId ? { branchId } : {},
+        params: { limit: 1000, ...(branchId ? { branchId } : {}) },
       });
-      return (response.data?.data || []) as ProductOption[];
+      return unwrapArray(response.data?.data || response.data) as ProductOption[];
     },
     enabled: !!branchId,
   });
@@ -130,20 +133,37 @@ export const PricingManagementPage = () => {
   });
 
   const handleBulkUpdate = (data: BulkPriceUpdate) => {
-    bulkUpdateMutation.mutate({
-      ...data,
+    const payload: BulkPriceUpdate = {
+      strategy: {
+        useProductBasePrice: Boolean(data.strategy?.useProductBasePrice),
+        useLatestBatchPrice: Boolean(data.strategy?.useLatestBatchPrice),
+        useCostPlusMarkup: Boolean(data.strategy?.useCostPlusMarkup),
+      },
       applyToBranches: branchId ? [branchId] : undefined,
-    });
+    };
+    if (data.newBasePrice !== undefined && !isNaN(Number(data.newBasePrice))) {
+      payload.newBasePrice = Number(data.newBasePrice);
+    }
+    if (data.newMarkupPercentage !== undefined && !isNaN(Number(data.newMarkupPercentage))) {
+      payload.newMarkupPercentage = Number(data.newMarkupPercentage);
+    }
+    bulkUpdateMutation.mutate(payload);
   };
 
   if (!branchId) {
     return (
       <AdminLayout title="Pricing Management">
-        <div className="text-center py-12">
-          <h2 className="text-xl font-semibold text-white">Select a Branch First</h2>
-          <p className="mt-2 text-gray-400">
-            Pricing is branch-scoped. Choose a branch before reviewing product prices or running updates.
+        <div className="max-w-md mx-auto text-center py-16 px-4">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <DollarSign className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Select a Branch</h2>
+          <p className="text-sm text-slate-400 mb-6">
+            Pricing is branch-scoped. Choose a branch below to review product prices and run updates.
           </p>
+          <div className="flex justify-center">
+            <BranchSelector />
+          </div>
         </div>
       </AdminLayout>
     );
@@ -154,14 +174,20 @@ export const PricingManagementPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-white">Pricing Management</h1>
-          <Button 
-            onClick={() => setIsBulkUpdateModalOpen(true)}
-            className="bg-accent-green hover:bg-accent-green/90"
-          >
-            Bulk Price Update
-          </Button>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Pricing Management</h1>
+            <p className="text-sm text-slate-400 mt-1">Manage pricing strategies and bulk updates</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <BranchSelector />
+            <Button 
+              onClick={() => setIsBulkUpdateModalOpen(true)}
+              className="bg-accent-green hover:bg-accent-green/90"
+            >
+              Bulk Price Update
+            </Button>
+          </div>
         </div>
 
         {/* Analytics Cards */}
@@ -173,15 +199,15 @@ export const PricingManagementPage = () => {
             </div>
             <div className="bg-white/5 rounded-xl p-6 border border-white/10">
               <h3 className="text-sm font-medium text-gray-400 mb-2">Average Markup</h3>
-              <p className="text-2xl font-bold text-accent-green">{analytics.averageMarkup.toFixed(1)}%</p>
+              <p className="text-2xl font-bold text-accent-green">{analytics.averageMarkup?.toFixed(1) ?? '0.0'}%</p>
             </div>
             <div className="bg-white/5 rounded-xl p-6 border border-white/10">
               <h3 className="text-sm font-medium text-gray-400 mb-2">Average Price</h3>
-              <p className="text-2xl font-bold text-white">{format(analytics.averageSellingPrice)}</p>
+              <p className="text-2xl font-bold text-white">{format(analytics.averageSellingPrice || 0)}</p>
             </div>
             <div className="bg-white/5 rounded-xl p-6 border border-white/10">
               <h3 className="text-sm font-medium text-gray-400 mb-2">Custom Pricing</h3>
-              <p className="text-2xl font-bold text-blue-400">{analytics.productsWithCustomPricing}</p>
+              <p className="text-2xl font-bold text-blue-400">{analytics.productsWithCustomPricing || 0}</p>
             </div>
           </div>
         )}
@@ -242,7 +268,7 @@ export const PricingManagementPage = () => {
                     </p>
                   </div>
 
-                  {productPricing.packSizes.length > 0 ? (
+                  {productPricing.packSizes && productPricing.packSizes.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead className="bg-white/5 border-b border-white/10">
@@ -294,7 +320,7 @@ export const PricingManagementPage = () => {
                 type="checkbox"
                 id="useProductBasePrice"
                 {...register('strategy.useProductBasePrice')}
-                className="h-4 w-4 rounded border-gray-600 bg-primary-darker text-accent-green"
+                className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-accent-green"
               />
               <label htmlFor="useProductBasePrice" className="text-sm text-white">
                 Update Product Base Prices
@@ -306,7 +332,7 @@ export const PricingManagementPage = () => {
                 type="checkbox"
                 id="useCostPlusMarkup"
                 {...register('strategy.useCostPlusMarkup')}
-                className="h-4 w-4 rounded border-gray-600 bg-primary-darker text-accent-green"
+                className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-accent-green"
               />
               <label htmlFor="useCostPlusMarkup" className="text-sm text-white">
                 Apply Cost + Markup Strategy
@@ -320,6 +346,7 @@ export const PricingManagementPage = () => {
             min="0"
             step="0.01"
             {...register('newBasePrice', {
+              valueAsNumber: true,
               min: { value: 0, message: 'Must be 0 or greater' },
             })}
             error={errors.newBasePrice?.message}
@@ -331,6 +358,7 @@ export const PricingManagementPage = () => {
             min="0"
             step="0.1"
             {...register('newMarkupPercentage', {
+              valueAsNumber: true,
               min: { value: 0, message: 'Must be 0 or greater' },
             })}
             error={errors.newMarkupPercentage?.message}

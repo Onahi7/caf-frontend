@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
+import { Plus, Receipt, Trash2 } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
@@ -9,6 +10,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Loading } from '../../components/ui/Loading';
 import { Error as ErrorDisplay } from '../../components/ui/Error';
+import { BranchSelector } from '../../components/BranchSelector';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
@@ -16,6 +18,7 @@ import { buildApiUrl } from '../../lib/api-utils';
 import { getErrorMessage } from '../../lib/error-utils';
 import { useToast } from '../../hooks/useToast';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useConfirm } from '../../hooks/useConfirm';
 import { unwrapArray } from '../../lib/unwrap-response';
 
 const CATEGORIES = [
@@ -35,7 +38,7 @@ const CATEGORY_BADGE: Record<string, string> = {
   petty_cash: 'bg-purple-500/15 text-purple-300 border border-purple-500/20',
   rent: 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/20',
   salaries: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20',
-  other: 'bg-white/10 text-gray-300 border border-white/10',
+  other: 'bg-slate-700/50 text-slate-300 border border-slate-700',
 };
 
 interface Expense {
@@ -73,6 +76,7 @@ export function ExpensesPage() {
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
   const { format } = useCurrency();
+  const requestConfirmation = useConfirm();
 
   const branchId = getBranchId(selectedBranch);
 
@@ -118,6 +122,7 @@ export function ExpensesPage() {
       }
       const response = await apiClient.post('/expenses', {
         ...data,
+        amount: Number(data.amount),
         shiftId,
         branchId,
         recordedBy: user?.id,
@@ -148,111 +153,148 @@ export function ExpensesPage() {
     },
   });
 
+  const handleDeleteExpense = async (expense: Expense) => {
+    const confirmed = await requestConfirmation({
+      title: 'Delete Expense?',
+      message: `Are you sure you want to delete the expense "${expense.description}" (${format(expense.amount)})?`,
+      confirmLabel: 'Delete Expense',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    deleteMutation.mutate(expense._id);
+  };
+
   const totalExpenses = expenses?.reduce((sum, e) => sum + e.amount, 0) ?? 0;
 
   return (
-    <AdminLayout>
+    <AdminLayout title="Expenses">
       <div className="max-w-6xl mx-auto py-6 px-4">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-white">Expenses</h1>
-          <Button onClick={() => setIsModalOpen(true)} disabled={!selectedBranch}>
-            + Record Expense
-          </Button>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Expenses</h1>
+            <p className="text-sm text-slate-400 mt-1">Track store operations, petty cash, and overhead costs</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <BranchSelector />
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              disabled={!branchId}
+              className="inline-flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Record Expense</span>
+            </Button>
+          </div>
         </div>
 
-        {!selectedBranch && (
-          <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm text-yellow-200 mb-4">
-            Select a branch to view expenses.
-          </div>
-        )}
-
-        {/* Summary cards */}
-        {byCategory && byCategory.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <div className="col-span-2 rounded-xl border border-white/10 bg-white/5 p-4 md:col-span-1">
-              <p className="text-xs text-gray-400 uppercase font-semibold mb-1">Total</p>
-              <p className="text-2xl font-bold text-white">{format(totalExpenses)}</p>
-              <p className="text-xs text-gray-400 mt-1">{expenses?.length ?? 0} entries</p>
+        {!branchId ? (
+          <div className="max-w-md mx-auto text-center py-16 px-4">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <Receipt className="w-8 h-8" />
             </div>
-            {byCategory.map((item) => (
-              <div key={item.category} className="rounded-xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs text-gray-400 uppercase font-semibold mb-1">{item.category.replace('_', ' ')}</p>
-                <p className="text-xl font-bold text-white">{format(item.total)}</p>
-                <p className="text-xs text-gray-400 mt-1">{item.count} entries</p>
+            <h2 className="text-xl font-bold text-white mb-2">Select a Branch</h2>
+            <p className="text-sm text-slate-400 mb-6">
+              Expenses are recorded per branch. Choose a branch to review and record overhead expenditures.
+            </p>
+            <div className="flex justify-center">
+              <BranchSelector />
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Summary cards */}
+            {byCategory && byCategory.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                <div className="col-span-2 rounded-xl border border-slate-800 bg-slate-900/60 p-4 md:col-span-1">
+                  <p className="text-xs text-slate-400 uppercase font-semibold mb-1">Total</p>
+                  <p className="text-2xl font-bold text-white">{format(totalExpenses)}</p>
+                  <p className="text-xs text-slate-400 mt-1">{expenses?.length ?? 0} entries</p>
+                </div>
+                {byCategory.map((item) => (
+                  <div key={item.category} className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+                    <p className="text-xs text-slate-400 uppercase font-semibold mb-1">{item.category.replace('_', ' ')}</p>
+                    <p className="text-xl font-bold text-white">{format(item.total)}</p>
+                    <p className="text-xs text-slate-400 mt-1">{item.count} entries</p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
 
-        {isLoading && <Loading />}
-        {error && <ErrorDisplay message="Failed to load expenses" />}
+            {isLoading && <Loading />}
+            {error && <ErrorDisplay message="Failed to load expenses" />}
 
-        {expenses && expenses.length === 0 && (
-          <div className="text-gray-400 text-sm text-center py-12">
-            No expenses recorded for this branch.
-          </div>
-        )}
+            {expenses && expenses.length === 0 && (
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 text-slate-400 text-sm text-center py-12">
+                No expenses recorded for this branch yet.
+              </div>
+            )}
 
-        {expenses && expenses.length > 0 && (
-          <Table
-              columns={[
-                {
-                  key: 'createdAt',
-                  header: 'Date',
-                  render: (row: Expense) => new Date(row.createdAt).toLocaleDateString(),
-                },
-                {
-                  key: 'category',
-                  header: 'Category',
-                  render: (row: Expense) => (
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize ${CATEGORY_BADGE[row.category] ?? CATEGORY_BADGE.other}`}>
-                      {row.category.replace('_', ' ')}
-                    </span>
-                  ),
-                },
-                {
-                  key: 'description',
-                  header: 'Description',
-                  render: (row: Expense) => (
-                    <div>
-                      <p className="font-medium text-gray-200">{row.description}</p>
-                      {row.receiptNumber && (
-                        <p className="text-xs text-gray-400">Receipt: {row.receiptNumber}</p>
-                      )}
-                    </div>
-                  ),
-                },
-                {
-                  key: 'recordedBy',
-                  header: 'Recorded By',
-                  render: (row: Expense) =>
-                    typeof row.recordedBy === 'object'
-                      ? `${row.recordedBy.firstName} ${row.recordedBy.lastName}`
-                      : '-',
-                },
-                {
-                  key: 'amount',
-                  header: 'Amount',
-                  render: (row: Expense) => (
-                    <span className="font-semibold text-white">{format(row.amount)}</span>
-                  ),
-                },
-                {
-                  key: 'actions',
-                  header: '',
-                  render: (row: Expense) => (
-                    <button
-                      onClick={() => deleteMutation.mutate(row._id)}
-                      disabled={deleteMutation.isPending}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                      Delete
-                    </button>
-                  ),
-                },
-              ]}
-              data={expenses}
-            />
+            {expenses && expenses.length > 0 && (
+              <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60">
+                <Table
+                  columns={[
+                    {
+                      key: 'createdAt',
+                      header: 'Date',
+                      render: (row: Expense) => new Date(row.createdAt).toLocaleDateString(),
+                    },
+                    {
+                      key: 'category',
+                      header: 'Category',
+                      render: (row: Expense) => (
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${CATEGORY_BADGE[row.category] ?? CATEGORY_BADGE.other}`}>
+                          {row.category.replace('_', ' ')}
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'description',
+                      header: 'Description',
+                      render: (row: Expense) => (
+                        <div>
+                          <p className="font-medium text-slate-200">{row.description}</p>
+                          {row.receiptNumber && (
+                            <p className="text-xs text-slate-400">Receipt: {row.receiptNumber}</p>
+                          )}
+                        </div>
+                      ),
+                    },
+                    {
+                      key: 'recordedBy',
+                      header: 'Recorded By',
+                      render: (row: Expense) =>
+                        typeof row.recordedBy === 'object'
+                          ? `${row.recordedBy.firstName || ''} ${row.recordedBy.lastName || ''}`.trim() || 'Staff'
+                          : '-',
+                    },
+                    {
+                      key: 'amount',
+                      header: 'Amount',
+                      render: (row: Expense) => (
+                        <span className="font-semibold text-white">{format(row.amount)}</span>
+                      ),
+                    },
+                    {
+                      key: 'actions',
+                      header: '',
+                      render: (row: Expense) => (
+                        <button
+                          onClick={() => handleDeleteExpense(row)}
+                          disabled={deleteMutation.isPending}
+                          className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 text-sm transition-colors"
+                          aria-label={`Delete ${row.description}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
+                        </button>
+                      ),
+                    },
+                  ]}
+                  data={expenses}
+                />
+              </div>
+            )}
+          </>
         )}
 
         <Modal
@@ -275,17 +317,17 @@ export function ExpensesPage() {
               />
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Category</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Category</label>
               <select
                 {...register('category', { required: 'Category is required' })}
-                className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-green/50 focus:outline-none focus:ring-2 focus:ring-accent-green/20"
+                className="w-full rounded-xl border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               >
                 <option value="">Select category...</option>
                 {CATEGORIES.map((c) => (
                   <option key={c.value} value={c.value}>{c.label}</option>
                 ))}
               </select>
-              {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category.message}</p>}
+              {errors.category && <p className="text-red-400 text-xs mt-1">{errors.category.message}</p>}
             </div>
             <Input
               label="Amount"
@@ -308,12 +350,12 @@ export function ExpensesPage() {
               label="Notes (optional)"
               {...register('notes')}
             />
-            <div className="flex gap-3 justify-end pt-2">
+            <div className="flex gap-3 justify-end pt-4 border-t border-slate-800">
               <Button variant="secondary" type="button" onClick={() => { setIsModalOpen(false); reset(); }}>
                 Cancel
               </Button>
               <Button type="submit" disabled={createMutation.isPending}>
-                Record Expense
+                {createMutation.isPending ? 'Recording...' : 'Record Expense'}
               </Button>
             </div>
           </form>
@@ -322,3 +364,5 @@ export function ExpensesPage() {
     </AdminLayout>
   );
 }
+
+export default ExpensesPage;

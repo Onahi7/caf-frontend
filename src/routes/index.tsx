@@ -738,6 +738,14 @@ export const router = createBrowserRouter([
     ),
   },
   {
+    path: '/admin/settings',
+    element: <Navigate to="/admin/settings/system" replace />,
+  },
+  {
+    path: '/admin/audit',
+    element: <Navigate to="/admin/audit/trail" replace />,
+  },
+  {
     path: '/admin/settings/system',
     element: (
       <ProtectedRoute allowedRoles={['super_admin']}>

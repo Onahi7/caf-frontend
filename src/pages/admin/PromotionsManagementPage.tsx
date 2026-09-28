@@ -20,14 +20,16 @@ import { useConfirm } from '../../hooks/useConfirm';
 
 interface Promotion {
   _id: string;
+  id?: string;
   name: string;
-  description: string;
+  description?: string;
   type: 'percentage' | 'fixed_amount' | 'buy_x_get_y';
+  scope: 'entire_transaction' | 'specific_item' | 'category';
   value: number;
   applicableProducts?: string[];
   applicableCategories?: string[];
-  minPurchaseAmount?: number;
-  maxDiscountAmount?: number;
+  minimumPurchase?: number;
+  maximumDiscount?: number;
   startDate: string;
   endDate: string;
   isActive: boolean;
@@ -38,11 +40,12 @@ interface Promotion {
 
 interface PromotionFormData {
   name: string;
-  description: string;
+  description?: string;
   type: 'percentage' | 'fixed_amount' | 'buy_x_get_y';
+  scope: 'entire_transaction' | 'specific_item' | 'category';
   value: number;
-  minPurchaseAmount?: number;
-  maxDiscountAmount?: number;
+  minimumPurchase?: number;
+  maximumDiscount?: number;
   startDate: string;
   endDate: string;
   usageLimit?: number;
@@ -77,7 +80,25 @@ export const PromotionsManagementPage = () => {
   // Create promotion mutation
   const createMutation = useMutation({
     mutationFn: async (data: PromotionFormData) => {
-      return apiClient.post('/promotions', data);
+      const payload: Record<string, unknown> = {
+        name: data.name.trim(),
+        description: data.description?.trim() || undefined,
+        type: data.type,
+        scope: data.scope || 'entire_transaction',
+        value: Number(data.value),
+        startDate: new Date(data.startDate).toISOString(),
+        endDate: new Date(data.endDate).toISOString(),
+      };
+      if (data.minimumPurchase !== undefined && data.minimumPurchase !== null && !isNaN(Number(data.minimumPurchase))) {
+        payload.minimumPurchase = Number(data.minimumPurchase);
+      }
+      if (data.maximumDiscount !== undefined && data.maximumDiscount !== null && !isNaN(Number(data.maximumDiscount))) {
+        payload.maximumDiscount = Number(data.maximumDiscount);
+      }
+      if (data.usageLimit !== undefined && data.usageLimit !== null && !isNaN(Number(data.usageLimit))) {
+        payload.usageLimit = Number(data.usageLimit);
+      }
+      return apiClient.post('/promotions', payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.promotions.all(), exact: false });
@@ -91,8 +112,27 @@ export const PromotionsManagementPage = () => {
   // Update promotion mutation
   const updateMutation = useMutation({
     mutationFn: async (data: PromotionFormData) => {
-      if (!editingPromotion) return;
-      return apiClient.patch(`/promotions/${editingPromotion._id}`, data);
+      const id = editingPromotion?._id || editingPromotion?.id;
+      if (!id) return;
+      const payload: Record<string, unknown> = {
+        name: data.name.trim(),
+        description: data.description?.trim() || undefined,
+        type: data.type,
+        scope: data.scope || 'entire_transaction',
+        value: Number(data.value),
+        startDate: new Date(data.startDate).toISOString(),
+        endDate: new Date(data.endDate).toISOString(),
+      };
+      if (data.minimumPurchase !== undefined && data.minimumPurchase !== null && !isNaN(Number(data.minimumPurchase))) {
+        payload.minimumPurchase = Number(data.minimumPurchase);
+      }
+      if (data.maximumDiscount !== undefined && data.maximumDiscount !== null && !isNaN(Number(data.maximumDiscount))) {
+        payload.maximumDiscount = Number(data.maximumDiscount);
+      }
+      if (data.usageLimit !== undefined && data.usageLimit !== null && !isNaN(Number(data.usageLimit))) {
+        payload.usageLimit = Number(data.usageLimit);
+      }
+      return apiClient.patch(`/promotions/${id}`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.promotions.all(), exact: false });
@@ -106,8 +146,9 @@ export const PromotionsManagementPage = () => {
 
   // Toggle promotion status mutation
   const toggleStatusMutation = useMutation({
-    mutationFn: async (promotionId: string) => {
-      return apiClient.patch(`/promotions/${promotionId}/toggle-status`);
+    mutationFn: async (promotion: Promotion) => {
+      const id = promotion._id || promotion.id;
+      return apiClient.patch(`/promotions/${id}/toggle-status`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.promotions.all(), exact: false });
@@ -118,8 +159,9 @@ export const PromotionsManagementPage = () => {
 
   // Delete promotion mutation
   const deleteMutation = useMutation({
-    mutationFn: async (promotionId: string) => {
-      return apiClient.delete(`/promotions/${promotionId}`);
+    mutationFn: async (promotion: Promotion) => {
+      const id = promotion._id || promotion.id;
+      return apiClient.delete(`/promotions/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.promotions.all(), exact: false });
@@ -133,11 +175,12 @@ export const PromotionsManagementPage = () => {
       setEditingPromotion(promotion);
       reset({
         name: promotion.name,
-        description: promotion.description,
+        description: promotion.description || '',
         type: promotion.type,
+        scope: promotion.scope || 'entire_transaction',
         value: promotion.value,
-        minPurchaseAmount: promotion.minPurchaseAmount,
-        maxDiscountAmount: promotion.maxDiscountAmount,
+        minimumPurchase: promotion.minimumPurchase,
+        maximumDiscount: promotion.maximumDiscount,
         startDate: promotion.startDate.split('T')[0],
         endDate: promotion.endDate.split('T')[0],
         usageLimit: promotion.usageLimit,
@@ -149,6 +192,7 @@ export const PromotionsManagementPage = () => {
         name: '',
         description: '',
         type: 'percentage',
+        scope: 'entire_transaction',
         value: 0,
         startDate: today,
         endDate: today,
@@ -254,7 +298,7 @@ export const PromotionsManagementPage = () => {
           <Button
             variant={promotion.isActive ? 'danger' : 'primary'}
             size="sm"
-            onClick={() => toggleStatusMutation.mutate(promotion._id)}
+            onClick={() => toggleStatusMutation.mutate(promotion)}
           >
             {promotion.isActive ? 'Deactivate' : 'Activate'}
           </Button>
@@ -268,7 +312,7 @@ export const PromotionsManagementPage = () => {
                 confirmLabel: 'Delete promotion',
                 variant: 'danger',
               });
-              if (confirmed) deleteMutation.mutate(promotion._id);
+              if (confirmed) deleteMutation.mutate(promotion);
             }}
           >
             Delete
@@ -321,28 +365,41 @@ export const PromotionsManagementPage = () => {
             />
 
             <Input
-              label="Description"
-              {...register('description', { required: 'Description is required' })}
+              label="Description (Optional)"
+              {...register('description')}
               error={errors.description?.message}
             />
 
-            <Select
-              label="Promotion Type"
-              {...register('type', { required: 'Type is required' })}
-              error={errors.type?.message}
-            >
-              <option value="percentage" className="bg-primary-dark text-white">Percentage Discount</option>
-              <option value="fixed_amount" className="bg-primary-dark text-white">Fixed Amount Discount</option>
-              <option value="buy_x_get_y" className="bg-primary-dark text-white">Buy X Get Y</option>
-            </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Select
+                label="Promotion Type"
+                {...register('type', { required: 'Type is required' })}
+                error={errors.type?.message}
+              >
+                <option value="percentage" className="bg-primary-dark text-white">Percentage Discount</option>
+                <option value="fixed_amount" className="bg-primary-dark text-white">Fixed Amount Discount</option>
+                <option value="buy_x_get_y" className="bg-primary-dark text-white">Buy X Get Y</option>
+              </Select>
+
+              <Select
+                label="Promotion Scope"
+                {...register('scope', { required: 'Scope is required' })}
+                error={errors.scope?.message}
+              >
+                <option value="entire_transaction" className="bg-primary-dark text-white">Entire Order / Transaction</option>
+                <option value="specific_item" className="bg-primary-dark text-white">Specific Item</option>
+                <option value="category" className="bg-primary-dark text-white">Product Category</option>
+              </Select>
+            </div>
 
             <Input
-              label={promotionType === 'percentage' ? 'Discount Percentage' : 'Discount Value'}
+              label={promotionType === 'percentage' ? 'Discount Percentage (%)' : 'Discount Value'}
               type="number"
               step="0.01"
               min="0"
               {...register('value', {
                 required: 'Value is required',
+                valueAsNumber: true,
                 min: { value: 0, message: 'Must be 0 or greater' },
               })}
               error={errors.value?.message}
@@ -370,10 +427,11 @@ export const PromotionsManagementPage = () => {
                 type="number"
                 step="0.01"
                 min="0"
-                {...register('minPurchaseAmount', {
+                {...register('minimumPurchase', {
+                  valueAsNumber: true,
                   min: { value: 0, message: 'Must be 0 or greater' },
                 })}
-                error={errors.minPurchaseAmount?.message}
+                error={errors.minimumPurchase?.message}
               />
 
               <Input
@@ -381,10 +439,11 @@ export const PromotionsManagementPage = () => {
                 type="number"
                 step="0.01"
                 min="0"
-                {...register('maxDiscountAmount', {
+                {...register('maximumDiscount', {
+                  valueAsNumber: true,
                   min: { value: 0, message: 'Must be 0 or greater' },
                 })}
-                error={errors.maxDiscountAmount?.message}
+                error={errors.maximumDiscount?.message}
               />
             </div>
 
@@ -393,6 +452,7 @@ export const PromotionsManagementPage = () => {
               type="number"
               min="0"
               {...register('usageLimit', {
+                valueAsNumber: true,
                 min: { value: 0, message: 'Must be 0 or greater' },
               })}
               error={errors.usageLimit?.message}

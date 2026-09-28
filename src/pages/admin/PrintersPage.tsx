@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { CheckCircle, Plus, Printer, TestTube, Trash2, XCircle } from 'lucide-react';
+import { CheckCircle, Edit2, Plus, Printer, TestTube, Trash2, XCircle } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { unwrapArray } from '../../lib/unwrap-response';
 import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
+import { BranchSelector } from '../../components/BranchSelector';
 import { PrinterSettingsModal } from '../../components/admin/PrinterSettingsModal';
 import { useToast } from '../../hooks/useToast';
 import { getBranchId, useBranchStore } from '../../stores/branch-store';
@@ -16,7 +17,7 @@ interface PrinterConfig {
   branchId: {
     _id: string;
     name: string;
-  };
+  } | string;
   terminalId: string;
   name: string;
   model: string;
@@ -39,20 +40,24 @@ export const PrintersPage: React.FC = () => {
   const [testing, setTesting] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [editingPrinter, setEditingPrinter] = useState<PrinterConfig | null>(null);
   const { showSuccess, showError } = useToast();
   const requestConfirmation = useConfirm();
   const selectedBranch = useBranchStore((state) => state.selectedBranch);
+  const branches = useBranchStore((state) => state.branches);
   const branchId = getBranchId(selectedBranch);
+  const effectiveBranchId = branchId || branches[0]?._id || (branches[0] as any)?.id || '';
   const terminalId = 'TERMINAL-01';
 
   useEffect(() => {
     void loadPrinters();
-  }, []);
+  }, [branchId]);
 
   const loadPrinters = async () => {
     setLoading(true);
     try {
-      const response = await apiClient.get('/printers');
+      const endpoint = branchId ? `/printers/branch/${branchId}` : '/printers';
+      const response = await apiClient.get(endpoint);
       setPrinters(unwrapArray(response.data));
     } catch (error) {
       console.error('Failed to load printers:', error);
@@ -60,6 +65,16 @@ export const PrintersPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenAdd = () => {
+    setEditingPrinter(null);
+    setIsSettingsOpen(true);
+  };
+
+  const handleOpenEdit = (printer: PrinterConfig) => {
+    setEditingPrinter(printer);
+    setIsSettingsOpen(true);
   };
 
   const testConnection = async (id: string) => {
@@ -132,10 +147,13 @@ export const PrintersPage: React.FC = () => {
               </p>
             </div>
           </div>
-          <Button onClick={() => setIsSettingsOpen(true)} className="inline-flex items-center justify-center gap-2 sm:w-auto">
-            <Plus className="h-4 w-4" />
-            <span>Add Printer</span>
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <BranchSelector />
+            <Button onClick={handleOpenAdd} className="inline-flex items-center justify-center gap-2">
+              <Plus className="h-4 w-4" />
+              <span>Add Printer</span>
+            </Button>
+          </div>
         </div>
 
         <div className="rounded-xl border border-accent-green/20 bg-white/5 p-4 text-sm text-gray-300">
@@ -153,7 +171,7 @@ export const PrintersPage: React.FC = () => {
               icon={<Printer className="h-12 w-12" />}
               title="No printers configured"
               message="Add a printer to start printing receipts from this terminal."
-              action={{ label: 'Add your first printer', onClick: () => setIsSettingsOpen(true) }}
+              action={{ label: 'Add your first printer', onClick: handleOpenAdd }}
             />
           </div>
         ) : (
@@ -236,6 +254,14 @@ export const PrintersPage: React.FC = () => {
                     </span>
                   </Button>
                   <Button
+                    onClick={() => handleOpenEdit(printer)}
+                    variant="secondary"
+                    className="px-3"
+                    aria-label={`Edit ${printer.name}`}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                  <Button
                     onClick={() => deletePrinter(printer)}
                     variant="danger"
                     isLoading={deleting === printer._id}
@@ -257,15 +283,17 @@ export const PrintersPage: React.FC = () => {
           </div>
         )}
 
-        {branchId ? (
+        {effectiveBranchId ? (
           <PrinterSettingsModal
             isOpen={isSettingsOpen}
             onClose={() => {
               setIsSettingsOpen(false);
+              setEditingPrinter(null);
               void loadPrinters();
             }}
-            branchId={branchId}
+            branchId={effectiveBranchId}
             terminalId={terminalId}
+            printer={editingPrinter}
           />
         ) : null}
       </div>

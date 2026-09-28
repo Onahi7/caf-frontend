@@ -8,9 +8,10 @@ import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Search } from 'lucide-react';
+import { Search, Boxes } from 'lucide-react';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
+import { BranchSelector } from '../../components/BranchSelector';
 import { useToast } from '../../hooks/useToast';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { queryKeys } from '../../lib/query-keys';
@@ -67,7 +68,7 @@ interface BatchFormData {
   quantity: number;
   purchasePrice: number;
   sellingPrice: number;
-  supplierId: string | { _id?: string; name?: string };
+  supplierId: string;
 }
 
 const getEntityId = (value?: string | { _id?: string; id?: string }) =>
@@ -132,12 +133,12 @@ export const BatchManagementPage = () => {
 
   // Fetch products for dropdown
   const { data: products } = useQuery({
-    queryKey: queryKeys.products.list({ branchId }),
+    queryKey: queryKeys.products.list({ branchId, limit: 1000 }),
     queryFn: async () => {
       const response = await apiClient.get('/products', {
-        params: branchId ? { branchId } : {},
+        params: { limit: 1000, ...(branchId ? { branchId } : {}) },
       });
-      return unwrapArray<Product>(response.data);
+      return unwrapArray<Product>(response.data?.data || response.data);
     },
     enabled: !!branchId,
   });
@@ -177,7 +178,7 @@ export const BatchManagementPage = () => {
 
   // Update batch mutation
   const updateMutation = useMutation({
-    mutationFn: async (data: BatchFormData) => {
+    mutationFn: async (data: Partial<BatchFormData>) => {
       if (!editingBatch) return;
       const response = await apiClient.patch(`/batches/${editingBatch.id}`, data);
       return response.data;
@@ -210,7 +211,7 @@ export const BatchManagementPage = () => {
         productId: getEntityId(batch.productId),
         branchId: getEntityId(batch.branchId),
         lotNumber: batch.lotNumber,
-        expiryDate: batch.expiryDate.split('T')[0],
+        expiryDate: batch.expiryDate ? batch.expiryDate.split('T')[0] : '',
         quantity: batch.quantityAvailable,
         purchasePrice: batch.purchasePrice,
         sellingPrice: batch.sellingPrice,
@@ -240,9 +241,25 @@ export const BatchManagementPage = () => {
 
   const onSubmit = (data: BatchFormData) => {
     if (editingBatch) {
-      updateMutation.mutate(data);
+      const updatePayload: Record<string, any> = {
+        lotNumber: data.lotNumber,
+        expiryDate: new Date(data.expiryDate).toISOString(),
+        purchasePrice: Number(data.purchasePrice),
+        sellingPrice: Number(data.sellingPrice),
+      };
+      updateMutation.mutate(updatePayload);
     } else {
-      createMutation.mutate(data);
+      const createPayload: Record<string, any> = {
+        productId: data.productId,
+        branchId: data.branchId || branchId,
+        lotNumber: data.lotNumber,
+        expiryDate: new Date(data.expiryDate).toISOString(),
+        quantity: Number(data.quantity),
+        purchasePrice: Number(data.purchasePrice),
+        sellingPrice: Number(data.sellingPrice),
+        supplierId: data.supplierId,
+      };
+      createMutation.mutate(createPayload as any);
     }
   };
 
@@ -257,8 +274,9 @@ export const BatchManagementPage = () => {
 
   // Get expiry warning color
   const getExpiryWarning = (expiryDate: string, isExpired: boolean) => {
-    if (isExpired) return { color: 'text-red-400', header: 'Expired' };
+    if (isExpired) return { color: 'text-red-400', label: 'Expired' };
     const days = getDaysUntilExpiry(expiryDate);
+    if (days <= 0) return { color: 'text-red-400', label: 'Expired' };
     if (days <= 30) return { color: 'text-red-400', label: `${days}d` };
     if (days <= 60) return { color: 'text-orange-400', label: `${days}d` };
     if (days <= 90) return { color: 'text-yellow-400', label: `${days}d` };
@@ -268,18 +286,24 @@ export const BatchManagementPage = () => {
   if (!branchId) {
     return (
       <AdminLayout title="Batch Management">
-        <div className="text-center py-12">
-          <h2 className="text-xl font-semibold text-white">Select a Branch First</h2>
-          <p className="mt-2 text-gray-400">
-            Batches are branch-scoped. Choose a branch before viewing or managing stock lots.
+        <div className="max-w-md mx-auto text-center py-16 px-4">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <Boxes className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-white mb-2">Select a Branch</h2>
+          <p className="text-sm text-slate-400 mb-6">
+            Batches are branch-scoped. Choose a branch below to view and manage stock lots.
           </p>
+          <div className="flex justify-center">
+            <BranchSelector />
+          </div>
         </div>
       </AdminLayout>
     );
   }
 
-  if (isLoading) return <Loading />;
-  if (error) return <Error message="Failed to load batches" />;
+  if (isLoading) return <AdminLayout title="Batch Management"><Loading /></AdminLayout>;
+  if (error) return <AdminLayout title="Batch Management"><Error message="Failed to load batches" /></AdminLayout>;
 
   const columns = [
     {
@@ -370,14 +394,17 @@ export const BatchManagementPage = () => {
     <AdminLayout title="Batch Management">
       <div className="space-y-5">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-white">Batches</h1>
             <p className="text-gray-400 mt-1">Manage inventory batches and expiry dates</p>
           </div>
-          <Button onClick={() => handleOpenModal()}>
-            Add Batch
-          </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <BranchSelector />
+            <Button onClick={() => handleOpenModal()}>
+              Add Batch
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -416,14 +443,14 @@ export const BatchManagementPage = () => {
             ]}
           />
           <div className="flex items-end">
-            <label className="flex items-center gap-2 text-white cursor-pointer">
+            <label className="flex items-center gap-2 text-white cursor-pointer pb-2">
               <input
                 type="checkbox"
                 checked={showExpiring}
                 onChange={(e) => setShowExpiring(e.target.checked)}
-                className="w-4 h-4 rounded border-gray-600 bg-primary-dark text-accent-green focus:ring-accent-green"
+                className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-accent-green focus:ring-accent-green"
               />
-              <span>Show Expiring Soon (90 days)</span>
+              <span className="text-sm">Show Expiring Soon (90 days)</span>
             </label>
           </div>
         </div>
@@ -496,6 +523,7 @@ export const BatchManagementPage = () => {
               label={editingBatch ? 'Quantity' : 'Initial Quantity'}
               type="number"
               {...register('quantity', {
+                valueAsNumber: true,
                 required: 'Quantity is required',
                 min: { value: 0, message: 'Must be 0 or greater' },
               })}
@@ -516,6 +544,7 @@ export const BatchManagementPage = () => {
                 type="number"
                 step="0.01"
                 {...register('purchasePrice', {
+                  valueAsNumber: true,
                   required: 'Purchase price is required',
                   min: { value: 0, message: 'Must be 0 or greater' },
                 })}
@@ -527,6 +556,7 @@ export const BatchManagementPage = () => {
                 type="number"
                 step="0.01"
                 {...register('sellingPrice', {
+                  valueAsNumber: true,
                   required: 'Selling price is required',
                   min: { value: 0, message: 'Must be 0 or greater' },
                 })}
@@ -547,10 +577,11 @@ export const BatchManagementPage = () => {
                   label: supplier.name,
                 })),
               ]}
+              disabled={!!editingBatch}
             />
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-700">
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
               <Button
                 type="button"
                 variant="secondary"
@@ -572,4 +603,4 @@ export const BatchManagementPage = () => {
   );
 };
 
-
+export default BatchManagementPage;

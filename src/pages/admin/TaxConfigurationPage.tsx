@@ -18,6 +18,7 @@ import { getErrorMessage } from '../../lib/error-utils';
 
 interface TaxConfig {
   _id: string;
+  id?: string;
   name: string;
   rate: number;
   type: 'percentage' | 'fixed';
@@ -55,7 +56,15 @@ export const TaxConfigurationPage = () => {
   // Create tax mutation
   const createMutation = useMutation({
     mutationFn: async (data: TaxFormData) => {
-      return apiClient.post('/settings/taxes', data);
+      const payload = {
+        name: data.name.trim(),
+        rate: Number(data.rate),
+        type: data.type,
+        applicableCategories: typeof data.applicableCategories === 'string'
+          ? data.applicableCategories.split(',').map((c) => c.trim()).filter(Boolean)
+          : data.applicableCategories,
+      };
+      return apiClient.post('/settings/taxes', payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.taxConfigs.all(), exact: false });
@@ -69,8 +78,17 @@ export const TaxConfigurationPage = () => {
   // Update tax mutation
   const updateMutation = useMutation({
     mutationFn: async (data: TaxFormData) => {
-      if (!editingTax) return;
-      return apiClient.patch(`/settings/taxes/${editingTax._id}`, data);
+      const id = editingTax?._id || (editingTax as any)?.id;
+      if (!id) return;
+      const payload = {
+        name: data.name.trim(),
+        rate: Number(data.rate),
+        type: data.type,
+        applicableCategories: typeof data.applicableCategories === 'string'
+          ? data.applicableCategories.split(',').map((c) => c.trim()).filter(Boolean)
+          : data.applicableCategories,
+      };
+      return apiClient.patch(`/settings/taxes/${id}`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.taxConfigs.all(), exact: false });
@@ -150,7 +168,7 @@ export const TaxConfigurationPage = () => {
       key: 'rate',
       header: 'Rate',
       render: (tax: TaxConfig) => (
-        tax.type === 'percentage' ? `${tax.rate}%` : `$${tax.rate}`
+        tax.type === 'percentage' ? `${tax.rate}%` : `${tax.rate} (fixed)`
       ),
     },
     {
@@ -180,39 +198,42 @@ export const TaxConfigurationPage = () => {
     {
       key: 'actions',
       header: 'Actions',
-      render: (tax: TaxConfig) => (
-        <div className="flex space-x-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => handleOpenModal(tax)}
-          >
-            Edit
-          </Button>
-          <Button
-            variant={tax.isActive ? 'danger' : 'primary'}
-            size="sm"
-            onClick={() => toggleStatusMutation.mutate(tax._id)}
-          >
-            {tax.isActive ? 'Deactivate' : 'Activate'}
-          </Button>
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={async () => {
-              const confirmed = await requestConfirmation({
-                title: 'Delete tax configuration?',
-                message: `"${tax.name}" will be permanently removed. Existing records are not changed.`,
-                confirmLabel: 'Delete tax',
-                variant: 'danger',
-              });
-              if (confirmed) deleteMutation.mutate(tax._id);
-            }}
-          >
-            Delete
-          </Button>
-        </div>
-      ),
+      render: (tax: TaxConfig) => {
+        const taxId = tax._id || (tax as any).id;
+        return (
+          <div className="flex space-x-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => handleOpenModal(tax)}
+            >
+              Edit
+            </Button>
+            <Button
+              variant={tax.isActive ? 'danger' : 'primary'}
+              size="sm"
+              onClick={() => taxId && toggleStatusMutation.mutate(taxId)}
+            >
+              {tax.isActive ? 'Deactivate' : 'Activate'}
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={async () => {
+                const confirmed = await requestConfirmation({
+                  title: 'Delete tax configuration?',
+                  message: `"${tax.name}" will be permanently removed. Existing records are not changed.`,
+                  confirmLabel: 'Delete tax',
+                  variant: 'danger',
+                });
+                if (confirmed && taxId) deleteMutation.mutate(taxId);
+              }}
+            >
+              Delete
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 
@@ -266,6 +287,7 @@ export const TaxConfigurationPage = () => {
               min="0"
               {...register('rate', {
                 required: 'Rate is required',
+                valueAsNumber: true,
                 min: { value: 0, message: 'Must be 0 or greater' },
               })}
               error={errors.rate?.message}

@@ -1,19 +1,21 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { Building2, Plus } from 'lucide-react';
+import { Building2, Plus, Trash2 } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
 import { AdminPageHeader } from '../../components/admin';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { useToast } from '../../hooks/useToast';
 import { queryKeys } from '../../lib/query-keys';
+import { unwrapArray } from '../../lib/unwrap-response';
 
 interface Branch {
   id: string;
@@ -68,7 +70,7 @@ export const BranchManagementPage = () => {
     queryKey: queryKeys.branches.list(),
     queryFn: async () => {
       const response = await apiClient.get<Branch[]>('/branches');
-      return response.data;
+      return unwrapArray<Branch>(response.data);
     },
   });
 
@@ -128,6 +130,36 @@ export const BranchManagementPage = () => {
       showSuccess('Branch updated');
     },
     onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update branch'),
+  });
+
+  // Toggle branch active status mutation
+  const toggleStatusMutation = useMutation({
+    mutationFn: async (branch: Branch) => {
+      const id = branch._id || branch.id;
+      if (branch.isActive) {
+        return apiClient.patch(`/branches/${id}/deactivate`);
+      } else {
+        return apiClient.patch(`/branches/${id}`, { isActive: true });
+      }
+    },
+    onSuccess: (_, branch) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.branches.all(), exact: false });
+      showSuccess(`Branch "${branch.name}" ${branch.isActive ? 'deactivated' : 'activated'}`);
+    },
+    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update branch status'),
+  });
+
+  // Delete branch mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.delete(`/branches/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.branches.all(), exact: false });
+      setBranchToDelete(null);
+      showSuccess('Branch deleted successfully');
+    },
+    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to delete branch'),
   });
 
   const handleOpenModal = (branch?: Branch) => {
@@ -240,15 +272,44 @@ export const BranchManagementPage = () => {
       key: 'actions',
       header: 'Actions',
       align: 'right' as const,
-      render: (branch: Branch) => (
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={() => handleOpenModal(branch)}
-        >
-          Edit
-        </Button>
-      ),
+      render: (branch: Branch) => {
+        const branchId = branch._id || branch.id;
+        const isToggling = toggleStatusMutation.isPending &&
+          ((toggleStatusMutation.variables?._id || toggleStatusMutation.variables?.id) === branchId);
+        return (
+          <div className="flex items-center justify-end gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => handleOpenModal(branch)}
+            >
+              Edit
+            </Button>
+            {!branch.isHeadquarters && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => toggleStatusMutation.mutate(branch)}
+                isLoading={isToggling}
+                className={branch.isActive ? "text-amber-400 hover:text-amber-300" : "text-emerald-400 hover:text-emerald-300"}
+              >
+                {branch.isActive ? 'Deactivate' : 'Activate'}
+              </Button>
+            )}
+            {!branch.isHeadquarters && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setBranchToDelete(branch)}
+                className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                title="Delete Branch"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -398,6 +459,21 @@ export const BranchManagementPage = () => {
             </div>
           </form>
         </Modal>
+
+        {/* Delete Confirmation */}
+        <ConfirmDialog
+          isOpen={!!branchToDelete}
+          onClose={() => setBranchToDelete(null)}
+          onConfirm={() => {
+            const id = branchToDelete?._id || branchToDelete?.id;
+            if (id) deleteMutation.mutate(id);
+          }}
+          title="Delete Branch"
+          message={`Are you sure you want to delete branch "${branchToDelete?.name}" (${branchToDelete?.code})? This will permanently remove the branch.`}
+          confirmLabel="Delete Branch"
+          variant="danger"
+          isLoading={deleteMutation.isPending}
+        />
       </div>
     </AdminLayout>
   );

@@ -8,6 +8,7 @@ import { AdminPageHeader } from '../../components/admin';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Loading } from '../../components/ui/Loading';
@@ -26,6 +27,7 @@ import {
 
 interface User {
   id: string;
+  _id?: string;
   username: string;
   email: string;
   firstName: string;
@@ -86,7 +88,10 @@ export const UserManagementPage = () => {
     queryFn: async () => {
       const response = await apiClient.get('/users');
       const payload = response.data?.data ?? response.data;
-      return (Array.isArray(payload) ? payload : []) as User[];
+      return (Array.isArray(payload) ? payload : []).map((u: any) => ({
+        ...u,
+        id: u.id || u._id,
+      })) as User[];
     },
   });
 
@@ -184,7 +189,7 @@ export const UserManagementPage = () => {
       if (data.password) {
         payload.password = data.password;
       }
-      const response = await apiClient.patch(`/users/${editingUser.id}`, payload);
+      const response = await apiClient.patch(`/users/${editingUser._id || editingUser.id}`, payload);
       return response.data;
     },
     onSuccess: () => {
@@ -202,10 +207,11 @@ export const UserManagementPage = () => {
   // Toggle user active status mutation
   const toggleStatusMutation = useMutation({
     mutationFn: async (targetUser: User) => {
+      const targetUserId = targetUser._id || targetUser.id;
       if (targetUser.isActive) {
-        return apiClient.patch(`/users/${targetUser.id}/deactivate`);
+        return apiClient.patch(`/users/${targetUserId}/deactivate`);
       } else {
-        return apiClient.patch(`/users/${targetUser.id}`, { isActive: true });
+        return apiClient.patch(`/users/${targetUserId}`, { isActive: true });
       }
     },
     onSuccess: (_, targetUser) => {
@@ -364,8 +370,12 @@ export const UserManagementPage = () => {
       header: 'Actions',
       align: 'right' as const,
       render: (user: User) => {
-        const isSelf = currentUser?.id === user.id;
+        const currentUserId = (currentUser as any)?._id || currentUser?.id;
+        const targetUserId = user._id || user.id;
+        const isSelf = Boolean(currentUserId && targetUserId && currentUserId === targetUserId);
         const canDelete = currentUser?.role === 'super_admin' && !isSelf;
+        const isTogglingThisUser = toggleStatusMutation.isPending && 
+          ((toggleStatusMutation.variables?._id || toggleStatusMutation.variables?.id) === targetUserId);
         return (
           <div className="flex items-center justify-end gap-1.5 flex-wrap" onClick={(e) => e.stopPropagation()}>
             <Button
@@ -380,7 +390,7 @@ export const UserManagementPage = () => {
                 size="sm"
                 variant="ghost"
                 onClick={() => toggleStatusMutation.mutate(user)}
-                isLoading={toggleStatusMutation.isPending && toggleStatusMutation.variables?.id === user.id}
+                isLoading={isTogglingThisUser}
                 className={user.isActive ? "text-amber-400 hover:text-amber-300" : "text-emerald-400 hover:text-emerald-300"}
               >
                 {user.isActive ? 'Deactivate' : 'Activate'}
@@ -561,35 +571,20 @@ export const UserManagementPage = () => {
           </form>
         </Modal>
 
-        {/* Delete Confirmation Modal */}
-        <Modal
+        {/* Delete Confirmation Dialog */}
+        <ConfirmDialog
           isOpen={!!userToDelete}
           onClose={() => setUserToDelete(null)}
+          onConfirm={() => {
+            const id = userToDelete?._id || userToDelete?.id;
+            if (id) deleteMutation.mutate(id);
+          }}
           title="Delete User"
-          size="sm"
-        >
-          <div className="space-y-4">
-            <p className="text-sm text-slate-300">
-              Are you sure you want to permanently delete user <strong className="text-white">{userToDelete?.username}</strong> ({userToDelete?.firstName} {userToDelete?.lastName})? This action cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3 pt-2 border-t border-white/10">
-              <Button
-                variant="secondary"
-                onClick={() => setUserToDelete(null)}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                className="!bg-rose-600 hover:!bg-rose-500 !text-white shadow-lg shadow-rose-600/20"
-                isLoading={deleteMutation.isPending}
-                onClick={() => userToDelete && deleteMutation.mutate(userToDelete.id)}
-              >
-                Delete Permanently
-              </Button>
-            </div>
-          </div>
-        </Modal>
+          message={`Are you sure you want to permanently delete user "${userToDelete?.username}" (${userToDelete?.firstName} ${userToDelete?.lastName})? This action cannot be undone.`}
+          confirmLabel="Delete Permanently"
+          variant="danger"
+          isLoading={deleteMutation.isPending}
+        />
       </div>
     </AdminLayout>
   );

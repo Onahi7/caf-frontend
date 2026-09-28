@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, ClipboardCheck, Plus } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { unwrapResponse } from '../../lib/unwrap-response';
 import { AdminLayout } from '../../components/AdminLayout';
@@ -7,10 +8,12 @@ import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
+import { BranchSelector } from '../../components/BranchSelector';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 
 const CycleCountStatus = {
   DRAFT: 'draft',
@@ -22,7 +25,6 @@ type CycleCountStatus = typeof CycleCountStatus[keyof typeof CycleCountStatus];
 
 interface CycleCountLine {
   productId: { _id: string; name: string; sku: string } | string;
-  // Legacy backend field name; now represents the product-level count line id.
   batchId: string;
   lotNumber: string;
   systemQuantity: number;
@@ -43,15 +45,15 @@ interface CycleCount {
 }
 
 const STATUS_BADGE: Record<CycleCountStatus, string> = {
-  [CycleCountStatus.DRAFT]: 'bg-yellow-500/15 text-yellow-200 border border-yellow-500/20',
+  [CycleCountStatus.DRAFT]: 'bg-yellow-500/15 text-yellow-300 border border-yellow-500/20',
   [CycleCountStatus.SUBMITTED]: 'bg-blue-500/15 text-blue-300 border border-blue-500/20',
-  [CycleCountStatus.APPROVED]: 'bg-green-500/15 text-green-300 border border-green-500/20',
-  [CycleCountStatus.CANCELLED]: 'bg-white/10 text-gray-300 border border-white/10',
+  [CycleCountStatus.APPROVED]: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/20',
+  [CycleCountStatus.CANCELLED]: 'bg-slate-700/50 text-slate-300 border border-slate-700',
 };
 
 function StatusBadge({ status }: { status: CycleCountStatus }) {
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${STATUS_BADGE[status]}`}>
+    <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold capitalize ${STATUS_BADGE[status] || STATUS_BADGE[CycleCountStatus.CANCELLED]}`}>
       {status}
     </span>
   );
@@ -63,6 +65,7 @@ export function CycleCountPage() {
   const { selectedBranch } = useBranchStore();
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
+  const requestConfirmation = useConfirm();
 
   const branchId = getBranchId(selectedBranch);
 
@@ -73,7 +76,7 @@ export function CycleCountPage() {
       const payload = response.data?.data ?? response.data;
       return (Array.isArray(payload) ? payload : []) as CycleCount[];
     },
-    enabled: !!selectedBranch,
+    enabled: !!branchId,
   });
 
   const { data: countDetail, isLoading: detailLoading } = useQuery({
@@ -152,11 +155,38 @@ export function CycleCountPage() {
 
   function handleSubmitCount() {
     if (!selectedCount) return;
-    const lines = (countDetail?.lines ?? []).map((line) => ({
-      batchId: line.batchId,
-      countedQuantity: countedValues[line.batchId] ?? line.systemQuantity,
-    }));
+    const lines = (countDetail?.lines ?? []).map((line) => {
+      const val = countedValues[line.batchId];
+      return {
+        batchId: line.batchId,
+        countedQuantity: typeof val === 'number' && !isNaN(val) ? val : Number(line.systemQuantity || 0),
+      };
+    });
     submitMutation.mutate({ id: selectedCount._id, lines });
+  }
+
+  async function handleApprove() {
+    if (!selectedCount) return;
+    const confirmed = await requestConfirmation({
+      title: 'Approve Cycle Count?',
+      message: 'Approving this count will adjust product stock levels in this branch to match the physical count. This cannot be undone.',
+      confirmLabel: 'Approve & Adjust Stock',
+      variant: 'warning',
+    });
+    if (!confirmed) return;
+    approveMutation.mutate(selectedCount._id);
+  }
+
+  async function handleCancel() {
+    if (!selectedCount) return;
+    const confirmed = await requestConfirmation({
+      title: 'Cancel Cycle Count?',
+      message: 'Are you sure you want to cancel this cycle count? All entered counts will be discarded.',
+      confirmLabel: 'Cancel Count',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    cancelMutation.mutate(selectedCount._id);
   }
 
   const activeDetail = countDetail ?? selectedCount;
@@ -168,13 +198,15 @@ export function CycleCountPage() {
         <div className="max-w-5xl mx-auto py-6 px-4">
           <div className="flex items-center gap-3 mb-6">
             <button
-              className="text-sm text-accent-green hover:underline"
+              className="inline-flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
               onClick={() => setSelectedCount(null)}
             >
-              Back to list
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to list</span>
             </button>
-            <h1 className="text-xl font-bold text-white">
-              Cycle Count - {activeDetail?.status && <StatusBadge status={activeDetail.status} />}
+            <h1 className="text-xl font-bold text-white flex items-center gap-3">
+              <span>Cycle Count</span>
+              {activeDetail?.status && <StatusBadge status={activeDetail.status} />}
             </h1>
           </div>
 
@@ -182,9 +214,9 @@ export function CycleCountPage() {
 
           {activeDetail && (
             <>
-              <div className="mb-6 overflow-x-auto rounded-xl border border-white/10 bg-white/5">
+              <div className="mb-6 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60">
                 <table className="w-full text-sm min-w-[600px]">
-                  <thead className="bg-primary-darker text-gray-400 uppercase text-xs">
+                  <thead className="bg-slate-900 border-b border-slate-800 text-slate-400 uppercase text-xs">
                     <tr>
                       <th className="px-4 py-3 text-left">Product</th>
                       <th className="px-4 py-3 text-left">SKU</th>
@@ -195,7 +227,7 @@ export function CycleCountPage() {
                       )}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-white/10 text-gray-200">
+                  <tbody className="divide-y divide-slate-800/60 text-slate-200">
                     {activeDetail.lines.map((line) => {
                       const productName =
                         typeof line.productId === 'object'
@@ -208,26 +240,27 @@ export function CycleCountPage() {
                       const variance = line.variance;
 
                       return (
-                        <tr key={line.batchId} className="hover:bg-white/5">
-                          <td className="px-4 py-3">{productName}</td>
-                          <td className="px-4 py-3 font-mono text-xs">{productSku}</td>
-                          <td className="px-4 py-3 text-right">{line.systemQuantity}</td>
+                        <tr key={line.batchId} className="hover:bg-slate-800/40">
+                          <td className="px-4 py-3 font-medium text-white">{productName}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-400">{productSku}</td>
+                          <td className="px-4 py-3 text-right text-slate-300">{line.systemQuantity}</td>
                           <td className="px-4 py-3 text-right">
                             {activeDetail.status === CycleCountStatus.DRAFT ? (
                               <input
                                 type="number"
                                 min={0}
                                 defaultValue={line.systemQuantity}
-                                className="w-24 rounded border border-white/10 bg-white/5 px-2 py-1 text-right text-sm text-white focus:border-accent-green/50 focus:outline-none focus:ring-2 focus:ring-accent-green/20"
-                                onChange={(e) =>
+                                className="w-24 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-right text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                onChange={(e) => {
+                                  const parsed = Math.max(0, parseInt(e.target.value, 10) || 0);
                                   setCountedValues((prev) => ({
                                     ...prev,
-                                    [line.batchId]: Number(e.target.value),
-                                  }))
-                                }
+                                    [line.batchId]: parsed,
+                                  }));
+                                }}
                               />
                             ) : (
-                              line.countedQuantity ?? '-'
+                              <span className="font-semibold">{line.countedQuantity ?? '-'}</span>
                             )}
                           </td>
                           {activeDetail.status !== CycleCountStatus.DRAFT && (
@@ -236,10 +269,10 @@ export function CycleCountPage() {
                                 variance == null
                                   ? ''
                                   : variance > 0
-                                  ? 'text-green-600'
+                                  ? 'text-emerald-400'
                                   : variance < 0
-                                  ? 'text-red-600'
-                                  : 'text-gray-500'
+                                  ? 'text-red-400'
+                                  : 'text-slate-400'
                               }`}
                             >
                               {variance == null
@@ -261,7 +294,7 @@ export function CycleCountPage() {
                   <>
                     <Button
                       variant="secondary"
-                      onClick={() => cancelMutation.mutate(selectedCount._id)}
+                      onClick={handleCancel}
                       disabled={cancelMutation.isPending}
                     >
                       Cancel Count
@@ -270,7 +303,7 @@ export function CycleCountPage() {
                       onClick={handleSubmitCount}
                       disabled={submitMutation.isPending}
                     >
-                      Submit for Review
+                      {submitMutation.isPending ? 'Submitting...' : 'Submit for Review'}
                     </Button>
                   </>
                 )}
@@ -278,16 +311,16 @@ export function CycleCountPage() {
                   <>
                     <Button
                       variant="secondary"
-                      onClick={() => cancelMutation.mutate(selectedCount._id)}
+                      onClick={handleCancel}
                       disabled={cancelMutation.isPending}
                     >
                       Cancel Count
                     </Button>
                     <Button
-                      onClick={() => approveMutation.mutate(selectedCount._id)}
+                      onClick={handleApprove}
                       disabled={approveMutation.isPending}
                     >
-                      Approve &amp; Apply Adjustments
+                      {approveMutation.isPending ? 'Approving...' : 'Approve & Apply Adjustments'}
                     </Button>
                   </>
                 )}
@@ -303,90 +336,111 @@ export function CycleCountPage() {
   return (
     <AdminLayout>
       <div className="max-w-5xl mx-auto py-6 px-4">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-white">Cycle Counts</h1>
-          <Button
-            onClick={() => createMutation.mutate()}
-            disabled={createMutation.isPending || !selectedBranch}
-          >
-            + Start New Count
-          </Button>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Cycle Counts</h1>
+            <p className="text-sm text-slate-400 mt-1">Reconcile physical stock against system inventory</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <BranchSelector />
+            <Button
+              onClick={() => createMutation.mutate()}
+              disabled={createMutation.isPending || !branchId}
+              className="inline-flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Start New Count</span>
+            </Button>
+          </div>
         </div>
 
-        {!selectedBranch && (
-          <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm text-yellow-200">
-            Select a branch to view or start cycle counts.
+        {!branchId ? (
+          <div className="max-w-md mx-auto text-center py-16 px-4">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+              <ClipboardCheck className="w-8 h-8" />
+            </div>
+            <h2 className="text-xl font-bold text-white mb-2">Select a Branch</h2>
+            <p className="text-sm text-slate-400 mb-6">
+              Cycle counts are branch-specific. Choose a branch to review or initiate inventory reconciliation.
+            </p>
+            <div className="flex justify-center">
+              <BranchSelector />
+            </div>
           </div>
-        )}
+        ) : (
+          <>
+            {isLoading && <Loading />}
+            {error && <Error message="Failed to load cycle counts" />}
 
-        {isLoading && <Loading />}
-        {error && <Error message="Failed to load cycle counts" />}
+            {cycleCounts && cycleCounts.length === 0 && (
+              <div className="rounded-xl border border-slate-800 bg-slate-900/40 text-slate-400 text-sm text-center py-12">
+                No cycle counts recorded for this branch yet. Start a new count to reconcile physical stock.
+              </div>
+            )}
 
-        {cycleCounts && cycleCounts.length === 0 && (
-          <div className="text-gray-400 text-sm text-center py-12">
-            No cycle counts yet. Start one to reconcile physical stock.
-          </div>
-        )}
-
-        {cycleCounts && cycleCounts.length > 0 && (
-          <div className="overflow-hidden rounded-xl border border-white/10 bg-white/5">
-            <Table
-              columns={[
-                {
-                  key: 'createdAt',
-                  header: 'Date',
-                  render: (row: CycleCount) =>
-                    new Date(row.createdAt).toLocaleDateString(),
-                },
-                {
-                  key: 'status',
-                  header: 'Status',
-                  render: (row: CycleCount) => <StatusBadge status={row.status} />,
-                },
-                {
-                  key: 'lines',
-                  header: 'Lines',
-                  render: (row: CycleCount) => row.lines.length,
-                },
-                {
-                  key: 'createdBy',
-                  header: 'Created By',
-                  render: (row: CycleCount) =>
-                    `${row.createdBy.firstName} ${row.createdBy.lastName}`,
-                },
-                {
-                  key: 'actions',
-                  header: '',
-                  render: (row: CycleCount) =>
-                    row.status !== CycleCountStatus.CANCELLED &&
-                    row.status !== CycleCountStatus.APPROVED ? (
-                      <button
-                        className="text-accent-green hover:underline text-sm"
-                        onClick={() => {
-                          setSelectedCount(row);
-                          setCountedValues({});
-                        }}
-                      >
-                        {row.status === CycleCountStatus.DRAFT ? 'Enter Counts' : 'Review'}
-                      </button>
-                    ) : (
-                      <button
-                        className="text-gray-500 hover:underline text-sm"
-                        onClick={() => {
-                          setSelectedCount(row);
-                          setCountedValues({});
-                        }}
-                      >
-                        View
-                      </button>
-                    ),
-                },
-              ]}
-              data={cycleCounts}
-            />
-          </div>
+            {cycleCounts && cycleCounts.length > 0 && (
+              <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60">
+                <Table
+                  columns={[
+                    {
+                      key: 'createdAt',
+                      header: 'Date',
+                      render: (row: CycleCount) =>
+                        new Date(row.createdAt).toLocaleDateString(),
+                    },
+                    {
+                      key: 'status',
+                      header: 'Status',
+                      render: (row: CycleCount) => <StatusBadge status={row.status} />,
+                    },
+                    {
+                      key: 'lines',
+                      header: 'Items Counted',
+                      render: (row: CycleCount) => row.lines.length,
+                    },
+                    {
+                      key: 'createdBy',
+                      header: 'Created By',
+                      render: (row: CycleCount) =>
+                        `${row.createdBy?.firstName || ''} ${row.createdBy?.lastName || ''}`.trim() || 'Staff',
+                    },
+                    {
+                      key: 'actions',
+                      header: '',
+                      render: (row: CycleCount) =>
+                        row.status !== CycleCountStatus.CANCELLED &&
+                        row.status !== CycleCountStatus.APPROVED ? (
+                          <button
+                            className="text-emerald-400 hover:text-emerald-300 font-medium text-sm transition-colors"
+                            onClick={() => {
+                              setSelectedCount(row);
+                              setCountedValues({});
+                            }}
+                          >
+                            {row.status === CycleCountStatus.DRAFT ? 'Enter Counts' : 'Review'}
+                          </button>
+                        ) : (
+                          <button
+                            className="text-slate-400 hover:text-slate-200 text-sm transition-colors"
+                            onClick={() => {
+                              setSelectedCount(row);
+                              setCountedValues({});
+                            }}
+                          >
+                            View Details
+                          </button>
+                        ),
+                    },
+                  ]}
+                  data={cycleCounts}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
     </AdminLayout>
   );
 }
+
+export default CycleCountPage;

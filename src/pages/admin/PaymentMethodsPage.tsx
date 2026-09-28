@@ -18,6 +18,7 @@ import { getErrorMessage } from '../../lib/error-utils';
 
 interface PaymentMethod {
   _id: string;
+  id?: string;
   name: string;
   type: 'cash' | 'card' | 'mobile_money' | 'bank_transfer' | 'other';
   isActive: boolean;
@@ -54,7 +55,15 @@ export const PaymentMethodsPage = () => {
   // Create payment method mutation
   const createMutation = useMutation({
     mutationFn: async (data: PaymentMethodFormData) => {
-      return apiClient.post('/settings/payment-methods', data);
+      const payload = {
+        name: data.name.trim(),
+        type: data.type,
+        processingFee: data.processingFee !== undefined && data.processingFee !== null && !isNaN(Number(data.processingFee))
+          ? Number(data.processingFee)
+          : undefined,
+        accountDetails: data.accountDetails?.trim() || undefined,
+      };
+      return apiClient.post('/settings/payment-methods', payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.paymentMethods.all(), exact: false });
@@ -68,8 +77,17 @@ export const PaymentMethodsPage = () => {
   // Update payment method mutation
   const updateMutation = useMutation({
     mutationFn: async (data: PaymentMethodFormData) => {
-      if (!editingMethod) return;
-      return apiClient.patch(`/settings/payment-methods/${editingMethod._id}`, data);
+      const id = editingMethod?._id || (editingMethod as any)?.id;
+      if (!id) return;
+      const payload = {
+        name: data.name.trim(),
+        type: data.type,
+        processingFee: data.processingFee !== undefined && data.processingFee !== null && !isNaN(Number(data.processingFee))
+          ? Number(data.processingFee)
+          : undefined,
+        accountDetails: data.accountDetails?.trim() || undefined,
+      };
+      return apiClient.patch(`/settings/payment-methods/${id}`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.paymentMethods.all(), exact: false });
@@ -195,41 +213,44 @@ export const PaymentMethodsPage = () => {
     {
       key: 'actions',
       header: 'Actions',
-      render: (method: PaymentMethod) => (
-        <div className="flex space-x-2">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => handleOpenModal(method)}
-          >
-            Edit
-          </Button>
-          <Button
-            variant={method.isActive ? 'danger' : 'primary'}
-            size="sm"
-            onClick={() => toggleStatusMutation.mutate(method._id)}
-          >
-            {method.isActive ? 'Deactivate' : 'Activate'}
-          </Button>
-          {method.type !== 'cash' && (
+      render: (method: PaymentMethod) => {
+        const methodId = method._id || (method as any).id;
+        return (
+          <div className="flex space-x-2">
             <Button
-              variant="danger"
+              variant="secondary"
               size="sm"
-              onClick={async () => {
-                const confirmed = await requestConfirmation({
-                  title: 'Delete payment method?',
-                  message: `"${method.name}" will be permanently removed from future payments.`,
-                  confirmLabel: 'Delete method',
-                  variant: 'danger',
-                });
-                if (confirmed) deleteMutation.mutate(method._id);
-              }}
+              onClick={() => handleOpenModal(method)}
             >
-              Delete
+              Edit
             </Button>
-          )}
-        </div>
-      ),
+            <Button
+              variant={method.isActive ? 'danger' : 'primary'}
+              size="sm"
+              onClick={() => methodId && toggleStatusMutation.mutate(methodId)}
+            >
+              {method.isActive ? 'Deactivate' : 'Activate'}
+            </Button>
+            {method.type !== 'cash' && (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={async () => {
+                  const confirmed = await requestConfirmation({
+                    title: 'Delete payment method?',
+                    message: `"${method.name}" will be permanently removed from future payments.`,
+                    confirmLabel: 'Delete method',
+                    variant: 'danger',
+                  });
+                  if (confirmed && methodId) deleteMutation.mutate(methodId);
+                }}
+              >
+                Delete
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -286,6 +307,7 @@ export const PaymentMethodsPage = () => {
               min="0"
               max="100"
               {...register('processingFee', {
+                valueAsNumber: true,
                 min: { value: 0, message: 'Must be 0 or greater' },
                 max: { value: 100, message: 'Must be 100 or less' },
               })}
@@ -293,13 +315,13 @@ export const PaymentMethodsPage = () => {
             />
 
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
                 Account Details (Optional)
               </label>
               <textarea
                 {...register('accountDetails')}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-700 rounded-md bg-primary-darker text-white shadow-sm focus:outline-none focus:ring-accent-green/50 focus:border-accent-green"
+                className="w-full px-3 py-2 border border-slate-700 rounded-md bg-slate-900 text-slate-100 placeholder-slate-500 shadow-sm focus:outline-none focus:ring-emerald-500/50 focus:border-emerald-500"
                 placeholder="e.g., Account number, merchant ID, etc."
               />
             </div>

@@ -18,6 +18,7 @@ interface PrinterSettingsModalProps {
   onClose: () => void;
   branchId: string;
   terminalId: string;
+  printer?: any;
 }
 
 export const PrinterSettingsModal: React.FC<PrinterSettingsModalProps> = ({
@@ -25,8 +26,9 @@ export const PrinterSettingsModal: React.FC<PrinterSettingsModalProps> = ({
   onClose,
   branchId,
   terminalId,
+  printer,
 }) => {
-  const [, setConfig] = useState<SavedPrinterConfig | null>(null);
+  const [config, setConfig] = useState<SavedPrinterConfig | null>(null);
   const [loading, setLoading] = useState(false);
   const { showSuccess, showError } = useToast();
   const [formData, setFormData] = useState({
@@ -43,9 +45,24 @@ export const PrinterSettingsModal: React.FC<PrinterSettingsModalProps> = ({
 
   React.useEffect(() => {
     if (isOpen) {
-      loadConfig();
+      if (printer) {
+        setConfig(printer);
+        setFormData({
+          name: printer.name || '',
+          model: printer.model || 'generic_esc_pos',
+          connectionType: printer.connectionType || 'network',
+          paperWidth: printer.paperWidth || 80,
+          ipAddress: printer.ipAddress || '',
+          port: printer.port || 9100,
+          bluetoothName: printer.bluetoothName || '',
+          autoPrintEnabled: Boolean(printer.autoPrintEnabled),
+          defaultCopies: printer.defaultCopies || 1,
+        });
+      } else {
+        loadConfig();
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, printer]);
 
   const loadConfig = async () => {
     setLoading(true);
@@ -64,6 +81,19 @@ export const PrinterSettingsModal: React.FC<PrinterSettingsModalProps> = ({
           autoPrintEnabled: data.autoPrintEnabled,
           defaultCopies: data.defaultCopies,
         });
+      } else {
+        setConfig(null);
+        setFormData({
+          name: '',
+          model: 'generic_esc_pos',
+          connectionType: 'network',
+          paperWidth: 80,
+          ipAddress: '',
+          port: 9100,
+          bluetoothName: '',
+          autoPrintEnabled: false,
+          defaultCopies: 1,
+        });
       }
     } catch (error) {
       console.error('Failed to load printer config:', error);
@@ -74,17 +104,41 @@ export const PrinterSettingsModal: React.FC<PrinterSettingsModalProps> = ({
 
   const handleSave = async (e?: React.FormEvent) => {
     e?.preventDefault();
+    if (!formData.name.trim()) {
+      showError('Printer name is required');
+      return;
+    }
     setLoading(true);
     try {
-      await apiClient.post('/printers/config', {
+      const payload: Record<string, any> = {
         branchId,
         terminalId,
-        ...formData,
-      });
-      showSuccess('Printer settings saved successfully');
+        name: formData.name.trim(),
+        model: formData.model,
+        connectionType: formData.connectionType,
+        paperWidth: Number(formData.paperWidth),
+        autoPrintEnabled: Boolean(formData.autoPrintEnabled),
+        defaultCopies: Number(formData.defaultCopies) || 1,
+      };
+
+      if (formData.connectionType === 'network') {
+        if (formData.ipAddress?.trim()) payload.ipAddress = formData.ipAddress.trim();
+        if (formData.port) payload.port = Number(formData.port);
+      } else if (formData.connectionType === 'bluetooth') {
+        if (formData.bluetoothName?.trim()) payload.bluetoothName = formData.bluetoothName.trim();
+      }
+
+      const existingId = printer?._id || printer?.id || config?._id;
+      if (existingId) {
+        await apiClient.patch(`/printers/${existingId}`, payload);
+        showSuccess('Printer settings updated');
+      } else {
+        await apiClient.post('/printers', payload);
+        showSuccess('Printer registered successfully');
+      }
       onClose();
-    } catch (error) {
-      showError('Failed to save printer settings');
+    } catch (error: any) {
+      showError(error?.response?.data?.message || 'Failed to save printer settings');
     } finally {
       setLoading(false);
     }

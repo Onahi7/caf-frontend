@@ -10,6 +10,11 @@ import {
   Package,
   SlidersHorizontal,
   Truck,
+  Building2,
+  Layers,
+  Boxes,
+  Tag,
+  Sparkles,
 } from 'lucide-react';
 import { AdminLayout } from '../../components/AdminLayout';
 import { AdminMobileBottomNav } from '../../components/admin/AdminMobileBottomNav';
@@ -54,6 +59,41 @@ const actionModules: InventoryModule[] = [
     description: 'Transfer stock between branches',
     icon: Truck,
     path: '/admin/transfers',
+    roles: ['super_admin', 'branch_manager'],
+  },
+  {
+    title: 'Suppliers',
+    description: 'Manage medicine and product vendors',
+    icon: Building2,
+    path: '/admin/suppliers',
+    roles: ['super_admin', 'branch_manager'],
+  },
+  {
+    title: 'Batches & Lots',
+    description: 'Track batches, lot numbers, and expiration dates',
+    icon: Layers,
+    path: '/admin/batches',
+    roles: ['super_admin', 'branch_manager', 'auditor'],
+  },
+  {
+    title: 'Cycle Counts',
+    description: 'Perform physical stock audits and line counts',
+    icon: Boxes,
+    path: '/admin/cycle-counts',
+    roles: ['super_admin', 'branch_manager', 'auditor'],
+  },
+  {
+    title: 'Pricing Rules',
+    description: 'Manage base prices, pack sizes, and markups',
+    icon: Tag,
+    path: '/admin/pricing',
+    roles: ['super_admin', 'branch_manager'],
+  },
+  {
+    title: 'Promotions',
+    description: 'Configure discounts, bundle deals, and campaigns',
+    icon: Sparkles,
+    path: '/admin/promotions',
     roles: ['super_admin', 'branch_manager'],
   },
 ];
