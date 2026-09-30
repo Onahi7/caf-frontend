@@ -45,7 +45,12 @@ export function AdminStatCard({
           </span>
         ) : null}
       </div>
-      <div className="mt-3 text-2xl font-bold text-slate-50 tracking-tight tabular-nums">{value}</div>
+      <div
+        className="mt-3 text-xl sm:text-2xl font-bold text-slate-50 tracking-tight tabular-nums break-words leading-tight"
+        title={typeof value === 'string' || typeof value === 'number' ? String(value) : undefined}
+      >
+        {value}
+      </div>
       {helper ? <div className="mt-1.5 text-xs text-slate-400">{helper}</div> : null}
     </div>
   );

@@ -118,13 +118,20 @@ const Metric = ({
   label: string;
   value: string | number;
 }) => (
-  <div className="flex min-h-24 items-center gap-3.5 rounded-2xl border border-white/[0.08] bg-slate-900/80 backdrop-blur-md hover:border-emerald-500/30 transition-all p-3.5 sm:min-h-28 sm:p-4 shadow-lg shadow-black/20">
-    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400">
-      <Icon className="h-5 w-5" aria-hidden="true" />
-    </div>
-    <div className="min-w-0">
+  <div className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-slate-900/80 backdrop-blur-md hover:border-emerald-500/30 transition-all p-3.5 sm:p-4 shadow-lg shadow-black/20 min-h-24 sm:min-h-28 group">
+    <div className="flex items-center justify-between gap-2">
       <p className="text-xs leading-tight text-slate-400 font-medium sm:text-sm">{label}</p>
-      <p className="mt-1 truncate text-lg font-bold text-white tracking-tight tabular-nums sm:text-xl">{value}</p>
+      <div className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 group-hover:scale-105 transition-transform">
+        <Icon className="h-4 w-4 sm:h-4.5 sm:w-4.5" aria-hidden="true" />
+      </div>
+    </div>
+    <div className="mt-2 min-w-0">
+      <p
+        className="text-base font-bold text-white tracking-tight tabular-nums sm:text-lg xl:text-xl break-words whitespace-normal leading-snug"
+        title={String(value)}
+      >
+        {value}
+      </p>
     </div>
   </div>
 );
@@ -328,7 +335,7 @@ export default function HQDashboardPage() {
 
         {activeTab === 'overview' ? (
           <div className="space-y-6">
-            <section className="grid gap-4 lg:grid-cols-[1.45fr_1fr]">
+            <section className="grid gap-4 lg:grid-cols-[1.25fr_1fr] xl:grid-cols-[1.3fr_1fr]">
               <div className="flex min-h-52 flex-col justify-between rounded-2xl border border-emerald-500/25 bg-gradient-to-br from-slate-900 via-slate-900/90 to-emerald-950/20 p-5 sm:p-6 shadow-xl shadow-black/30 backdrop-blur-xl">
                 <div className="flex items-start justify-between gap-4">
                   <div>
