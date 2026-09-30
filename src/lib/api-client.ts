@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 import { SyncService } from '../services/sync-service';
-import { useAuthStore } from '../stores/auth-store';
+import { useAuthStore, getJwtExpiryMs } from '../stores/auth-store';
 import { getCachedStepUpToken, clearStepUpToken } from '../hooks/useStepUp';
 
 const DEFAULT_API_BASE_URL = 'https://carefam-00c1641bcdf9.herokuapp.com/api';
@@ -43,11 +43,79 @@ function getStoredToken(key: 'accessToken' | 'refreshToken'): string | null {
 // Refresh-in-flight guard: prevents concurrent refresh requests
 let refreshPromise: Promise<string> | null = null;
 
+export async function performTokenRefresh(): Promise<string> {
+  if (refreshPromise) {
+    return refreshPromise;
+  }
+
+  refreshPromise = (async () => {
+    try {
+      const refreshToken = getStoredToken('refreshToken');
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await axios.post(
+        `${API_BASE_URL}/auth/refresh`,
+        { refreshToken },
+        { withCredentials: true }
+      );
+
+      const {
+        accessToken,
+        refreshToken: newRefreshToken,
+        expiresIn,
+        refreshExpiresIn,
+      } = response.data;
+      const authStore = useAuthStore.getState();
+
+      if (!accessToken) {
+        throw new Error('Invalid refresh response');
+      }
+
+      // Rolling session: 24h default for access token, 30 days for refresh token
+      const accessTtl = typeof expiresIn === 'number' && expiresIn > 0 ? expiresIn : 24 * 60 * 60;
+      const refreshTtl =
+        typeof refreshExpiresIn === 'number' && refreshExpiresIn > 0
+          ? refreshExpiresIn
+          : 30 * 24 * 60 * 60;
+
+      authStore.refreshSession(
+        accessToken,
+        newRefreshToken || refreshToken,
+        accessTtl,
+        refreshTtl,
+      );
+      return accessToken;
+    } catch (refreshError) {
+      throw refreshError;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
+}
+
 // Request interceptor to add auth token and idempotency keys
 apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    // 1. Add Auth Token
-    const token = getStoredToken('accessToken');
+  async (config: InternalAxiosRequestConfig) => {
+    const requestUrl = config.url || '';
+    const isAuthEndpoint = /\/auth\/(login|refresh|logout)/.test(requestUrl);
+
+    // 1. Proactive check: If access token is expired or expiring within 30 seconds, refresh before sending
+    let token = getStoredToken('accessToken');
+    if (token && !isAuthEndpoint) {
+      const expMs = getJwtExpiryMs(token);
+      if (expMs && expMs - Date.now() < 30_000) {
+        try {
+          token = await performTokenRefresh();
+        } catch {
+          // If refresh fails (e.g. offline), continue with existing token
+        }
+      }
+    }
+
     if (token && config.headers) {
       if (typeof (config.headers as any).set === 'function') {
         (config.headers as any).set('Authorization', `Bearer ${token}`);
@@ -121,73 +189,8 @@ apiClient.interceptors.response.use(
       // Step-up token is bound to this session; clear it
       clearStepUpToken();
 
-      // If a refresh is already in flight, wait for it instead of starting another
-      if (refreshPromise) {
-        try {
-          const accessToken = await refreshPromise;
-          if (originalRequest.headers) {
-            if (typeof (originalRequest.headers as any).set === 'function') {
-              (originalRequest.headers as any).set('Authorization', `Bearer ${accessToken}`);
-            } else {
-              originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-            }
-          }
-          return apiClient(originalRequest);
-        } catch {
-          return Promise.reject(error);
-        }
-      }
-
-      refreshPromise = (async () => {
-        try {
-          const refreshToken = getStoredToken('refreshToken');
-          if (!refreshToken) {
-            throw new Error('No refresh token available');
-          }
-
-          // Attempt to refresh the token
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          }, {
-            withCredentials: true,
-          });
-
-          const {
-            accessToken,
-            refreshToken: newRefreshToken,
-            expiresIn,
-            refreshExpiresIn,
-          } = response.data;
-          const authStore = useAuthStore.getState();
-
-          if (!accessToken) {
-            throw new Error('Invalid refresh response');
-          }
-
-          // Sliding 14h window: every successful refresh resets the 14h clock
-          const accessTtl = typeof expiresIn === 'number' && expiresIn > 0 ? expiresIn : 15 * 60;
-          const refreshTtl =
-            typeof refreshExpiresIn === 'number' && refreshExpiresIn > 0
-              ? refreshExpiresIn
-              : 14 * 60 * 60;
-          authStore.refreshSession(
-            accessToken,
-            newRefreshToken || refreshToken,
-            accessTtl,
-            refreshTtl,
-          );
-          return accessToken;
-        } catch (refreshError) {
-          // Don't logout on refresh failure — let the user stay logged in
-          // and retry on next request. Only clear if it's a hard credential error.
-          throw refreshError;
-        } finally {
-          refreshPromise = null;
-        }
-      })();
-
       try {
-        const accessToken = await refreshPromise;
+        const accessToken = await performTokenRefresh();
         if (originalRequest.headers) {
           if (typeof (originalRequest.headers as any).set === 'function') {
             (originalRequest.headers as any).set('Authorization', `Bearer ${accessToken}`);

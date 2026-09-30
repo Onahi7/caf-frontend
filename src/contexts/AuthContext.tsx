@@ -83,13 +83,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // Proactive refresh: fire 60s before access token expires
+  // Proactive refresh: fire 5 minutes before access token expires
   useEffect(() => {
     if (!hasHydrated || !isAuthenticated || !accessToken || !sessionExpiresAt) {
       return;
     }
 
-    const refreshBeforeExpiryMs = 60 * 1000;
+    const refreshBeforeExpiryMs = 5 * 60 * 1000;
     const timeoutMs = Math.max(sessionExpiresAt - Date.now() - refreshBeforeExpiryMs, 0);
 
     const expiryTimeout = window.setTimeout(() => {
@@ -98,6 +98,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     return () => window.clearTimeout(expiryTimeout);
   }, [accessToken, hasHydrated, isAuthenticated, refreshAccessToken, sessionExpiresAt]);
+
+  // Tab focus & visibility wake-up refresh:
+  // When an admin switches tabs or wakes their computer, refresh immediately if expiring soon
+  useEffect(() => {
+    if (!hasHydrated || !isAuthenticated || !refreshToken) {
+      return;
+    }
+
+    const checkAndRefreshIfNeeded = () => {
+      if (document.visibilityState === 'visible') {
+        const currentSessionExp = useAuthStore.getState().sessionExpiresAt;
+        if (!currentSessionExp || currentSessionExp - Date.now() < 5 * 60 * 1000) {
+          void refreshAccessToken();
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', checkAndRefreshIfNeeded);
+    window.addEventListener('focus', checkAndRefreshIfNeeded);
+
+    return () => {
+      document.removeEventListener('visibilitychange', checkAndRefreshIfNeeded);
+      window.removeEventListener('focus', checkAndRefreshIfNeeded);
+    };
+  }, [hasHydrated, isAuthenticated, refreshToken, refreshAccessToken]);
 
   // Validate token on mount — refresh if needed, never force logout
   useEffect(() => {

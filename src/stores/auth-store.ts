@@ -3,11 +3,36 @@ import { persist } from 'zustand/middleware';
 import { secureSession } from '../lib/secure-session';
 
 /** Session policy:
- *  - access token: 15 minutes (auto-refreshed by the api-client)
- *  - refresh token: refreshed continuously so the user stays logged in forever
+ *  - access token: 24h (or 7d for admins)
+ *  - refresh token: 30 days rolling session
  */
-const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
-const REFRESH_TOKEN_TTL_SECONDS = 14 * 60 * 60;
+const ACCESS_TOKEN_TTL_SECONDS = 24 * 60 * 60;
+const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60;
+
+/**
+ * Safely extract expiry timestamp (in ms) directly from a JWT token's `exp` claim.
+ */
+export function getJwtExpiryMs(token: string | null): number | null {
+  if (!token) return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const jsonStr = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    const payload = JSON.parse(jsonStr);
+    if (typeof payload.exp === 'number') {
+      return payload.exp * 1000;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
 
 export interface User {
   id: string;
@@ -68,8 +93,10 @@ export const useAuthStore = create<AuthState>()(
         _sessionExpiresAt,
         refreshExpiresInSeconds = REFRESH_TOKEN_TTL_SECONDS,
       ) => {
-        const sessionExp = Date.now() + expiresInSeconds * 1000;
-        const refreshExp = Date.now() + refreshExpiresInSeconds * 1000;
+        const realAccessExpMs = getJwtExpiryMs(accessToken);
+        const sessionExp = realAccessExpMs ?? (Date.now() + expiresInSeconds * 1000);
+        const realRefreshExpMs = getJwtExpiryMs(refreshToken);
+        const refreshExp = realRefreshExpMs ?? (Date.now() + refreshExpiresInSeconds * 1000);
 
         set({
           user,
@@ -99,8 +126,10 @@ export const useAuthStore = create<AuthState>()(
         expiresInSeconds,
         refreshExpiresInSeconds,
       ) => {
-        const sessionExp = Date.now() + expiresInSeconds * 1000;
-        const refreshExp = Date.now() + refreshExpiresInSeconds * 1000;
+        const realAccessExpMs = getJwtExpiryMs(accessToken);
+        const sessionExp = realAccessExpMs ?? (Date.now() + expiresInSeconds * 1000);
+        const realRefreshExpMs = getJwtExpiryMs(refreshToken);
+        const refreshExp = realRefreshExpMs ?? (Date.now() + refreshExpiresInSeconds * 1000);
 
         set({
           accessToken,
