@@ -827,11 +827,11 @@ export const ProductManagementPage = () => {
                   <h2 className="text-xl font-bold text-white tracking-tight">
                     {editingProduct ? 'Edit Product' : 'Add New Product'}
                   </h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    {wizardStep === 1
-                      ? 'Step 1: Core product details, barcode, category & pricing'
-                      : 'Step 2: Stock quantity, expiry date & packaging packs (boxes, strips...)'}
-                  </p>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {wizardStep === 1
+                        ? 'Step 1: Core product details, barcode, category & pricing'
+                        : 'Step 2: Stock quantity, expiry date & packaging packs (cards, boxes...)'}
+                    </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
@@ -1125,7 +1125,7 @@ export const ProductManagementPage = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">Selling Packs & Boxes (Optional)</label>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Sell in strips, cards, boxes, or cartons with automatic stock deduction</p>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Sell in cards, boxes, or cartons with automatic stock deduction</p>
                     </div>
                     <button
                       type="button"
@@ -1135,8 +1135,17 @@ export const ProductManagementPage = () => {
                       {showPackSizeEditor ? 'Done' : '+ Add / Edit Packs'}
                     </button>
                   </div>
-                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-slate-300 leading-relaxed">
-                    💡 <strong>How stock works:</strong> Always enter your total stock above in single items (e.g. total <strong className="text-emerald-300">{watch('unit') || 'units'}</strong>). Then add packaging options below (e.g. a <em>Strip of 10</em> or <em>Box of 100</em>). When cashiers sell a pack, the system charges the pack price and automatically subtracts the right number of {watch('unit') || 'units'}.
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3.5 text-xs text-slate-300 leading-relaxed space-y-2">
+                    <div className="font-semibold text-emerald-300 flex items-center gap-1.5">
+                      <span>💡</span>
+                      <span>How to set up Cards & Boxes vs. Loose Tablets:</span>
+                    </div>
+                    <p>
+                      • <strong className="text-white">Medicines sold per Card (cannot be broken):</strong> If you sell medicines where tablets cannot be cut or sold loosely (like antimalarials, antibiotics, or oral contraceptives), set your Unit above to <strong className="text-emerald-300">Card</strong>. Then add a pack below for <em>Box of 10 Cards</em>. Cashiers can only sell whole cards or full boxes.
+                    </p>
+                    <p>
+                      • <strong className="text-white">Medicines where loose tablets can be sold:</strong> Set your Unit above to <strong className="text-emerald-300">Tablet</strong>. Enter total loose tablets in stock, then add packaging options below (e.g. <em>Card of 10</em> or <em>Box of 100</em>). When cashiers sell a card, the system automatically subtracts 10 tablets.
+                    </p>
                   </div>
 
                   {!showPackSizeEditor && watch('packSizes') && watch('packSizes').length > 0 && (

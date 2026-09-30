@@ -142,7 +142,7 @@ export const PackSizeRow = ({
             onChange={(e) => handleTypeSelect(e.target.value)}
             className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none"
           >
-            <option value="">Select type (Box, Strip...)</option>
+            <option value="">Select type (Card, Box...)</option>
             {PACK_TYPE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -153,7 +153,7 @@ export const PackSizeRow = ({
         <div>
           <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Name on Receipt / POS</label>
           <input
-            placeholder="e.g. Box of 100, Strip of 10"
+            placeholder="e.g. Card of 10, Box of 100"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none"

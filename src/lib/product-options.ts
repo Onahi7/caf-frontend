@@ -15,19 +15,19 @@ export const PRODUCT_CATEGORY_OPTIONS = [
 ] as const;
 
 export const PRODUCT_UNIT_OPTIONS = [
-  { value: 'tablet', label: 'Tablet' },
-  { value: 'capsule', label: 'Capsule' },
-  { value: 'bottle', label: 'Bottle' },
+  { value: 'tablet', label: 'Tablet (Single loose pill)' },
+  { value: 'capsule', label: 'Capsule (Single loose capsule)' },
+  { value: 'card', label: 'Card (Blister Card — sold per card)' },
+  { value: 'bottle', label: 'Bottle (Syrup, Suspension, Drops)' },
   { value: 'vial', label: 'Vial' },
   { value: 'ampoule', label: 'Ampoule' },
-  { value: 'syringe', label: 'Syringe' },
+  { value: 'sachet', label: 'Sachet' },
   { value: 'tube', label: 'Tube' },
   { value: 'jar', label: 'Jar' },
-  { value: 'pack', label: 'Pack' },
   { value: 'box', label: 'Box' },
-  { value: 'card', label: 'Card' },
-  { value: 'strip', label: 'Strip' },
-  { value: 'sachet', label: 'Sachet' },
+  { value: 'pack', label: 'Pack' },
+  { value: 'strip', label: 'Test Strip (Rapid Diagnostic / Glucose / Malaria)' },
+  { value: 'syringe', label: 'Syringe' },
   { value: 'kit', label: 'Kit' },
   { value: 'roll', label: 'Roll' },
   { value: 'piece', label: 'Piece' },
@@ -37,17 +37,18 @@ export const PRODUCT_UNIT_OPTIONS = [
 ] as const;
 
 export const PACK_TYPE_OPTIONS = [
+  { value: 'Card', label: 'Card (Blister Card)' },
   { value: 'Box', label: 'Box' },
-  { value: 'Strip', label: 'Strip' },
-  { value: 'Blister', label: 'Blister Pack' },
-  { value: 'Pack', label: 'Pack' },
   { value: 'Carton', label: 'Carton / Outer' },
-  { value: 'Card', label: 'Card' },
+  { value: 'Pack', label: 'Pack' },
+  { value: 'Blister', label: 'Blister Pack' },
   { value: 'Bottle', label: 'Bottle' },
   { value: 'Sachet', label: 'Sachet' },
   { value: 'Tube', label: 'Tube' },
   { value: 'Vial', label: 'Vial' },
   { value: 'Ampoule', label: 'Ampoule' },
+  { value: 'Strip', label: 'Test Strip (RDT)' },
   { value: 'Kit', label: 'Kit' },
   { value: 'Roll', label: 'Roll' },
 ] as const;
+
