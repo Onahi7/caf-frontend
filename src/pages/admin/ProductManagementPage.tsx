@@ -830,7 +830,7 @@ export const ProductManagementPage = () => {
                   <p className="text-xs text-slate-400 mt-1">
                     {wizardStep === 1
                       ? 'Step 1: Core product details, barcode, category & pricing'
-                      : 'Step 2: Opening stock, batch expiry & packaging unit conversions'}
+                      : 'Step 2: Stock quantity, expiry date & packaging packs (boxes, strips...)'}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -1124,26 +1124,26 @@ export const ProductManagementPage = () => {
                 <div className="space-y-3 p-4 bg-slate-900/60 rounded-2xl border border-white/[0.08]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">Pack Sizes & Unit Conversions</label>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Sell items in strips, boxes, or cartons with automated stock deduction</p>
+                      <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">Selling Packs & Boxes (Optional)</label>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Sell in strips, cards, boxes, or cartons with automatic stock deduction</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowPackSizeEditor(!showPackSizeEditor)}
                       className="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition-colors"
                     >
-                      {showPackSizeEditor ? 'Done' : 'Edit Pack Sizes'}
+                      {showPackSizeEditor ? 'Done' : '+ Add / Edit Packs'}
                     </button>
                   </div>
                   <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-xs text-slate-300 leading-relaxed">
-                    Keep stock in the smallest base unit (e.g. <span className="text-emerald-300 font-mono">tablet</span>), then define conversions here (e.g. <span className="text-emerald-300 font-mono">Strip</span> of 10, or <span className="text-emerald-300 font-mono">Box</span> of 100). Point-of-sale barcode scans for packs will automatically deduct the correct number of base units.
+                    💡 <strong>How stock works:</strong> Always enter your total stock above in single items (e.g. total <strong className="text-emerald-300">{watch('unit') || 'units'}</strong>). Then add packaging options below (e.g. a <em>Strip of 10</em> or <em>Box of 100</em>). When cashiers sell a pack, the system charges the pack price and automatically subtracts the right number of {watch('unit') || 'units'}.
                   </div>
 
                   {!showPackSizeEditor && watch('packSizes') && watch('packSizes').length > 0 && (
                     <div className="flex flex-wrap gap-2 pt-1">
                       {watch('packSizes').map((pack: PackSize, idx: number) => (
                         <span key={idx} className="px-3 py-1.5 bg-slate-950/80 rounded-xl text-xs font-medium text-slate-200 border border-white/[0.08] shadow-xs">
-                          <span className="text-emerald-400 font-semibold">{pack.name}</span> ({pack.quantityPerPack} × {pack.unit || watch('unit')}) — <span className="font-mono text-emerald-300 font-bold">{format(pack.sellingPrice)}</span>
+                          <span className="text-emerald-400 font-semibold">{pack.name}</span> ({pack.quantityPerPack} {watch('unit') || 'units'}) — <span className="font-mono text-emerald-300 font-bold">{format(pack.sellingPrice)}</span>
                         </span>
                       ))}
                     </div>

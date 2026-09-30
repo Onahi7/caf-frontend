@@ -128,41 +128,55 @@ export const POSPage = () => {
   
   // Helper to convert stock to readable units
   const getStockDisplay = (stock: number, unit: string, packSizes?: PackSize[]): string => {
-    if (!packSizes || packSizes.length === 0) {
-      return `${stock} ${unit}s`;
+    if (stock <= 0) {
+      return 'Out of stock';
     }
-    
+
+    const formatCountAndUnit = (count: number, unitName: string) => {
+      const cleanName = unitName || 'unit';
+      if (count === 1) return `1 ${cleanName}`;
+      const lower = cleanName.toLowerCase();
+      if (lower.endsWith('s') || lower.endsWith('x') || lower.endsWith('ch') || lower.endsWith('sh')) {
+        return `${count} ${cleanName}es`;
+      }
+      return `${count} ${cleanName}s`;
+    };
+
+    if (!packSizes || packSizes.length === 0) {
+      return formatCountAndUnit(stock, unit);
+    }
+
     // Sort pack sizes by quantity descending (largest first)
     const sorted = [...packSizes].sort((a, b) => b.quantityPerPack - a.quantityPerPack);
-    
+
     // Check if this is a size variant pack (all have qty 1)
     const allSizeVariants = sorted.every(p => p.quantityPerPack === 1);
-    
+
     if (allSizeVariants) {
       // For size variants, show count and available sizes
       const availableSizes = sorted.filter(p => stock >= p.quantityPerPack).map(p => p.name);
       if (availableSizes.length > 0) {
-        return `${stock} (${availableSizes.join(', ')})`;
+        return `${formatCountAndUnit(stock, unit)} (${availableSizes.join(', ')})`;
       }
-      return `${stock} ${unit}s`;
+      return formatCountAndUnit(stock, unit);
     }
-    
+
     // Regular pack sizes with quantity > 1
     const largestPack = sorted.find(p => p.quantityPerPack > 1);
     if (!largestPack) {
-      return `${stock} ${unit}s`;
+      return formatCountAndUnit(stock, unit);
     }
-    
+
     // Calculate packs and remaining
     const packs = Math.floor(stock / largestPack.quantityPerPack);
     const remaining = stock % largestPack.quantityPerPack;
-    
+
     if (packs > 0 && remaining > 0) {
-      return `${packs} ${largestPack.name}(s), ${remaining} ${unit}s`;
+      return `${formatCountAndUnit(packs, largestPack.name)}, ${formatCountAndUnit(remaining, unit)}`;
     } else if (packs > 0) {
-      return `${packs} ${largestPack.name}(s)`;
+      return formatCountAndUnit(packs, largestPack.name);
     } else {
-      return `${stock} ${unit}s`;
+      return formatCountAndUnit(stock, unit);
     }
   };
   
@@ -1634,7 +1648,7 @@ export const POSPage = () => {
       <Modal
         isOpen={showPackSizeModal && !!selectedProductForPack}
         onClose={() => setShowPackSizeModal(false)}
-        title="Select Packaging & Quantity"
+        title="Choose How to Sell"
         size="md"
       >
         {selectedProductForPack && (
@@ -1660,18 +1674,20 @@ export const POSPage = () => {
                 <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-400">
                   <span className="inline-flex items-center gap-1">
                     <Package className="w-3.5 h-3.5 text-emerald-400" />
-                    Available Stock:
+                    Dispensary Stock:
                   </span>
                   <span className="font-medium text-emerald-300">
                     {getStockDisplay(selectedProductForPack.stock, selectedProductForPack.unit, selectedProductForPack.packSizes)}
                   </span>
-                  <span className="text-slate-500">({selectedProductForPack.stock} base {selectedProductForPack.unit}s)</span>
+                  <span className="text-slate-500">
+                    ({selectedProductForPack.stock} total {selectedProductForPack.unit ? `${selectedProductForPack.unit}${selectedProductForPack.stock === 1 ? '' : 's'}` : 'units'})
+                  </span>
                 </div>
               </div>
 
               {/* Quantity Stepper */}
               <div className="flex items-center gap-2 bg-slate-900/90 border border-white/10 rounded-xl p-1.5 self-start sm:self-auto">
-                <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold px-2">Qty:</span>
+                <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold px-2">Packs/Qty:</span>
                 <button
                   type="button"
                   onClick={() => setPackSelectionQty((prev) => Math.max(1, prev - 1))}
@@ -1700,6 +1716,7 @@ export const POSPage = () => {
                 const baseStockRequired = 1 * packSelectionQty;
                 const hasBaseStock = selectedProductForPack.stock >= baseStockRequired;
                 const totalBasePrice = selectedProductForPack.price * packSelectionQty;
+                const unitName = selectedProductForPack.unit || 'unit';
 
                 return (
                   <button
@@ -1719,21 +1736,21 @@ export const POSPage = () => {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="text-white font-semibold text-sm group-hover:text-emerald-300 transition-colors">
-                          Single {selectedProductForPack.unit || 'Unit'}
+                          Single {unitName}
                         </span>
                         <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-white/10">
-                          Base Unit
+                          Single Item
                         </span>
                       </div>
                       <p className="text-slate-400 text-xs">
-                        1 {selectedProductForPack.unit || 'unit'} per item
+                        Sold individually as loose {unitName}s
                       </p>
                       <p className="text-[11px] text-slate-400">
-                        Stock: <span className={hasBaseStock ? 'text-emerald-400 font-medium' : 'text-rose-400 font-medium'}>{selectedProductForPack.stock} available</span>
+                        Dispensary Stock: <span className={hasBaseStock ? 'text-emerald-400 font-medium' : 'text-rose-400 font-medium'}>{selectedProductForPack.stock} loose {unitName}s available</span>
                       </p>
                       {!hasBaseStock && (
                         <p className="text-[11px] text-rose-400 font-medium">
-                          Insufficient stock for {packSelectionQty} {selectedProductForPack.unit || 'unit'}(s)
+                          Insufficient stock for {packSelectionQty} {unitName}{packSelectionQty === 1 ? '' : 's'}
                         </p>
                       )}
                     </div>
@@ -1749,7 +1766,7 @@ export const POSPage = () => {
                       )}
                       {hasBaseStock && (
                         <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400/80 font-medium mt-1 group-hover:text-emerald-300">
-                          Add {packSelectionQty} to cart <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                          Add {packSelectionQty} to order <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                         </span>
                       )}
                     </div>
@@ -1763,6 +1780,7 @@ export const POSPage = () => {
                 const availablePacks = Math.floor(selectedProductForPack.stock / pack.quantityPerPack);
                 const hasPackStock = selectedProductForPack.stock >= stockRequired;
                 const totalPackPrice = pack.sellingPrice * packSelectionQty;
+                const unitName = selectedProductForPack.unit || 'unit';
 
                 // Bulk price & savings comparison
                 const effectiveUnitPrice = pack.quantityPerPack > 0 ? pack.sellingPrice / pack.quantityPerPack : pack.sellingPrice;
@@ -1793,8 +1811,8 @@ export const POSPage = () => {
                         <span className={`font-semibold text-sm transition-colors ${hasPackStock ? 'text-white group-hover:text-emerald-300' : 'text-slate-400'}`}>
                           {pack.name}
                         </span>
-                        <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                          {pack.quantityPerPack} {selectedProductForPack.unit}s
+                        <span className="text-[10px] font-semibold tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20">
+                          Contains {pack.quantityPerPack} {unitName}{pack.quantityPerPack === 1 ? '' : 's'}
                         </span>
                         {savingsPercent > 0 && (
                           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-0.5">
@@ -1805,16 +1823,16 @@ export const POSPage = () => {
                       </div>
 
                       <div className="flex items-center gap-2 text-xs text-slate-400">
-                        <span>≈ {format(effectiveUnitPrice)} / {selectedProductForPack.unit}</span>
+                        <span>≈ {format(effectiveUnitPrice)} each</span>
                         <span className="text-slate-600">·</span>
                         <span className={availablePacks > 0 ? 'text-slate-300' : 'text-rose-400'}>
-                          {availablePacks} {pack.name.toLowerCase()}(s) in stock
+                          {availablePacks} full {pack.name.toLowerCase()}{availablePacks === 1 ? '' : 's'} available
                         </span>
                       </div>
 
                       {!hasPackStock && (
                         <p className="text-[11px] text-rose-400 font-medium pt-0.5">
-                          Insufficient stock for {packSelectionQty} {pack.name.toLowerCase()}(s) ({stockRequired} {selectedProductForPack.unit}s needed)
+                          Insufficient stock for {packSelectionQty} {pack.name.toLowerCase()}{packSelectionQty === 1 ? '' : 's'} ({stockRequired} {unitName}s needed, only {selectedProductForPack.stock} available)
                         </p>
                       )}
                     </div>
@@ -1830,7 +1848,7 @@ export const POSPage = () => {
                       )}
                       {hasPackStock && (
                         <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400/80 font-medium mt-1 group-hover:text-emerald-300">
-                          Add {packSelectionQty} to cart <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                          Add {packSelectionQty} to order <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                         </span>
                       )}
                     </div>

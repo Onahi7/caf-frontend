@@ -136,13 +136,13 @@ export const PackSizeRow = ({
     <div className="flex items-start gap-3 p-3.5 bg-slate-950/70 rounded-2xl border border-white/[0.08] shadow-md shadow-black/20">
       <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
         <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Type</label>
+          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Package Type</label>
           <select
             value={name}
             onChange={(e) => handleTypeSelect(e.target.value)}
             className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none"
           >
-            <option value="">Package type</option>
+            <option value="">Select type (Box, Strip...)</option>
             {PACK_TYPE_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
                 {option.label}
@@ -151,21 +151,21 @@ export const PackSizeRow = ({
           </select>
         </div>
         <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custom Label</label>
+          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Name on Receipt / POS</label>
           <input
-            placeholder="e.g. Strip"
+            placeholder="e.g. Box of 100, Strip of 10"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none"
           />
         </div>
         <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Qty per Pack</label>
+          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">How many {baseUnit || 'units'} per pack?</label>
           <input
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
-            placeholder="e.g. 10"
+            placeholder="e.g. 10 or 100"
             value={qty}
             onChange={(e) => handleQtyChange(e.target.value)}
             onBlur={handleQtyBlur}
@@ -174,20 +174,11 @@ export const PackSizeRow = ({
           />
         </div>
         <div>
-          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Pack Barcode (Optional)</label>
-          <input
-            placeholder="Pack Barcode"
-            value={barcode}
-            onChange={(e) => handleBarcodeChange(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none font-mono"
-          />
-        </div>
-        <div>
           <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Pack Selling Price</label>
           <input
             type="text"
             inputMode="decimal"
-            placeholder="Price"
+            placeholder="Price for 1 pack"
             value={price}
             onChange={(e) => handlePriceChange(e.target.value)}
             onBlur={handlePriceBlur}
@@ -195,9 +186,18 @@ export const PackSizeRow = ({
             className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none font-mono text-emerald-300 font-semibold"
           />
         </div>
-        <div className="sm:col-span-2 md:col-span-3 rounded-xl bg-slate-900/90 border border-white/[0.04] px-3.5 py-2 text-[11px] text-slate-400 flex items-center justify-between">
-          <span>1 {name || 'Pack'} = <strong className="text-slate-200">{numQty} {baseUnit || 'units'}</strong></span>
-          <span className="font-mono text-emerald-400">Unit rate: {formatCurrency(unitRate)}</span>
+        <div className="sm:col-span-2">
+          <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Pack Barcode (Optional)</label>
+          <input
+            placeholder="Scan or enter barcode printed on the box/pack"
+            value={barcode}
+            onChange={(e) => handleBarcodeChange(e.target.value)}
+            className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none font-mono"
+          />
+        </div>
+        <div className="sm:col-span-2 md:col-span-3 rounded-xl bg-slate-900/90 border border-white/[0.06] px-3.5 py-2.5 text-xs text-slate-300 flex flex-wrap items-center justify-between gap-2">
+          <span>1 <strong>{name || 'Pack'}</strong> contains <strong>{numQty} {baseUnit || 'units'}</strong></span>
+          <span className="font-semibold text-emerald-400 font-mono">Effective price: {formatCurrency(unitRate)} each</span>
         </div>
       </div>
       <button
