@@ -43,7 +43,12 @@ function StatCard({ label, value, icon, color, link, sublabel, delta }: StatCard
         <span className="text-xs text-gray-400">{label}</span>
         {icon}
       </div>
-      <p className="text-xl font-bold text-white">{value}</p>
+      <p
+        className="text-base sm:text-lg lg:text-xl font-bold text-white break-words tabular-nums leading-tight"
+        title={value}
+      >
+        {value}
+      </p>
       {delta ? (
         <div className="flex items-center gap-1 mt-1">
           {delta.value === 0 ? (

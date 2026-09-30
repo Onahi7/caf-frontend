@@ -236,7 +236,12 @@ export const InventoryReportsPage = () => {
                 </div>
                 <div className="bg-green-500/10 p-4 rounded-xl border border-green-500/20">
                   <p className="text-sm text-green-200">Total Value</p>
-                  <p className="text-2xl font-bold text-green-400">{format(totals.totalValue)}</p>
+                  <p
+                    className="text-xl sm:text-2xl font-bold text-green-400 tabular-nums break-words leading-tight"
+                    title={format(totals.totalValue)}
+                  >
+                    {format(totals.totalValue)}
+                  </p>
                 </div>
                 <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20">
                   <p className="text-sm text-red-200">Low Stock Items</p>

@@ -644,7 +644,10 @@ export const PaymentPage = () => {
                 {/* Amount Due Card */}
                 <div className="rounded-2xl bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent border border-emerald-500/25 p-5 sm:p-6 text-center backdrop-blur-lg shadow-xl shadow-emerald-950/20">
                   <p className="text-emerald-400 text-xs font-semibold uppercase tracking-wider">Total Amount Due</p>
-                  <p className="text-4xl sm:text-5xl font-extrabold text-white mt-2 tracking-tight animate-in fade-in duration-500">
+                  <p
+                    className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white mt-2 tracking-tight tabular-nums break-words leading-tight animate-in fade-in duration-500"
+                    title={quoteLoading ? undefined : format(total)}
+                  >
                     {quoteLoading ? 'Calculating…' : format(total)}
                   </p>
                   {discount > 0 && (

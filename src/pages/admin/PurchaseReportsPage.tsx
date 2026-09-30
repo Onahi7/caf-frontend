@@ -169,7 +169,12 @@ export const PurchaseReportsPage = () => {
               </div>
               <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
                 <p className="text-sm text-gray-400">Total Amount</p>
-                <p className="text-3xl font-bold text-blue-400">{format(reportData.totalAmount)}</p>
+                <p
+                  className="text-2xl sm:text-3xl font-bold text-blue-400 tabular-nums break-words leading-tight"
+                  title={format(reportData.totalAmount)}
+                >
+                  {format(reportData.totalAmount)}
+                </p>
               </div>
               <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
                 <p className="text-sm text-gray-400">Total Items</p>

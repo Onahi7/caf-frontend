@@ -268,15 +268,30 @@ export function FinanceAdvancesPage() {
           </div>
           <div className="rounded-xl border border-white/10 bg-primary-dark/70 p-4">
             <p className="text-xs text-gray-400">Total Outstanding</p>
-            <p className="text-2xl font-bold text-white">{format(stats.totalOutstanding)}</p>
+            <p
+              className="text-lg sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
+              title={format(stats.totalOutstanding)}
+            >
+              {format(stats.totalOutstanding)}
+            </p>
           </div>
           <div className="rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
             <p className="text-xs text-blue-300">Goods Advances</p>
-            <p className="text-2xl font-bold text-white">{format(stats.totalGoodsAdvances)}</p>
+            <p
+              className="text-lg sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
+              title={format(stats.totalGoodsAdvances)}
+            >
+              {format(stats.totalGoodsAdvances)}
+            </p>
           </div>
           <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4">
             <p className="text-xs text-green-300">Cost to Company</p>
-            <p className="text-2xl font-bold text-white">{format(stats.totalCostToCompany)}</p>
+            <p
+              className="text-lg sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
+              title={format(stats.totalCostToCompany)}
+            >
+              {format(stats.totalCostToCompany)}
+            </p>
           </div>
         </div>
       ) : null}

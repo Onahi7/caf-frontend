@@ -180,23 +180,43 @@ export function ProfitLossReportPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-green-500/10 p-4 rounded-xl border border-green-500/20">
                 <p className="text-sm text-green-200">Revenue</p>
-                <p className="text-2xl font-bold text-green-400">{format(data.revenue.totalSales)}</p>
-                <p className="text-xs text-gray-400">{data.revenue.transactionCount} transactions</p>
+                <p
+                  className="text-xl sm:text-2xl font-bold text-green-400 tabular-nums break-words leading-tight"
+                  title={format(data.revenue.totalSales)}
+                >
+                  {format(data.revenue.totalSales)}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">{data.revenue.transactionCount} transactions</p>
               </div>
               <div className="bg-orange-500/10 p-4 rounded-xl border border-orange-500/20">
                 <p className="text-sm text-orange-200">COGS</p>
-                <p className="text-2xl font-bold text-orange-400">{format(data.cogs.totalCOGS)}</p>
-                <p className="text-xs text-gray-400">{data.cogs.itemsSold} items sold</p>
+                <p
+                  className="text-xl sm:text-2xl font-bold text-orange-400 tabular-nums break-words leading-tight"
+                  title={format(data.cogs.totalCOGS)}
+                >
+                  {format(data.cogs.totalCOGS)}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">{data.cogs.itemsSold} items sold</p>
               </div>
               <div className="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20">
                 <p className="text-sm text-blue-200">Gross Profit</p>
-                <p className="text-2xl font-bold text-blue-400">{format(data.grossProfit)}</p>
-                <p className="text-xs text-gray-400">{data.grossProfitMargin.toFixed(1)}% margin</p>
+                <p
+                  className="text-xl sm:text-2xl font-bold text-blue-400 tabular-nums break-words leading-tight"
+                  title={format(data.grossProfit)}
+                >
+                  {format(data.grossProfit)}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">{data.grossProfitMargin.toFixed(1)}% margin</p>
               </div>
               <div className="bg-purple-500/10 p-4 rounded-xl border border-purple-500/20">
                 <p className="text-sm text-purple-200">Operating Profit</p>
-                <p className="text-2xl font-bold text-purple-400">{format(data.operatingProfit)}</p>
-                <p className="text-xs text-gray-400">{data.operatingProfitMargin.toFixed(1)}% margin</p>
+                <p
+                  className="text-xl sm:text-2xl font-bold text-purple-400 tabular-nums break-words leading-tight"
+                  title={format(data.operatingProfit)}
+                >
+                  {format(data.operatingProfit)}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">{data.operatingProfitMargin.toFixed(1)}% margin</p>
               </div>
             </div>
 

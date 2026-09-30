@@ -207,13 +207,23 @@ export function ExpensesPage() {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
                 <div className="col-span-2 rounded-xl border border-slate-800 bg-slate-900/60 p-4 md:col-span-1">
                   <p className="text-xs text-slate-400 uppercase font-semibold mb-1">Total</p>
-                  <p className="text-2xl font-bold text-white">{format(totalExpenses)}</p>
+                  <p
+                    className="text-xl sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
+                    title={format(totalExpenses)}
+                  >
+                    {format(totalExpenses)}
+                  </p>
                   <p className="text-xs text-slate-400 mt-1">{expenses?.length ?? 0} entries</p>
                 </div>
                 {byCategory.map((item) => (
                   <div key={item.category} className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">
                     <p className="text-xs text-slate-400 uppercase font-semibold mb-1">{item.category.replace('_', ' ')}</p>
-                    <p className="text-xl font-bold text-white">{format(item.total)}</p>
+                    <p
+                      className="text-base sm:text-lg lg:text-xl font-bold text-white tabular-nums break-words leading-tight"
+                      title={format(item.total)}
+                    >
+                      {format(item.total)}
+                    </p>
                     <p className="text-xs text-slate-400 mt-1">{item.count} entries</p>
                   </div>
                 ))}

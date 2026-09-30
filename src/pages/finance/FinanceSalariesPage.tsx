@@ -219,7 +219,12 @@ export function FinanceSalariesPage() {
             )}
             <div className="rounded-md border-2 border-emerald-500/30 bg-emerald-500/10 p-4">
               <p className="text-xs text-emerald-400">Actual Payout</p>
-              <p className="text-2xl font-bold text-emerald-200">{formatMoney(previewQuery.data.actualPayout)}</p>
+              <p
+                className="text-xl sm:text-2xl font-bold text-emerald-200 tabular-nums break-words leading-tight"
+                title={formatMoney(previewQuery.data.actualPayout)}
+              >
+                {formatMoney(previewQuery.data.actualPayout)}
+              </p>
             </div>
             {previewQuery.data.advanceDetails.length > 0 && (
               <div className="rounded-md border border-slate-800 bg-slate-900 p-3">

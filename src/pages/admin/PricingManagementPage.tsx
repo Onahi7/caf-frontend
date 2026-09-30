@@ -203,7 +203,12 @@ export const PricingManagementPage = () => {
             </div>
             <div className="bg-white/5 rounded-xl p-6 border border-white/10">
               <h3 className="text-sm font-medium text-gray-400 mb-2">Average Price</h3>
-              <p className="text-2xl font-bold text-white">{format(analytics.averageSellingPrice || 0)}</p>
+              <p
+                className="text-xl sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
+                title={format(analytics.averageSellingPrice || 0)}
+              >
+                {format(analytics.averageSellingPrice || 0)}
+              </p>
             </div>
             <div className="bg-white/5 rounded-xl p-6 border border-white/10">
               <h3 className="text-sm font-medium text-gray-400 mb-2">Custom Pricing</h3>
@@ -245,19 +250,35 @@ export const PricingManagementPage = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-white/5 rounded-xl p-6 border border-white/10">
                       <p className="text-sm text-gray-400 mb-2">Cost Price</p>
-                      <p className="text-3xl font-bold text-white">{format(productPricing.costPrice)}</p>
+                      <p
+                        className="text-2xl sm:text-3xl font-bold text-white tabular-nums break-words leading-tight"
+                        title={format(productPricing.costPrice)}
+                      >
+                        {format(productPricing.costPrice)}
+                      </p>
                       <p className="text-xs text-gray-500 mt-1">What you paid for it</p>
                     </div>
                     <div className="bg-white/5 rounded-xl p-6 border border-white/10">
                       <p className="text-sm text-gray-400 mb-2">Selling Price</p>
-                      <p className="text-3xl font-bold text-accent-green">{format(productPricing.effectiveSellingPrice)}</p>
+                      <p
+                        className="text-2xl sm:text-3xl font-bold text-accent-green tabular-nums break-words leading-tight"
+                        title={format(productPricing.effectiveSellingPrice)}
+                      >
+                        {format(productPricing.effectiveSellingPrice)}
+                      </p>
                       <p className="text-xs text-gray-500 mt-1">What customers pay</p>
                     </div>
                   </div>
 
                   <div className="bg-blue-500/10 rounded-xl p-4 border border-blue-500/20">
                     <p className="text-sm text-blue-400">
-                      <span className="font-semibold">Profit per item:</span> {format(productPricing.effectiveSellingPrice - productPricing.costPrice)}
+                      <span className="font-semibold">Profit per item:</span>{' '}
+                      <span
+                        className="font-bold tabular-nums break-words"
+                        title={format(productPricing.effectiveSellingPrice - productPricing.costPrice)}
+                      >
+                        {format(productPricing.effectiveSellingPrice - productPricing.costPrice)}
+                      </span>
                     </p>
                   </div>
 

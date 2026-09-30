@@ -423,7 +423,10 @@ export default function HQDashboardPage() {
                         <span className="block truncate font-semibold text-slate-100 text-sm">{branch.branchName}</span>
                         <span className="mt-1 block text-xs text-slate-400">{branch.totalSales.toLocaleString()} sales</span>
                       </span>
-                      <span className="text-right text-sm font-bold text-emerald-400 tabular-nums font-mono">
+                      <span
+                        className="text-right text-sm font-bold text-emerald-400 tabular-nums font-mono shrink-0 break-words"
+                        title={branch.totalRevenueFormatted || format(branch.totalRevenue)}
+                      >
                         {branch.totalRevenueFormatted || format(branch.totalRevenue)}
                       </span>
                     </button>
@@ -439,7 +442,12 @@ export default function HQDashboardPage() {
                 {inventoryTotalsByCurrency.map((total) => (
                   <div key={`inventory-${total.currencyCode}`} className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/[0.05] p-3.5">
                     <span className="text-xs text-slate-400 font-medium">Inventory · {total.currencyCode}</span>
-                    <span className="font-bold text-white tabular-nums">{total.totalValueFormatted || format(total.totalValue || 0)}</span>
+                    <span
+                      className="font-bold text-white tabular-nums shrink-0 text-right break-words"
+                      title={total.totalValueFormatted || format(total.totalValue || 0)}
+                    >
+                      {total.totalValueFormatted || format(total.totalValue || 0)}
+                    </span>
                   </div>
                 ))}
                 <div className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/[0.05] p-3.5">

@@ -387,23 +387,48 @@ export default function SalesReportsPage() {
                 </div>
                 <div className="bg-green-500/10 p-4 rounded-xl border border-green-500/20">
                   <p className="text-sm text-green-200">Total Revenue</p>
-                  <p className="text-2xl font-bold text-green-400">{format(data.summary.totalAmount)}</p>
+                  <p
+                    className="text-xl sm:text-2xl font-bold text-green-400 tabular-nums break-words leading-tight"
+                    title={format(data.summary.totalAmount)}
+                  >
+                    {format(data.summary.totalAmount)}
+                  </p>
                 </div>
                 <div className="bg-teal-500/10 p-4 rounded-xl border border-teal-500/20">
                   <p className="text-sm text-teal-200">Collected</p>
-                  <p className="text-2xl font-bold text-teal-400">{format(data.summary.totalCollected ?? 0)}</p>
+                  <p
+                    className="text-xl sm:text-2xl font-bold text-teal-400 tabular-nums break-words leading-tight"
+                    title={format(data.summary.totalCollected ?? 0)}
+                  >
+                    {format(data.summary.totalCollected ?? 0)}
+                  </p>
                 </div>
                 <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20">
                   <p className="text-sm text-red-200">Outstanding</p>
-                  <p className="text-2xl font-bold text-red-400">{format(data.summary.totalOutstanding ?? 0)}</p>
+                  <p
+                    className="text-xl sm:text-2xl font-bold text-red-400 tabular-nums break-words leading-tight"
+                    title={format(data.summary.totalOutstanding ?? 0)}
+                  >
+                    {format(data.summary.totalOutstanding ?? 0)}
+                  </p>
                 </div>
                 <div className="bg-orange-500/10 p-4 rounded-xl border border-orange-500/20">
                   <p className="text-sm text-orange-200">Total Discount</p>
-                  <p className="text-2xl font-bold text-orange-400">{format(data.summary.totalDiscount)}</p>
+                  <p
+                    className="text-xl sm:text-2xl font-bold text-orange-400 tabular-nums break-words leading-tight"
+                    title={format(data.summary.totalDiscount)}
+                  >
+                    {format(data.summary.totalDiscount)}
+                  </p>
                 </div>
                 <div className="bg-purple-500/10 p-4 rounded-xl border border-purple-500/20">
                   <p className="text-sm text-purple-200">Avg Transaction</p>
-                  <p className="text-2xl font-bold text-purple-400">{format(data.summary.averageTransaction)}</p>
+                  <p
+                    className="text-xl sm:text-2xl font-bold text-purple-400 tabular-nums break-words leading-tight"
+                    title={format(data.summary.averageTransaction)}
+                  >
+                    {format(data.summary.averageTransaction)}
+                  </p>
                 </div>
               </div>
             </div>

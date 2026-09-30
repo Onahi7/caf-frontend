@@ -188,11 +188,21 @@ export const ShiftReportPage = () => {
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-primary-dark rounded-xl p-4 border border-gray-700">
             <p className="text-gray-400 text-sm">Total Sales</p>
-            <p className="text-2xl font-bold text-white mt-1">{format(report.totalSales)}</p>
+            <p
+              className="text-lg sm:text-2xl font-bold text-white mt-1 tabular-nums break-words leading-tight"
+              title={format(report.totalSales)}
+            >
+              {format(report.totalSales)}
+            </p>
           </div>
           <div className="bg-primary-dark rounded-xl p-4 border border-gray-700">
             <p className="text-gray-400 text-sm">Net Sales</p>
-            <p className="text-2xl font-bold text-white mt-1">{format(report.netSales)}</p>
+            <p
+              className="text-lg sm:text-2xl font-bold text-white mt-1 tabular-nums break-words leading-tight"
+              title={format(report.netSales)}
+            >
+              {format(report.netSales)}
+            </p>
           </div>
         </div>
 

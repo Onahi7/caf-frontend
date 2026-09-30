@@ -257,7 +257,12 @@ export function ExpenseReportPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20">
                 <p className="text-sm text-red-200">Total Expenses</p>
-                <p className="text-2xl font-bold text-red-400">{format(data.summary.totalExpenses)}</p>
+                <p
+                  className="text-xl sm:text-2xl font-bold text-red-400 tabular-nums break-words leading-tight"
+                  title={format(data.summary.totalExpenses)}
+                >
+                  {format(data.summary.totalExpenses)}
+                </p>
               </div>
               <div className="bg-orange-500/10 p-4 rounded-xl border border-orange-500/20">
                 <p className="text-sm text-orange-200">Transactions</p>
@@ -265,7 +270,12 @@ export function ExpenseReportPage() {
               </div>
               <div className="bg-yellow-500/10 p-4 rounded-xl border border-yellow-500/20">
                 <p className="text-sm text-yellow-200">Average Expense</p>
-                <p className="text-2xl font-bold text-yellow-400">{format(data.summary.averageExpense)}</p>
+                <p
+                  className="text-xl sm:text-2xl font-bold text-yellow-400 tabular-nums break-words leading-tight"
+                  title={format(data.summary.averageExpense)}
+                >
+                  {format(data.summary.averageExpense)}
+                </p>
               </div>
             </div>
 

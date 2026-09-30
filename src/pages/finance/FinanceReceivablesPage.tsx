@@ -154,14 +154,24 @@ export function FinanceReceivablesPage() {
         </div>
         <div className="rounded-2xl border border-white/10 bg-primary-dark/70 p-4">
           <p className="text-xs uppercase tracking-wide text-gray-400">Outstanding balance</p>
-          <p className="mt-2 text-2xl font-bold text-amber-300">{format(outstandingBalance)}</p>
+          <p
+            className="mt-2 text-xl sm:text-2xl font-bold text-amber-300 tabular-nums break-words leading-tight"
+            title={format(outstandingBalance)}
+          >
+            {format(outstandingBalance)}
+          </p>
         </div>
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
           <p className="text-xs uppercase tracking-wide text-amber-300 flex items-center gap-1">
             <AlertTriangle className="w-3 h-3" /> Overdue
           </p>
-          <p className="mt-2 text-2xl font-bold text-amber-300">{overdueSales.length}</p>
-          <p className="text-xs text-amber-200">{format(overdueAmount)}</p>
+          <p className="mt-2 text-xl sm:text-2xl font-bold text-amber-300">{overdueSales.length}</p>
+          <p
+            className="text-xs text-amber-200 tabular-nums break-words"
+            title={format(overdueAmount)}
+          >
+            {format(overdueAmount)}
+          </p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-primary-dark/70 p-4">
           <p className="text-xs uppercase tracking-wide text-gray-400">Fully paid</p>

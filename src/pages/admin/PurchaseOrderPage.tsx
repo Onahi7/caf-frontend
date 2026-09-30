@@ -161,7 +161,12 @@ function PurchaseOrderQueueSection({
                 <p className="mt-1 text-[10px] text-gray-500">{order.items.length} {order.items.length === 1 ? 'item' : 'items'}</p>
               </div>
               <div className="min-w-0">
-                <p className="truncate text-xs font-bold text-white">{formatOrderAmount(symbol, order.totalAmount)}</p>
+                <p
+                  className="break-words text-xs font-bold text-white tabular-nums leading-tight"
+                  title={formatOrderAmount(symbol, order.totalAmount)}
+                >
+                  {formatOrderAmount(symbol, order.totalAmount)}
+                </p>
                 <p className="mt-1 text-[10px] text-gray-400">{dateLabel}</p>
                 <p className={`mt-0.5 truncate text-[11px] font-medium ${toneClasses.date}`}>
                   {new Date(dateValue).toLocaleDateString()}

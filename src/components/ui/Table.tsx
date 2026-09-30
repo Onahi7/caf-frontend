@@ -327,7 +327,10 @@ export const Table = <T extends Record<string, any>>({
                       <div className="text-[11px] font-medium text-slate-400 uppercase tracking-wider mb-0.5">
                         {column.header}
                       </div>
-                      <div className="text-sm text-slate-200 truncate">
+                      <div
+                        className="text-sm text-slate-200 break-words tabular-nums leading-snug"
+                        title={typeof item[column.key] === 'string' || typeof item[column.key] === 'number' ? String(item[column.key]) : undefined}
+                      >
                         {column.render
                           ? column.render(item)
                           : (item[column.key] ?? "-")}

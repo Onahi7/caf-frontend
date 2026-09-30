@@ -241,7 +241,12 @@ export const ExpiryReportsPage = () => {
                 </div>
                 <div className="bg-red-500/10 p-4 rounded-xl border border-red-500/20">
                   <p className="text-sm text-red-200">Potential Loss</p>
-                  <p className="text-2xl font-bold text-red-400">{format(totals.totalPotentialLoss)}</p>
+                  <p
+                    className="text-lg sm:text-2xl font-bold text-red-400 tabular-nums break-words leading-tight"
+                    title={format(totals.totalPotentialLoss)}
+                  >
+                    {format(totals.totalPotentialLoss)}
+                  </p>
                 </div>
               </div>
             )}

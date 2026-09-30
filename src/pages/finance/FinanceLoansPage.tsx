@@ -225,19 +225,39 @@ export function FinanceLoansPage() {
           </div>
           <div className="rounded-xl border border-green-500/30 bg-green-500/10 p-4">
             <p className="text-xs text-green-300">Total Received</p>
-            <p className="text-2xl font-bold text-white">{format(stats.totalReceived)}</p>
+            <p
+              className="text-lg sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
+              title={format(stats.totalReceived)}
+            >
+              {format(stats.totalReceived)}
+            </p>
           </div>
           <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 p-4">
             <p className="text-xs text-purple-300">Total Given</p>
-            <p className="text-2xl font-bold text-white">{format(stats.totalGiven)}</p>
+            <p
+              className="text-lg sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
+              title={format(stats.totalGiven)}
+            >
+              {format(stats.totalGiven)}
+            </p>
           </div>
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
             <p className="text-xs text-amber-300">Outstanding</p>
-            <p className="text-2xl font-bold text-white">{format(stats.totalOutstanding)}</p>
+            <p
+              className="text-lg sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
+              title={format(stats.totalOutstanding)}
+            >
+              {format(stats.totalOutstanding)}
+            </p>
           </div>
           <div className="rounded-xl border border-white/10 bg-primary-dark/70 p-4">
             <p className="text-xs text-gray-400">Accrued Interest</p>
-            <p className="text-2xl font-bold text-white">{format(stats.totalAccruedInterest)}</p>
+            <p
+              className="text-lg sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
+              title={format(stats.totalAccruedInterest)}
+            >
+              {format(stats.totalAccruedInterest)}
+            </p>
           </div>
         </div>
       ) : null}

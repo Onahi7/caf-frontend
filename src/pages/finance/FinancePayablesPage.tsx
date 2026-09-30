@@ -53,7 +53,12 @@ export function FinancePayablesPage() {
           <div className="flex items-center gap-2 text-amber-300 text-xs uppercase mb-1">
             <Clock className="w-4 h-4" /> Pending POs
           </div>
-          <p className="text-2xl font-bold text-white">{format(totalPayable)}</p>
+          <p
+            className="text-xl sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
+            title={format(totalPayable)}
+          >
+            {format(totalPayable)}
+          </p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-primary-dark/70 p-4">
           <div className="flex items-center gap-2 text-gray-400 text-xs uppercase mb-1">
@@ -65,7 +70,10 @@ export function FinancePayablesPage() {
           <div className="flex items-center gap-2 text-gray-400 text-xs uppercase mb-1">
             <CheckCircle className="w-4 h-4" /> Avg. Value
           </div>
-          <p className="text-2xl font-bold text-white">
+          <p
+            className="text-xl sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
+            title={format((orders?.length ?? 0) > 0 ? totalPayable / orders!.length : 0)}
+          >
             {format((orders?.length ?? 0) > 0 ? totalPayable / orders!.length : 0)}
           </p>
         </div>

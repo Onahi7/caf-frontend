@@ -362,7 +362,12 @@ export const ShiftManagementPage = () => {
                           </svg>
                         </div>
                       </div>
-                      <p className="text-2xl font-bold text-white tracking-tight tabular-nums font-mono">{format(currentShift.openingCash)}</p>
+                      <p
+                        className="text-xl sm:text-2xl font-bold text-white tracking-tight tabular-nums font-mono break-words leading-tight"
+                        title={format(currentShift.openingCash)}
+                      >
+                        {format(currentShift.openingCash)}
+                      </p>
                     </div>
 
                     <div className="bg-slate-900/80 rounded-2xl p-5 border border-white/[0.08] shadow-lg backdrop-blur-md">
@@ -374,7 +379,12 @@ export const ShiftManagementPage = () => {
                           </svg>
                         </div>
                       </div>
-                      <p className="text-2xl font-bold text-white tracking-tight tabular-nums font-mono">{format(shiftReport?.totalSales ?? currentShift.totalSales ?? 0)}</p>
+                      <p
+                        className="text-xl sm:text-2xl font-bold text-white tracking-tight tabular-nums font-mono break-words leading-tight"
+                        title={format(shiftReport?.totalSales ?? currentShift.totalSales ?? 0)}
+                      >
+                        {format(shiftReport?.totalSales ?? currentShift.totalSales ?? 0)}
+                      </p>
                       <p className="text-xs text-slate-500 mt-1">{shiftReport?.salesCount ?? currentShift.salesCount ?? 0} transactions</p>
                     </div>
 
@@ -387,7 +397,10 @@ export const ShiftManagementPage = () => {
                           </svg>
                         </div>
                       </div>
-                      <p className="text-2xl font-bold text-white tracking-tight tabular-nums font-mono">
+                      <p
+                        className="text-xl sm:text-2xl font-bold text-white tracking-tight tabular-nums font-mono break-words leading-tight"
+                        title={format(expectedShiftCash)}
+                      >
                         {format(expectedShiftCash)}
                       </p>
                     </div>

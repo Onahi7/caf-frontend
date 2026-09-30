@@ -162,7 +162,10 @@ export const MarketerDashboardPage = () => {
                 )}
               </div>
               <p className="body-sm mb-2">{card.title}</p>
-              <p className={`text-2xl font-bold mb-1 ${card.tone}`}>
+              <p
+                className={`text-xl sm:text-2xl font-bold mb-1 tabular-nums break-words leading-tight ${card.tone}`}
+                title={typeof card.value === 'string' ? card.value : undefined}
+              >
                 {summaryLoading ? (
                   <span className="inline-block w-20 h-8 bg-white/10 rounded animate-pulse" />
                 ) : (

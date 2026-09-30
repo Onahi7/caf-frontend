@@ -137,7 +137,12 @@ export function ValuationReportPage() {
           <div className="bg-primary-dark/50 border border-white/10 rounded-2xl p-6 mb-6 flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-500 uppercase font-semibold">Total Inventory Value</p>
-              <p className="text-4xl font-bold text-accent-green mt-1">{format(data.totalValue)}</p>
+              <p
+                className="text-2xl sm:text-3xl lg:text-4xl font-bold text-accent-green mt-1 tabular-nums break-words leading-tight"
+                title={format(data.totalValue)}
+              >
+                {format(data.totalValue)}
+              </p>
               <p className="text-xs text-gray-400 mt-1">
                 Method: <span className="font-semibold">{data.method}</span>
                 {data.products?.length != null && ` - ${data.products.length} products`}
