@@ -409,6 +409,7 @@ export const POSPage = () => {
   }, [addItem, currentShift, products, selectedBranch]);
 
   // Hardware barcode scanner support (USB / Bluetooth scanner guns)
+  const isShiftActive = currentShift?.status === 'open';
   useHardwareBarcodeScanner({
     onScan: handleBarcodeScan,
     enabled: isShiftActive,

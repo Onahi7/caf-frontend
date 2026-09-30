@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { AdminLayout } from "../../components/AdminLayout";
 import { MarketerLayout } from "../../components/MarketerLayout";
 import apiClient from "../../lib/api-client";
 import { unwrapResponse } from "../../lib/unwrap-response";
@@ -41,6 +42,8 @@ interface MarketerSalesResponse {
 }
 
 export const MarketerDashboardPage = () => {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith('/admin');
   const { format } = useCurrency();
 
   const { data: summary, isLoading: summaryLoading } =
@@ -112,10 +115,9 @@ export const MarketerDashboardPage = () => {
     },
   ];
 
-  return (
-    <MarketerLayout title="My Sales Dashboard">
-      <div className="space-y-6">
-        {/* Welcome Header */}
+  const content = (
+    <div className="space-y-6">
+      {/* Welcome Header */}
         <div className="card-compact">
           <div className="flex items-center justify-between">
             <div>
@@ -377,6 +379,19 @@ export const MarketerDashboardPage = () => {
           )}
         </div>
       </div>
+  );
+
+  if (isAdminRoute) {
+    return (
+      <AdminLayout title="Marketer Performance Dashboard">
+        {content}
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <MarketerLayout title="My Sales Dashboard">
+      {content}
     </MarketerLayout>
   );
 };
