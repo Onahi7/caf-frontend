@@ -968,6 +968,7 @@ export const POSPage = () => {
                 <input
                   ref={searchInputRef}
                   type="text"
+                  data-is-search="true"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search drug name, brand, SKU, or barcode..."

@@ -834,22 +834,33 @@ export const ProductManagementPage = () => {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                    wizardStep === 1 
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' 
-                      : 'bg-white/5 text-slate-400 border border-white/10'
-                  }`}>
+                  <button
+                    type="button"
+                    onClick={() => setWizardStep(1)}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                      wizardStep === 1 
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs' 
+                        : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
                     <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                    Step 1
-                  </span>
-                  <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                    wizardStep === 2 
-                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' 
-                      : 'bg-white/5 text-slate-400 border border-white/10'
-                  }`}>
+                    Step 1: Details
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const valid = await trigger(['name', 'barcode', 'category', 'brand', 'unit', 'basePrice', 'costPrice']);
+                      if (valid) setWizardStep(2);
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
+                      wizardStep === 2 
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs' 
+                        : 'bg-white/5 text-slate-400 border border-white/10 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
                     <span className="w-1.5 h-1.5 rounded-full bg-current" />
-                    Step 2
-                  </span>
+                    Step 2: Stock & Packs
+                  </button>
                 </div>
               </div>
             </div>
@@ -886,22 +897,24 @@ export const ProductManagementPage = () => {
                   error={errors.name?.message}
                 />
 
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Input
-                    label="Barcode"
-                    {...register('barcode', { required: 'Barcode is required' })}
-                    error={errors.barcode?.message}
-                    className="flex-1"
-                  />
+                <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                  <div className="flex-1">
+                    <Input
+                      label="Barcode"
+                      {...register('barcode', { required: 'Barcode is required' })}
+                      error={errors.barcode?.message}
+                      placeholder="Scan or type barcode"
+                    />
+                  </div>
                   <Button
                     type="button"
                     variant="secondary"
                     onClick={handleScanBarcode}
                     disabled={!cameraAvailable}
-                    className="sm:mt-8 flex items-center gap-1.5"
+                    className="sm:mb-0.5 flex items-center justify-center gap-1.5 h-[42px] px-4"
                   >
-                    <Camera className="w-3.5 h-3.5" />
-                    {cameraAvailable ? 'Scan' : 'No Camera'}
+                    <Camera className="w-4 h-4 text-emerald-400" />
+                    <span>{cameraAvailable ? 'Scan with Camera' : 'No Camera'}</span>
                   </Button>
                 </div>
 
@@ -941,7 +954,7 @@ export const ProductManagementPage = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
-                    label="Selling Price (per base unit)"
+                    label={`Selling Price (per ${watch('unit') || 'single item'})`}
                     type="number"
                     step="0.01"
                     {...register('basePrice', {
@@ -949,10 +962,11 @@ export const ProductManagementPage = () => {
                       min: { value: 0, message: 'Must be 0 or greater' },
                     })}
                     error={errors.basePrice?.message}
+                    placeholder="0.00"
                   />
 
                   <Input
-                    label="Cost Price"
+                    label={`Cost Price (per ${watch('unit') || 'single item'})`}
                     type="number"
                     step="0.01"
                     {...register('costPrice', {
@@ -960,27 +974,55 @@ export const ProductManagementPage = () => {
                       min: { value: 0, message: 'Must be 0 or greater' },
                     })}
                     error={errors.costPrice?.message}
+                    placeholder="0.00"
                   />
                 </div>
 
-                <Input
-                  label="Reorder Level"
-                  type="number"
-                  {...register('reorderLevel', {
-                    min: { value: 0, message: 'Must be 0 or greater' },
-                  })}
-                  error={errors.reorderLevel?.message}
-                />
+                {/* Live Profit Margin Calculator Indicator */}
+                {(() => {
+                  const sp = Number(watch('basePrice') || 0);
+                  const cp = Number(watch('costPrice') || 0);
+                  if (sp > 0 && cp > 0) {
+                    const profit = sp - cp;
+                    const margin = Math.round((profit / sp) * 100);
+                    const isPositive = profit >= 0;
+                    return (
+                      <div className={`p-2.5 rounded-xl border text-xs flex items-center justify-between font-medium ${
+                        isPositive 
+                          ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300' 
+                          : 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                      }`}>
+                        <span>Gross Profit per {watch('unit') || 'item'}: <strong className="font-mono">{format(profit)}</strong></span>
+                        <span className="font-mono font-bold">Margin: {margin}%</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
-                <Input
-                  label="Maximum Stock Level (Optional)"
-                  type="number"
-                  min="0"
-                  {...register('maxStockLevel', {
-                    min: { value: 0, message: 'Must be 0 or greater' },
-                  })}
-                  error={errors.maxStockLevel?.message}
-                />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Input
+                    label="Reorder Level"
+                    type="number"
+                    min="0"
+                    {...register('reorderLevel', {
+                      min: { value: 0, message: 'Must be 0 or greater' },
+                    })}
+                    error={errors.reorderLevel?.message}
+                    helperText={`Alert when stock drops below this many ${watch('unit') || 'units'}s`}
+                  />
+
+                  <Input
+                    label="Maximum Stock Level (Optional)"
+                    type="number"
+                    min="0"
+                    {...register('maxStockLevel', {
+                      min: { value: 0, message: 'Must be 0 or greater' },
+                    })}
+                    error={errors.maxStockLevel?.message}
+                    helperText="Prevents over-ordering and expiry waste"
+                  />
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-slate-900/60 rounded-2xl border border-white/[0.08]">
                   <label className="flex items-center gap-3 p-3 rounded-xl bg-slate-950/40 border border-white/[0.04] hover:border-emerald-500/30 transition-colors cursor-pointer group">
@@ -1069,21 +1111,24 @@ export const ProductManagementPage = () => {
               <>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
-                    label={editingProduct ? 'Current Total Stock' : 'Opening Stock'}
+                    label={`${editingProduct ? 'Current Total Stock' : 'Opening Shelf Stock'} (in ${watch('unit') || 'single units'}s)`}
                     type="number"
                     min="0"
                     {...register('initialStock', { min: 0 })}
                     error={errors.initialStock?.message}
+                    placeholder="e.g. 50"
+                    helperText={`Total count of single ${watch('unit') || 'units'}s on shelf`}
                   />
 
                   <Input
-                    label={editingProduct ? 'Latest Purchase Price' : 'Purchase Price'}
+                    label={`Purchase Price (per ${watch('unit') || 'single item'})`}
                     type="number"
                     step="0.01"
                     {...register('initialPurchasePrice', {
                       min: { value: 0, message: 'Must be 0 or greater' },
                     })}
                     error={errors.initialPurchasePrice?.message}
+                    placeholder="Defaults to Cost Price"
                   />
                 </div>
 
@@ -1112,14 +1157,14 @@ export const ProductManagementPage = () => {
                 </Select>
 
                 <Input
-                  label={editingProduct ? 'Latest Selling Price' : 'Opening Selling Price'}
+                  label={`Opening Selling Price (per ${watch('unit') || 'single item'})`}
                   type="number"
                   step="0.01"
                   {...register('initialSellingPrice', {
                     min: { value: 0, message: 'Must be 0 or greater' },
                   })}
                   error={errors.initialSellingPrice?.message}
-                  placeholder="Defaults to selling price above"
+                  placeholder="Defaults to Selling Price from Step 1"
                 />
 
                 <div className="space-y-3 p-4 bg-slate-900/60 rounded-2xl border border-white/[0.08]">
