@@ -179,7 +179,7 @@ export const ProductManagementPage = () => {
   const { register, handleSubmit, reset, watch, trigger, setValue, formState: { errors } } = useForm<ProductFormData>();
   const initialStock = Number(watch('initialStock') || 0);
 
-  const { isAvailable: cameraAvailable, scanOnce } = useBarcodeScanner();
+  const { isAvailable: cameraAvailable, scanOnce, ScannerModal } = useBarcodeScanner();
 
   const handleScanBarcode = async () => {
     const value = await scanOnce();
@@ -898,8 +898,9 @@ export const ProductManagementPage = () => {
                     variant="secondary"
                     onClick={handleScanBarcode}
                     disabled={!cameraAvailable}
-                    className="sm:mt-8"
+                    className="sm:mt-8 flex items-center gap-1.5"
                   >
+                    <Camera className="w-3.5 h-3.5" />
                     {cameraAvailable ? 'Scan' : 'No Camera'}
                   </Button>
                 </div>
@@ -1264,6 +1265,8 @@ export const ProductManagementPage = () => {
           variant="danger"
           isLoading={deleteMutation.isPending}
         />
+        {/* Camera Barcode Scanner Modal for Web */}
+        <ScannerModal />
       </div>
       <AdminMobileBottomNav active="inventory" />
     </AdminLayout>

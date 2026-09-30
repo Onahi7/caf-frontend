@@ -10,6 +10,7 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useAlertReplacement } from '../../hooks/useAlertReplacement';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
+import { useHardwareBarcodeScanner } from '../../hooks/useHardwareBarcodeScanner';
 import { useDebounce } from '../../hooks/useDebounce';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -216,7 +217,7 @@ export const POSPage = () => {
     prevBranchIdRef.current = selectedBranch?._id;
   }, [selectedBranch?._id, items.length, clearCart, alertInfo]);
 
-  const { isAvailable: cameraAvailable, startContinuousScan, stopContinuousScan } = useBarcodeScanner();
+  const { isAvailable: cameraAvailable, startContinuousScan, stopContinuousScan, ScannerModal } = useBarcodeScanner();
 
   const terminalId = 'TERMINAL-01';
 
@@ -406,6 +407,12 @@ export const POSPage = () => {
     if (scanFeedbackTimeout.current) clearTimeout(scanFeedbackTimeout.current);
     scanFeedbackTimeout.current = setTimeout(() => setScanFeedback(null), 2500);
   }, [addItem, currentShift, products, selectedBranch]);
+
+  // Hardware barcode scanner support (USB / Bluetooth scanner guns)
+  useHardwareBarcodeScanner({
+    onScan: handleBarcodeScan,
+    enabled: isShiftActive,
+  });
 
   const toggleScanMode = useCallback(async () => {
     if (scanMode) {
@@ -1923,6 +1930,9 @@ export const POSPage = () => {
           </div>
         </div>
       )}
+
+      {/* Universal Web Camera Barcode Scanner Modal */}
+      <ScannerModal />
       </div>
     </POSLayout>
   );
