@@ -23,6 +23,17 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
 });
 
+// Prevent inadvertent mousewheel adjustments on number inputs when scrolling
+window.addEventListener(
+  'wheel',
+  () => {
+    if (document.activeElement instanceof HTMLInputElement && document.activeElement.type === 'number') {
+      document.activeElement.blur();
+    }
+  },
+  { passive: true, capture: true }
+);
+
 // Auto-recover from dynamic import chunk failures during fresh deployments
 window.addEventListener('vite:preloadError', () => {
   const reloadKey = 'caf_chunk_reload_ts';

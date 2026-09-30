@@ -26,13 +26,47 @@ export const Modal = ({
       document.body.style.overflow = 'hidden';
 
       const timer = setTimeout(() => {
-        const focusable = containerRef.current?.querySelector<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        focusable?.focus();
-      }, 10);
+        if (!containerRef.current) return;
 
-      return () => clearTimeout(timer);
+        // If an input, textarea or select inside this modal is ALREADY focused, do not steal focus
+        const active = document.activeElement as HTMLElement | null;
+        if (
+          active &&
+          containerRef.current.contains(active) &&
+          (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT')
+        ) {
+          return;
+        }
+
+        // Prioritize the first visible editable form control over close buttons
+        const firstInput = containerRef.current.querySelector<HTMLElement>(
+          'input:not([type="hidden"]):not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly]), select:not([disabled])'
+        );
+        if (firstInput) {
+          firstInput.focus();
+          return;
+        }
+
+        // If no form inputs exist in the modal, find the first action button that is NOT the close button
+        const actionButton = containerRef.current.querySelector<HTMLElement>(
+          'button:not([aria-label="Close modal"]):not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+        );
+        if (actionButton) {
+          actionButton.focus();
+          return;
+        }
+
+        // Fallback to any focusable element (e.g. close button)
+        const fallback = containerRef.current.querySelector<HTMLElement>(
+          'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        fallback?.focus();
+      }, 20);
+
+      return () => {
+        clearTimeout(timer);
+        document.body.style.overflow = 'unset';
+      };
     }
     return undefined;
   }, [isOpen]);
@@ -69,7 +103,13 @@ export const Modal = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'unset';
-      previousFocusRef.current?.focus();
+      if (
+        previousFocusRef.current &&
+        typeof previousFocusRef.current.focus === 'function' &&
+        document.body.contains(previousFocusRef.current)
+      ) {
+        previousFocusRef.current.focus();
+      }
     };
   }, [isOpen, onClose]);
 

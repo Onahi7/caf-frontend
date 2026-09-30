@@ -41,7 +41,13 @@ export const ConfirmDialog = ({
 
     return () => {
       document.body.style.overflow = previousOverflow;
-      previousFocusRef.current?.focus();
+      if (
+        previousFocusRef.current &&
+        typeof previousFocusRef.current.focus === 'function' &&
+        document.body.contains(previousFocusRef.current)
+      ) {
+        previousFocusRef.current.focus();
+      }
     };
   }, [isOpen]);
 

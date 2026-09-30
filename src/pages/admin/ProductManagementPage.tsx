@@ -35,6 +35,7 @@ import {
   PRODUCT_CATEGORY_OPTIONS,
   PRODUCT_UNIT_OPTIONS,
 } from '../../lib/product-options';
+import { PackSizeRow } from '../../components/admin/PackSizeRow';
 
 interface PackSize {
   code?: string;
@@ -43,6 +44,7 @@ interface PackSize {
   quantityPerPack: number;
   sellingPrice: number;
   barcode?: string;
+  _clientId?: string;
 }
 
 interface Product {
@@ -410,7 +412,10 @@ export const ProductManagementPage = () => {
         isControlled: product.isControlled,
         reorderLevel: product.reorderLevel || 0,
         maxStockLevel: product.maxStockLevel || undefined,
-        packSizes: product.packSizes || [],
+        packSizes: (product.packSizes || []).map((p, i) => ({
+          ...p,
+          _clientId: p.code || `pack_${i}_${Date.now()}`,
+        })),
         branchId: productBranchId,
       });
     } else {
@@ -1147,117 +1152,42 @@ export const ProductManagementPage = () => {
                   {showPackSizeEditor && (
                     <>
                       <div className="space-y-3 pt-1">
-                        {watch('packSizes').map((pack: PackSize, idx: number) => (
-                          <div key={idx} className="flex items-start gap-3 p-3.5 bg-slate-950/70 rounded-2xl border border-white/[0.08] shadow-md shadow-black/20">
-                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
-                              <div>
-                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Type</label>
-                                <select
-                                  value={pack.name}
-                                  onChange={(e) => {
-                                    const updated = [...watch('packSizes')];
-                                    const name = e.target.value;
-                                    updated[idx] = {
-                                      ...updated[idx],
-                                      name,
-                                      unit: name ? name.trim().toLowerCase().replace(/\s+/g, '-') : updated[idx].unit,
-                                    };
-                                    setValue('packSizes', updated as any);
-                                  }}
-                                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none"
-                                >
-                                  <option value="">Package type</option>
-                                  {PACK_TYPE_OPTIONS.map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Custom Label</label>
-                                <input
-                                  placeholder="e.g. Strip"
-                                  value={pack.name}
-                                  onChange={(e) => {
-                                    const updated = [...watch('packSizes')];
-                                    updated[idx] = {
-                                      ...updated[idx],
-                                      name: e.target.value,
-                                      unit: e.target.value.trim().toLowerCase().replace(/\s+/g, '-'),
-                                    };
-                                    setValue('packSizes', updated as any);
-                                  }}
-                                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Qty per Pack</label>
-                                <input
-                                  type="number"
-                                  min="1"
-                                  placeholder="e.g. 10"
-                                  value={pack.quantityPerPack}
-                                  onChange={(e) => {
-                                    const updated = [...watch('packSizes')];
-                                    updated[idx] = { ...updated[idx], quantityPerPack: Number(e.target.value) };
-                                    setValue('packSizes', updated as any);
-                                  }}
-                                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none font-mono"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Pack Barcode (Optional)</label>
-                                <input
-                                  placeholder="Pack Barcode"
-                                  value={pack.barcode || ''}
-                                  onChange={(e) => {
-                                    const updated = [...watch('packSizes')];
-                                    updated[idx] = { ...updated[idx], barcode: e.target.value };
-                                    setValue('packSizes', updated as any);
-                                  }}
-                                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none font-mono"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-[10px] uppercase font-bold text-slate-400 mb-1">Pack Selling Price</label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  placeholder="Price"
-                                  value={pack.sellingPrice}
-                                  onChange={(e) => {
-                                    const updated = [...watch('packSizes')];
-                                    updated[idx] = { ...updated[idx], sellingPrice: Number(e.target.value) };
-                                    setValue('packSizes', updated as any);
-                                  }}
-                                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs focus:border-emerald-500/50 focus:outline-none font-mono text-emerald-300 font-semibold"
-                                />
-                              </div>
-                              <div className="sm:col-span-2 md:col-span-3 rounded-xl bg-slate-900/90 border border-white/[0.04] px-3.5 py-2 text-[11px] text-slate-400 flex items-center justify-between">
-                                <span>1 {pack.name || 'Pack'} = <strong className="text-slate-200">{Number(pack.quantityPerPack) || 1} {watch('unit') || 'units'}</strong></span>
-                                <span className="font-mono text-emerald-400">Unit rate: {format((Number(pack.sellingPrice) || 0) / Math.max(1, Number(pack.quantityPerPack) || 1))}</span>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updated = watch('packSizes').filter((_: any, i: number) => i !== idx);
-                                setValue('packSizes', updated as any);
+                        {(watch('packSizes') || []).map((pack: PackSize, idx: number) => {
+                          const clientKey = pack._clientId || pack.code || `pack_${idx}`;
+                          return (
+                            <PackSizeRow
+                              key={clientKey}
+                              pack={pack}
+                              baseUnit={watch('unit') || 'units'}
+                              formatCurrency={format}
+                              onChange={(updatedPack) => {
+                                const currentPacks = [...(watch('packSizes') || [])];
+                                currentPacks[idx] = updatedPack;
+                                setValue('packSizes', currentPacks as any);
                               }}
-                              className="p-2 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors shrink-0 mt-6"
-                              aria-label="Delete pack size"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
+                              onDelete={() => {
+                                const currentPacks = (watch('packSizes') || []).filter((_: any, i: number) => i !== idx);
+                                setValue('packSizes', currentPacks as any);
+                              }}
+                            />
+                          );
+                        })}
 
                         <button
                           type="button"
                           onClick={() => {
                             const current = watch('packSizes') || [];
-                            setValue('packSizes', [...current, { code: '', name: '', unit: '', quantityPerPack: 1, sellingPrice: 0 }] as any);
+                            setValue('packSizes', [
+                              ...current,
+                              {
+                                _clientId: `pack_${Date.now()}_${Math.random()}`,
+                                code: '',
+                                name: '',
+                                unit: '',
+                                quantityPerPack: 1,
+                                sellingPrice: 0,
+                              },
+                            ] as any);
                           }}
                           className="w-full py-2.5 border-2 border-dashed border-white/15 hover:border-emerald-500/40 rounded-xl text-slate-400 hover:text-emerald-300 hover:bg-emerald-500/5 transition-all text-xs font-semibold flex items-center justify-center gap-1.5"
                         >

@@ -26,6 +26,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           aria-invalid={!!error}
           aria-describedby={errorId || helperId || undefined}
+          onWheel={(e) => {
+            if (props.type === 'number') {
+              e.currentTarget.blur();
+            }
+            props.onWheel?.(e);
+          }}
           className={`
             w-full px-3.5 py-2.5 rounded-xl
             bg-slate-900/70 text-slate-100 text-sm

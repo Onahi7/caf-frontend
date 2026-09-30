@@ -22,6 +22,7 @@ import { getProductImage, handleImageError } from '../../lib/product-images';
 import { UserProfileModal } from '../../components/pos/UserProfileModal';
 import { ParkedSalesBar } from '../../components/pos/ParkedSalesBar';
 import { QuickKeysGrid } from '../../components/pos/QuickKeysGrid';
+import { CartQuantityInput } from '../../components/pos/CartQuantityInput';
 import type { QuickKeyProduct } from '../../stores/quick-keys-store';
 import { queryKeys } from '../../lib/query-keys';
 import { NotificationBell } from '../../components/NotificationBell';
@@ -441,13 +442,6 @@ export const POSPage = () => {
       updateQuantity(productId, currentQuantity - 1, packSize);
     } else {
       removeItem(productId, packSize);
-    }
-  };
-
-  const handleQuantityChange = (productId: string, packSize: PackSize | undefined, value: string) => {
-    const qty = parseInt(value);
-    if (!isNaN(qty) && qty > 0) {
-      updateQuantity(productId, qty, packSize);
     }
   };
 
@@ -1340,10 +1334,10 @@ export const POSPage = () => {
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <input
-                        type="text"
+                      <CartQuantityInput
                         value={item.quantity}
-                        onChange={(e) => handleQuantityChange(item.productId, item.packSize, e.target.value)}
+                        min={1}
+                        onChange={(newQty) => updateQuantity(item.productId, newQty, item.packSize)}
                         className="w-8 bg-transparent text-center text-slate-100 font-semibold text-xs focus:outline-none tabular-nums"
                       />
                       <button
@@ -1498,10 +1492,10 @@ export const POSPage = () => {
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
-                    <input
-                      type="text"
+                    <CartQuantityInput
                       value={item.quantity}
-                      onChange={(e) => handleQuantityChange(item.productId, item.packSize, e.target.value)}
+                      min={1}
+                      onChange={(newQty) => updateQuantity(item.productId, newQty, item.packSize)}
                       className="w-10 bg-transparent text-center text-slate-100 font-semibold text-xs focus:outline-none tabular-nums"
                     />
                     <button

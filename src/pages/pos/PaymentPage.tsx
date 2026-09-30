@@ -87,6 +87,7 @@ export const PaymentPage = () => {
   
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [amountReceived, setAmountReceived] = useState(cartTotal.toFixed(2));
+  const isAmountManuallyEditedRef = useRef(false);
   const [creditCustomerName, setCreditCustomerName] = useState('');
   const [creditCustomerPhone, setCreditCustomerPhone] = useState('');
   const [creditDueDate, setCreditDueDate] = useState('');
@@ -129,7 +130,7 @@ export const PaymentPage = () => {
   const total = checkoutQuote?.total ?? cartTotal;
 
   useEffect(() => {
-    if (checkoutQuote && paymentMethod === 'cash') {
+    if (checkoutQuote && paymentMethod === 'cash' && !isAmountManuallyEditedRef.current) {
       setAmountReceived(checkoutQuote.total.toFixed(2));
     }
   }, [checkoutQuote, paymentMethod]);
@@ -729,7 +730,14 @@ export const PaymentPage = () => {
                       <input
                         type="number"
                         value={amountReceived}
-                        onChange={(e) => setAmountReceived(e.target.value)}
+                        onFocus={() => {
+                          isAmountManuallyEditedRef.current = true;
+                        }}
+                        onChange={(e) => {
+                          isAmountManuallyEditedRef.current = true;
+                          setAmountReceived(e.target.value);
+                        }}
+                        onWheel={(e) => e.currentTarget.blur()}
                         className="w-full pl-12 pr-4 py-3.5 bg-slate-950/60 border border-white/10 rounded-xl text-white text-xl sm:text-2xl font-bold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 transition-all font-mono"
                         aria-label="Amount received"
                       />
@@ -742,6 +750,7 @@ export const PaymentPage = () => {
                           type="button"
                           onClick={() => {
                             haptic('light');
+                            isAmountManuallyEditedRef.current = true;
                             setAmountReceived(amt.toString());
                           }}
                           className="flex-1 min-w-[70px] py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs sm:text-sm font-semibold text-slate-300 hover:border-emerald-500/50 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all active:scale-95 font-mono"
@@ -753,6 +762,7 @@ export const PaymentPage = () => {
                         type="button"
                         onClick={() => {
                           haptic('light');
+                          isAmountManuallyEditedRef.current = true;
                           setAmountReceived(total.toFixed(2));
                         }}
                         className="flex-1 min-w-[70px] py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-xs sm:text-sm font-bold text-emerald-300 hover:bg-emerald-500/25 transition-all active:scale-95 font-mono"
@@ -896,6 +906,7 @@ export const PaymentPage = () => {
                             step="0.01"
                             value={creditAmountPaid}
                             onChange={(e) => setCreditAmountPaid(e.target.value)}
+                            onWheel={(e) => e.currentTarget.blur()}
                             className="w-full pl-9 pr-4 py-2.5 bg-slate-950/60 border border-white/10 rounded-xl text-white font-semibold focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 transition-all text-sm font-mono"
                             aria-label="Upfront payment amount"
                           />

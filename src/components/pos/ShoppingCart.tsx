@@ -2,6 +2,7 @@ import { ShoppingBag, Plus, Minus, Trash2, ArrowRight } from 'lucide-react';
 import { useCartStore, itemKey } from '../../stores/cart-store';
 import { useCurrency } from '../../hooks/useCurrency';
 import { Button } from '../ui/Button';
+import { CartQuantityInput } from './CartQuantityInput';
 
 interface ShoppingCartProps {
   onCheckout: () => void;
@@ -10,13 +11,6 @@ interface ShoppingCartProps {
 export const ShoppingCart = ({ onCheckout }: ShoppingCartProps) => {
   const { items, subtotal, discount, total, updateQuantity, removeItem } = useCartStore();
   const { format } = useCurrency();
-
-  const handleQuantityChange = (productId: string, packSize: typeof items[number]['packSize'], newQuantity: string) => {
-    const quantity = parseInt(newQuantity, 10);
-    if (!isNaN(quantity) && quantity > 0) {
-      updateQuantity(productId, quantity, packSize);
-    }
-  };
 
   const handleQuantityIncrement = (productId: string, packSize: typeof items[number]['packSize'], currentQuantity: number) => {
     updateQuantity(productId, currentQuantity + 1, packSize);
@@ -108,11 +102,10 @@ export const ShoppingCart = ({ onCheckout }: ShoppingCartProps) => {
                     <Minus className="w-3.5 h-3.5" />
                   </button>
 
-                  <input
-                    type="number"
-                    min="1"
+                  <CartQuantityInput
                     value={item.quantity}
-                    onChange={(e) => handleQuantityChange(item.productId, item.packSize, e.target.value)}
+                    min={1}
+                    onChange={(newQty) => updateQuantity(item.productId, newQty, item.packSize)}
                     className="w-10 px-1 py-0.5 text-center bg-transparent text-slate-100 text-xs font-semibold focus:outline-none tabular-nums"
                   />
 
