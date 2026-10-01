@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Printer } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useToast } from '../../hooks/useToast';
@@ -106,6 +107,10 @@ export const ShiftReportPage = () => {
     });
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const handleShare = () => {
     if (!report) return;
 
@@ -146,173 +151,339 @@ export const ShiftReportPage = () => {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-primary-darker flex flex-col pt-safe-top">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800">
-        <button onClick={() => navigate(-1)} className="text-white min-w-11 min-h-11 flex items-center justify-center -ml-2 rounded-lg hover:bg-white/5">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-xl font-bold text-white">Shift Report Summary</h1>
-        <button onClick={handleShare} className="text-white">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-          </svg>
-        </button>
-      </div>
+  const varianceStatus =
+    report.variance === 0
+      ? 'BALANCED'
+      : report.variance > 0
+        ? 'SURPLUS'
+        : 'SHORTAGE';
 
-      <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-        {/* Cashier & Shift Info */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-gray-400 text-sm">Cashier</p>
-            <p className="text-white font-semibold">{report.cashierName}</p>
-          </div>
-          <div>
-            <p className="text-gray-400 text-sm">Shift Start</p>
-            <p className="text-white font-semibold">{formatDateTime(report.openedAt)}</p>
-          </div>
-          <div>
-            <p className="text-gray-400 text-sm">Outlet</p>
-            <p className="text-white font-semibold">{report.branchName}</p>
-          </div>
-          <div>
-            <p className="text-gray-400 text-sm">Shift End</p>
-            <p className="text-white font-semibold">{formatDateTime(report.closedAt)}</p>
+  return (
+    <>
+      {/* Interactive Screen Layout (Hidden on Print) */}
+      <div className="no-print min-h-screen bg-primary-darker flex flex-col pt-safe-top">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800">
+          <button
+            onClick={() => navigate(-1)}
+            className="text-white min-w-11 min-h-11 flex items-center justify-center -ml-2 rounded-lg hover:bg-white/5"
+            aria-label="Go back"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="text-xl font-bold text-white">Shift Report Summary</h1>
+          <div className="flex items-center space-x-1">
+            <button
+              onClick={handlePrint}
+              title="Print Thermal Z-Report"
+              className="text-white min-w-11 min-h-11 flex items-center justify-center rounded-lg hover:bg-white/5 hover:text-accent-green transition-colors"
+              aria-label="Print Z-Report"
+            >
+              <Printer className="w-5 h-5" />
+            </button>
+            <button
+              onClick={handleShare}
+              title="Share Shift Summary"
+              className="text-white min-w-11 min-h-11 flex items-center justify-center rounded-lg hover:bg-white/5 hover:text-accent-green transition-colors"
+              aria-label="Share report"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+            </button>
           </div>
         </div>
 
-        {/* Sales Summary Cards */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-primary-dark rounded-xl p-4 border border-gray-700">
-            <p className="text-gray-400 text-sm">Total Sales</p>
-            <p
-              className="text-lg sm:text-2xl font-bold text-white mt-1 tabular-nums break-words leading-tight"
-              title={format(report.totalSales)}
-            >
-              {format(report.totalSales)}
-            </p>
+        <div className="flex-1 p-4 space-y-4 overflow-y-auto">
+          {/* Cashier & Shift Info */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-gray-400 text-sm">Cashier</p>
+              <p className="text-white font-semibold">{report.cashierName}</p>
+            </div>
+            <div>
+              <p className="text-gray-400 text-sm">Shift Start</p>
+              <p className="text-white font-semibold">{formatDateTime(report.openedAt)}</p>
+            </div>
+            <div>
+              <p className="text-gray-400 text-sm">Outlet</p>
+              <p className="text-white font-semibold">{report.branchName}</p>
+            </div>
+            <div>
+              <p className="text-gray-400 text-sm">Shift End</p>
+              <p className="text-white font-semibold">{formatDateTime(report.closedAt)}</p>
+            </div>
           </div>
+
+          {/* Sales Summary Cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-primary-dark rounded-xl p-4 border border-gray-700">
+              <p className="text-gray-400 text-sm">Total Sales</p>
+              <p
+                className="text-lg sm:text-2xl font-bold text-white mt-1 tabular-nums break-words leading-tight"
+                title={format(report.totalSales)}
+              >
+                {format(report.totalSales)}
+              </p>
+            </div>
+            <div className="bg-primary-dark rounded-xl p-4 border border-gray-700">
+              <p className="text-gray-400 text-sm">Net Sales</p>
+              <p
+                className="text-lg sm:text-2xl font-bold text-white mt-1 tabular-nums break-words leading-tight"
+                title={format(report.netSales)}
+              >
+                {format(report.netSales)}
+              </p>
+            </div>
+          </div>
+
+          {/* Payment Breakdown */}
           <div className="bg-primary-dark rounded-xl p-4 border border-gray-700">
-            <p className="text-gray-400 text-sm">Net Sales</p>
-            <p
-              className="text-lg sm:text-2xl font-bold text-white mt-1 tabular-nums break-words leading-tight"
-              title={format(report.netSales)}
+            <h3 className="text-white font-semibold mb-4">Payment Breakdown</h3>
+            <div className="space-y-3">
+              {report.paymentMethodTotals ? (
+                report.paymentMethodTotals.map((pm) => (
+                  <div key={pm.paymentMethod} className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-accent-green/20 rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                      </div>
+                      <span className="text-white">{getPaymentMethodLabel(pm.paymentMethod)}</span>
+                    </div>
+                    <span className={`font-semibold tabular-nums ${pm.total > 0 ? 'text-white' : 'text-gray-500'}`}>
+                      {format(pm.total)}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-accent-green/20 rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                      </div>
+                      <span className="text-white">Total Cash Sales</span>
+                    </div>
+                    <span className="text-white font-semibold tabular-nums">{format(report.totalCashSales)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="w-8 h-8 bg-accent-green/20 rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                      </div>
+                      <span className="text-white">Total Card Sales</span>
+                    </div>
+                    <span className="text-white font-semibold tabular-nums">{format(report.totalCardSales)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Cash Reconciliation */}
+          <div className="bg-primary-dark rounded-xl p-4 border border-gray-700">
+            <h3 className="text-white font-semibold mb-4">Cash Reconciliation</h3>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Opening Cash Float</span>
+                <span className="text-white font-semibold tabular-nums">{format(report.openingCash)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Total Cash In (Sales)</span>
+                <span className="text-white font-semibold tabular-nums">{format(report.totalCashSales)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Expected in Drawer</span>
+                <span className="text-white font-semibold tabular-nums">{format(report.expectedCash)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Actual Cash Counted</span>
+                <span className="text-white font-semibold tabular-nums">{format(report.closingCash)}</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-gray-700">
+                <span className={report.variance === 0 ? 'text-accent-green' : report.variance > 0 ? 'text-yellow-400' : 'text-red-400'}>
+                  Variance ({varianceStatus})
+                </span>
+                <span className={`font-semibold tabular-nums ${report.variance === 0 ? 'text-accent-green' : report.variance > 0 ? 'text-yellow-400' : 'text-red-400'}`}>
+                  {format(report.variance)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* View All Transactions */}
+          <button
+            onClick={() => navigate('/pos/transactions')}
+            className="w-full bg-primary-dark rounded-xl p-4 border border-gray-700 flex items-center justify-between hover:bg-white/5 transition-colors"
+          >
+            <div className="flex items-center">
+              <div className="w-10 h-10 bg-accent-green/20 rounded-lg flex items-center justify-center mr-3">
+                <svg className="w-5 h-5 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <div className="text-left">
+                <p className="text-white font-semibold">View All Transactions</p>
+                <p className="text-gray-400 text-sm">
+                  Sales: {report.salesCount}, Voids: {report.voidsCount}, Refunds: {report.refundsCount}
+                </p>
+              </div>
+            </div>
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Bottom Actions: Print Z-Report + Confirm & End Shift */}
+        <div className="p-4 border-t border-gray-800 space-y-3">
+          <div className="flex gap-3">
+            <button
+              onClick={handlePrint}
+              className="flex-1 py-4 bg-primary-dark border border-gray-600 rounded-xl text-white font-semibold flex items-center justify-center hover:bg-white/10 hover:border-gray-500 transition-colors"
             >
-              {format(report.netSales)}
-            </p>
+              <Printer className="w-5 h-5 mr-2 text-accent-green" />
+              Print Z-Report
+            </button>
+            <button
+              onClick={() => navigate('/pos')}
+              className="flex-1 py-4 bg-accent-green text-primary-dark font-semibold rounded-xl hover:bg-accent-light transition-colors"
+            >
+              Confirm &amp; End Shift
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Dedicated Thermal Slip Layout (Visible ONLY when printing) */}
+      <div className="print-only font-mono text-black bg-white p-2 mx-auto text-xs leading-snug w-[76mm] max-w-[80mm]">
+        {/* Thermal Header */}
+        <div className="text-center pb-2 mb-2 border-b border-black border-dashed">
+          <div className="text-base font-bold tracking-wider">CAREFARM PHARMACY</div>
+          <div className="text-xs font-semibold">{report.branchName || 'Main Outlet'}</div>
+          <div className="text-xs mt-1 font-bold">*** END OF SHIFT Z-REPORT ***</div>
+        </div>
+
+        {/* Shift Details */}
+        <div className="space-y-0.5 pb-2 mb-2 border-b border-black border-dashed text-[11px]">
+          <div className="flex justify-between">
+            <span>Shift ID:</span>
+            <span className="font-semibold">{report._id?.slice(-8).toUpperCase()}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Cashier:</span>
+            <span className="font-semibold">{report.cashierName}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Opened:</span>
+            <span>{formatDateTime(report.openedAt)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Closed:</span>
+            <span>{formatDateTime(report.closedAt)}</span>
+          </div>
+        </div>
+
+        {/* Sales Summary */}
+        <div className="pb-2 mb-2 border-b border-black border-dashed text-[11px]">
+          <div className="font-bold text-center mb-1">=== SALES SUMMARY ===</div>
+          <div className="flex justify-between">
+            <span>Gross Sales:</span>
+            <span className="font-semibold">{format(report.totalSales)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Net Sales:</span>
+            <span className="font-semibold">{format(report.netSales)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Transactions:</span>
+            <span>{report.salesCount}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Refunds:</span>
+            <span>{report.refundsCount}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Voids:</span>
+            <span>{report.voidsCount}</span>
           </div>
         </div>
 
         {/* Payment Breakdown */}
-        <div className="bg-primary-dark rounded-xl p-4 border border-gray-700">
-          <h3 className="text-white font-semibold mb-4">Payment Breakdown</h3>
-          <div className="space-y-3">
-            {report.paymentMethodTotals ? (
-              // New format with all payment methods
-              report.paymentMethodTotals.map((pm) => (
-                <div key={pm.paymentMethod} className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-accent-green/20 rounded-lg flex items-center justify-center mr-3">
-                      <svg className="w-4 h-4 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                    </div>
-                    <span className="text-white">{getPaymentMethodLabel(pm.paymentMethod)}</span>
-                  </div>
-                  <span className={`font-semibold ${pm.total > 0 ? 'text-white' : 'text-gray-500'}`}>
-                    {format(pm.total)}
-                  </span>
-                </div>
-              ))
-            ) : (
-              // Fallback to old format
-              <>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-accent-green/20 rounded-lg flex items-center justify-center mr-3">
-                      <svg className="w-4 h-4 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                    </div>
-                    <span className="text-white">Total Cash Sales</span>
-                  </div>
-                  <span className="text-white font-semibold">{format(report.totalCashSales)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="w-8 h-8 bg-accent-green/20 rounded-lg flex items-center justify-center mr-3">
-                      <svg className="w-4 h-4 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                      </svg>
-                    </div>
-                    <span className="text-white">Total Card Sales</span>
-                  </div>
-                  <span className="text-white font-semibold">{format(report.totalCardSales)}</span>
-                </div>
-              </>
-            )}
-          </div>
+        <div className="pb-2 mb-2 border-b border-black border-dashed text-[11px]">
+          <div className="font-bold text-center mb-1">=== TENDERS BREAKDOWN ===</div>
+          {report.paymentMethodTotals && report.paymentMethodTotals.length > 0 ? (
+            report.paymentMethodTotals.map((pm) => (
+              <div key={pm.paymentMethod} className="flex justify-between">
+                <span>{getPaymentMethodLabel(pm.paymentMethod)}:</span>
+                <span className="font-semibold">{format(pm.total)}</span>
+              </div>
+            ))
+          ) : (
+            <>
+              <div className="flex justify-between">
+                <span>Cash:</span>
+                <span className="font-semibold">{format(report.totalCashSales)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Card:</span>
+                <span className="font-semibold">{format(report.totalCardSales)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Mobile:</span>
+                <span className="font-semibold">{format(report.totalMobileSales)}</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Cash Reconciliation */}
-        <div className="bg-primary-dark rounded-xl p-4 border border-gray-700">
-          <h3 className="text-white font-semibold mb-4">Cash Reconciliation</h3>
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-gray-400">Expected in Drawer</span>
-              <span className="text-white font-semibold">{format(report.expectedCash)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Actual Cash Counted</span>
-              <span className="text-white font-semibold">{format(report.closingCash)}</span>
-            </div>
-            <div className="flex justify-between pt-2 border-t border-gray-700">
-              <span className={report.variance === 0 ? 'text-accent-green' : report.variance > 0 ? 'text-yellow-400' : 'text-red-400'}>
-                Difference
-              </span>
-              <span className={`font-semibold ${report.variance === 0 ? 'text-accent-green' : report.variance > 0 ? 'text-yellow-400' : 'text-red-400'}`}>
-                {format(report.variance)}
-              </span>
-            </div>
+        <div className="pb-2 mb-2 border-b border-black border-dashed text-[11px]">
+          <div className="font-bold text-center mb-1">=== CASH RECONCILIATION ===</div>
+          <div className="flex justify-between">
+            <span>Opening Float:</span>
+            <span>{format(report.openingCash)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Cash Sales:</span>
+            <span>{format(report.totalCashSales)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Expected in Till:</span>
+            <span className="font-semibold">{format(report.expectedCash)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Actual Counted:</span>
+            <span className="font-semibold">{format(report.closingCash)}</span>
+          </div>
+          <div className="flex justify-between pt-1 border-t border-black border-dotted font-bold">
+            <span>Variance:</span>
+            <span>{format(report.variance)} ({varianceStatus})</span>
           </div>
         </div>
 
-        {/* View All Transactions */}
-        <button
-          onClick={() => navigate('/pos/transactions')}
-          className="w-full bg-primary-dark rounded-xl p-4 border border-gray-700 flex items-center justify-between"
-        >
-          <div className="flex items-center">
-            <div className="w-10 h-10 bg-accent-green/20 rounded-lg flex items-center justify-center mr-3">
-              <svg className="w-5 h-5 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-white font-semibold">View All Transactions</p>
-              <p className="text-gray-400 text-sm">
-                Sales: {report.salesCount}, Voids: {report.voidsCount}, Refunds: {report.refundsCount}
-              </p>
-            </div>
+        {/* Signatures & Footer */}
+        <div className="pt-3 pb-2 text-center text-[10px] space-y-4">
+          <div className="text-left">
+            <div>Cashier Signature: _______________________</div>
           </div>
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+          <div className="text-left">
+            <div>Manager Signature: _______________________</div>
+          </div>
+          <div className="text-gray-600 pt-1">
+            Printed: {new Date().toLocaleString()}
+          </div>
+          <div className="font-bold tracking-widest">*** END OF REPORT ***</div>
+        </div>
       </div>
-
-      {/* Confirm Button */}
-      <div className="p-4 border-t border-gray-800">
-        <button
-          onClick={() => navigate('/pos')}
-          className="w-full py-4 bg-accent-green text-primary-dark font-semibold rounded-xl hover:bg-accent-light transition-colors"
-        >
-          Confirm & End Shift
-        </button>
-      </div>
-    </div>
+    </>
   );
 };
