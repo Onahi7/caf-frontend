@@ -49,7 +49,7 @@ export const Header = ({ title, showNav = false }: HeaderProps) => {
   );
 
   return (
-    <header className="bg-primary-dark/50 backdrop-blur-md border-b border-white/5 sticky top-0 z-20 pt-safe-top">
+    <header className="bg-slate-900/50 backdrop-blur-md border-b border-white/5 sticky top-0 z-20 pt-safe-top">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
@@ -62,7 +62,7 @@ export const Header = ({ title, showNav = false }: HeaderProps) => {
                 <p className="text-white font-medium text-sm">
                   {user.firstName} {user.lastName}
                 </p>
-                <p className="text-xs text-accent-green font-medium tracking-wide uppercase">
+                <p className="text-xs text-emerald-500 font-medium tracking-wide uppercase">
                   {getRoleDisplay(user.role)}
                 </p>
               </div>
@@ -74,7 +74,7 @@ export const Header = ({ title, showNav = false }: HeaderProps) => {
               onClick={() => setShowLogoutConfirm(true)}
               isLoading={isLoggingOut}
               disabled={isLoggingOut}
-              className="!border-white/10 hover:!border-white/20 hover:!bg-white/5 !text-gray-300 hover:!text-white"
+              className="!border-white/10 hover:!border-white/20 hover:!bg-white/5 !text-slate-300 hover:!text-white"
             >
               Logout
             </Button>
@@ -102,8 +102,8 @@ export const Header = ({ title, showNav = false }: HeaderProps) => {
                 to={link.path}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                   location.pathname === link.path
-                    ? 'bg-accent-green text-primary-dark shadow-lg shadow-accent-green/20'
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
                 {link.label}

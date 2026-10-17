@@ -8,43 +8,21 @@ interface ToastProviderProps {
 
 export const ToastProvider = ({ children }: ToastProviderProps) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const timeoutRefs = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const removeToast = useCallback((id: string) => {
-    const timeout = timeoutRefs.current.get(id);
-    if (timeout) {
-      clearTimeout(timeout);
-      timeoutRefs.current.delete(id);
-    }
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   }, []);
 
   const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
     const id = crypto.randomUUID();
-    const newToast = { ...toast, id };
+    // Errors linger longer so users can read/copy them
+    const duration = toast.duration ?? (toast.type === 'error' ? 8000 : 5000);
+    const newToast = { ...toast, id, duration };
     setToasts((prev) => {
       const next = [...prev, newToast];
-      const removed = next.length > 4 ? next.shift() : undefined;
-      if (removed) {
-        const removedTimeout = timeoutRefs.current.get(removed.id);
-        if (removedTimeout) clearTimeout(removedTimeout);
-        timeoutRefs.current.delete(removed.id);
-      }
+      if (next.length > 4) next.shift();
       return next;
     });
-
-    const duration = toast.duration ?? 5000;
-    const timeout = setTimeout(() => {
-      removeToast(id);
-    }, duration);
-    timeoutRefs.current.set(id, timeout);
-  }, [removeToast]);
-
-  useEffect(() => {
-    return () => {
-      timeoutRefs.current.forEach((timeout) => clearTimeout(timeout));
-      timeoutRefs.current.clear();
-    };
   }, []);
 
   const showSuccess = useCallback((title: string, message?: string) => {
@@ -142,32 +120,73 @@ const ToastItem = ({ toast, onRemove }: ToastItemProps) => {
   const config = severityConfig[toast.type] ?? severityConfig.info;
   const IconComponent = config.Icon;
 
+  const remainingMsRef = useRef(duration);
+  const startedAtRef = useRef<number | null>(null);
+  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const onRemoveRef = useRef(onRemove);
+  onRemoveRef.current = onRemove;
+
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 15);
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    const startTime = Date.now();
-    const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, 100 - (elapsed / duration) * 100);
-      setProgress(remaining);
-      if (remaining <= 0) {
-        clearInterval(interval);
-      }
-    }, 50);
+  const clearTimers = useCallback(() => {
+    if (dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = null;
+    }
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+  }, []);
 
-    return () => clearInterval(interval);
-  }, [duration]);
-
-  const handleRemove = () => {
+  const handleRemove = useCallback(() => {
+    clearTimers();
+    remainingMsRef.current = 0;
+    setProgress(0);
     setIsVisible(false);
-    setTimeout(() => onRemove(toast.id), 220);
-  };
+    setTimeout(() => onRemoveRef.current(toast.id), 220);
+  }, [clearTimers, toast.id]);
+
+  const startTimers = useCallback(() => {
+    clearTimers();
+    if (remainingMsRef.current <= 0) return;
+    startedAtRef.current = Date.now();
+    dismissTimerRef.current = setTimeout(handleRemove, remainingMsRef.current);
+    progressIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - (startedAtRef.current ?? Date.now());
+      const remaining = Math.max(0, remainingMsRef.current - elapsed);
+      setProgress((remaining / duration) * 100);
+      if (remaining <= 0) clearTimers();
+    }, 50);
+  }, [clearTimers, duration, handleRemove]);
+
+  const pauseTimers = useCallback(() => {
+    clearTimers();
+    if (startedAtRef.current !== null) {
+      remainingMsRef.current = Math.max(
+        0,
+        remainingMsRef.current - (Date.now() - startedAtRef.current)
+      );
+      startedAtRef.current = null;
+    }
+  }, [clearTimers]);
+
+  useEffect(() => {
+    startTimers();
+    return clearTimers;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div
+      onMouseEnter={pauseTimers}
+      onMouseLeave={startTimers}
+      onFocusCapture={pauseTimers}
+      onBlurCapture={startTimers}
       className={`pointer-events-auto relative w-full overflow-hidden rounded-2xl border bg-slate-900/90 backdrop-blur-xl p-4 text-slate-100 shadow-2xl transition-all duration-200 ease-out ${config.border} ${config.shadow} ${
         isVisible ? 'translate-y-0 opacity-100 scale-100' : '-translate-y-2 opacity-0 scale-95'
       }`}

@@ -14,6 +14,7 @@ import { BranchSelector } from '../../components/BranchSelector';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDate } from '../../lib/date-format';
 import { buildApiUrl } from '../../lib/api-utils';
 import { getErrorMessage } from '../../lib/error-utils';
 import { useToast } from '../../hooks/useToast';
@@ -246,7 +247,7 @@ export function ExpensesPage() {
                     {
                       key: 'createdAt',
                       header: 'Date',
-                      render: (row: Expense) => new Date(row.createdAt).toLocaleDateString(),
+                      render: (row: Expense) => formatDate(row.createdAt),
                     },
                     {
                       key: 'category',

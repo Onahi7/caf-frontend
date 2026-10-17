@@ -65,7 +65,7 @@ export const Loading = ({
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/80 backdrop-blur-md">
         <div className="w-full max-w-3xl px-6">{skeleton}</div>
       </div>
     );

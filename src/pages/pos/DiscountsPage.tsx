@@ -10,6 +10,8 @@ import { Error } from '../../components/ui/Error';
 import { queryKeys } from '../../lib/query-keys';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useToast } from '../../hooks/useToast';
+import { POSLayout } from '../../components/pos/POSLayout';
 
 interface Promotion {
   _id: string;
@@ -28,7 +30,8 @@ export const DiscountsPage = () => {
   const selectedBranch = useBranchStore((state) => state.selectedBranch);
   const { items, subtotal, manualDiscount: storedManualDiscount, promotionId, setPromotion } = useCartStore();
   const { format } = useCurrency();
-  
+  const { showSuccess } = useToast();
+
   const [selectedPromotion, setSelectedPromotion] = useState<string | undefined>(promotionId);
   const [percentageDiscount, setPercentageDiscount] = useState('');
   const [fixedDiscount, setFixedDiscount] = useState(
@@ -103,6 +106,14 @@ export const DiscountsPage = () => {
 
   const handleApplyDiscount = () => {
     setPromotion(selectedPromotion, totalDiscount, quote?.manualDiscount ?? 0);
+    if (selectedPromotion || totalDiscount > 0) {
+      showSuccess(
+        'Discount applied',
+        `${format(totalDiscount)} off — new total ${format(newTotal)}`,
+      );
+    } else {
+      showSuccess('Discount cleared');
+    }
     navigate('/pos');
   };
 
@@ -113,143 +124,145 @@ export const DiscountsPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-primary-darker flex flex-col pt-safe-top">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-gray-800">
-        <button onClick={() => navigate(-1)} className="text-white flex items-center min-w-11 min-h-11 justify-center -ml-2 rounded-lg hover:bg-white/5">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <h1 className="text-lg font-bold text-white">Discounts & Promotions</h1>
-        <div className="w-6" />
-      </div>
+    <POSLayout title="Discounts & Promotions" hideHeader>
+      <div className="min-h-dvh bg-slate-950 flex flex-col pt-safe-top">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-white/[0.08]">
+          <button onClick={() => navigate(-1)} className="text-white flex items-center min-w-11 min-h-11 justify-center -ml-2 rounded-lg hover:bg-white/5">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <h1 className="text-lg font-bold text-white">Discounts & Promotions</h1>
+          <div className="w-6" />
+        </div>
 
-      <div className="flex-1 p-4 space-y-6 overflow-y-auto">
-        <div>
-          <h2 className="text-white font-semibold mb-3">Staff Discount</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="space-y-2">
-              <span className="block text-sm text-gray-400">Percentage</span>
-              <div className="relative">
+        <div className="flex-1 p-4 space-y-6 overflow-y-auto">
+          <div>
+            <h2 className="text-white font-semibold mb-3">Staff Discount</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className="space-y-2">
+                <span className="block text-sm text-slate-400">Percentage</span>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={percentageDiscount}
+                    onChange={(event) => setPercentageDiscount(event.target.value)}
+                    placeholder="0"
+                    className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 pr-10 text-white placeholder-slate-500 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/30 focus:outline-none"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">%</span>
+                </div>
+              </label>
+              <label className="space-y-2">
+                <span className="block text-sm text-slate-400">Fixed amount</span>
                 <input
                   type="number"
                   min="0"
-                  max="100"
-                  value={percentageDiscount}
-                  onChange={(event) => setPercentageDiscount(event.target.value)}
-                  placeholder="0"
-                  className="w-full rounded-xl border border-gray-700 bg-primary-dark px-4 py-3 pr-10 text-white focus:border-accent-green focus:outline-none"
+                  value={fixedDiscount}
+                  onChange={(event) => setFixedDiscount(event.target.value)}
+                  placeholder="0.00"
+                  className="w-full rounded-xl border border-white/10 bg-slate-900 px-4 py-3 text-white placeholder-slate-500 focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/30 focus:outline-none"
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">%</span>
-              </div>
-            </label>
-            <label className="space-y-2">
-              <span className="block text-sm text-gray-400">Fixed amount</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Promotions */}
+          <div>
+            <h2 className="text-white font-semibold mb-3">Select a Promotion</h2>
+
+            {/* Search */}
+            <div className="relative mb-3">
+              <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
               <input
-                type="number"
-                min="0"
-                value={fixedDiscount}
-                onChange={(event) => setFixedDiscount(event.target.value)}
-                placeholder="0.00"
-                className="w-full rounded-xl border border-gray-700 bg-primary-dark px-4 py-3 text-white focus:border-accent-green focus:outline-none"
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search promotions..."
+                className="w-full pl-12 pr-4 py-3 bg-slate-900 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/30"
               />
-            </label>
-          </div>
-        </div>
+            </div>
 
-        {/* Promotions */}
-        <div>
-          <h2 className="text-white font-semibold mb-3">Select a Promotion</h2>
-          
-          {/* Search */}
-          <div className="relative mb-3">
-            <svg className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search promotions..."
-              className="w-full pl-12 pr-4 py-3 bg-primary-dark border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-gray-600"
-            />
-          </div>
-
-          {/* Promotion List */}
-          <div className="space-y-3">
-            {isLoading ? (
-              <div className="text-center py-4 text-gray-400">Loading...</div>
-            ) : error ? (
-              <Error message="Failed to load promotions" onRetry={() => refetch()} />
-            ) : filteredPromotions && filteredPromotions.length > 0 ? (
-              filteredPromotions.map((promo) => (
-                <button
-                  key={promo._id}
-                  onClick={() => togglePromotion(promo._id)}
-                  className={`w-full flex items-center justify-between p-4 rounded-xl border transition-colors ${
-                    selectedPromotion === promo._id
-                      ? 'bg-blue-500/10 border-blue-500'
-                      : 'bg-primary-dark border-gray-700 hover:border-gray-600'
-                  }`}
-                >
-                  <div className="text-left">
-                    <p className="text-white font-semibold">{promo.name}</p>
-                    <p className="text-gray-400 text-sm">{promo.description}</p>
-                  </div>
-                  <div
-                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+            {/* Promotion List */}
+            <div className="space-y-3">
+              {isLoading ? (
+                <div className="text-center py-4 text-slate-400">Loading...</div>
+              ) : error ? (
+                <Error message="Failed to load promotions" onRetry={() => refetch()} />
+              ) : filteredPromotions && filteredPromotions.length > 0 ? (
+                filteredPromotions.map((promo) => (
+                  <button
+                    key={promo._id}
+                    onClick={() => togglePromotion(promo._id)}
+                    className={`w-full flex items-center justify-between p-4 rounded-xl border transition-colors ${
                       selectedPromotion === promo._id
-                        ? 'border-blue-500 bg-blue-500'
-                        : 'border-gray-500'
+                        ? 'bg-emerald-500/10 border-emerald-500'
+                        : 'bg-slate-900 border-white/10 hover:border-white/20'
                     }`}
                   >
-                    {selectedPromotion === promo._id && (
-                      <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </div>
-                </button>
-              ))
-            ) : (
-              <div className="text-center py-4 text-gray-400">No promotions available</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Summary & Apply */}
-      <div className="p-4 border-t border-gray-800 space-y-3">
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Subtotal</span>
-            <span className="text-white">{format(subtotal)}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Total Discount</span>
-            <span className="text-red-400">{isCalculating ? 'Calculating…' : `-${format(totalDiscount)}`}</span>
-          </div>
-          {(quote?.taxAmount ?? 0) > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-gray-400">Tax</span>
-              <span className="text-white">{format(quote?.taxAmount ?? 0)}</span>
+                    <div className="text-left">
+                      <p className="text-white font-semibold">{promo.name}</p>
+                      <p className="text-slate-400 text-sm">{promo.description}</p>
+                    </div>
+                    <div
+                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                        selectedPromotion === promo._id
+                          ? 'border-emerald-500 bg-emerald-500'
+                          : 'border-slate-500'
+                      }`}
+                    >
+                      {selectedPromotion === promo._id && (
+                        <svg className="w-4 h-4 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="text-center py-4 text-slate-400">No promotions available</div>
+              )}
             </div>
-          )}
-          <div className="flex justify-between text-lg font-bold pt-2 border-t border-gray-700">
-            <span className="text-white">New Total</span>
-            <span className="text-white">{format(newTotal)}</span>
           </div>
         </div>
 
-        <button
-          onClick={handleApplyDiscount}
-          disabled={isCalculating || Boolean((selectedPromotion || debouncedManualDiscount > 0) && !quote)}
-          className="w-full py-4 bg-blue-500 text-white font-semibold rounded-xl hover:bg-blue-600 transition-colors"
-        >
-          {selectedPromotion || debouncedManualDiscount > 0 ? 'Apply Discount' : 'Clear Discount'}
-        </button>
+        {/* Summary & Apply */}
+        <div className="p-4 border-t border-white/[0.08] space-y-3">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-400">Subtotal</span>
+              <span className="text-white">{format(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-400">Total Discount</span>
+              <span className="text-rose-400">{isCalculating ? 'Calculating…' : `-${format(totalDiscount)}`}</span>
+            </div>
+            {(quote?.taxAmount ?? 0) > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-slate-400">Tax</span>
+                <span className="text-white">{format(quote?.taxAmount ?? 0)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-lg font-bold pt-2 border-t border-white/10">
+              <span className="text-white">New Total</span>
+              <span className="text-white">{format(newTotal)}</span>
+            </div>
+          </div>
+
+          <button
+            onClick={handleApplyDiscount}
+            disabled={isCalculating || Boolean((selectedPromotion || debouncedManualDiscount > 0) && !quote)}
+            className="w-full py-4 bg-emerald-500 text-slate-950 font-semibold rounded-xl hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {selectedPromotion || debouncedManualDiscount > 0 ? 'Apply Discount' : 'Clear Discount'}
+          </button>
+        </div>
       </div>
-    </div>
+    </POSLayout>
   );
 };

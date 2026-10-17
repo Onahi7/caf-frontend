@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
+import { AdminPageHeader, AdminStatusBadge } from '../../components/admin';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { useToast } from '../../hooks/useToast';
 import { useCurrency } from '../../hooks/useCurrency';
@@ -17,6 +17,15 @@ import { buildApiUrl } from '../../lib/api-utils';
 import { useSearchWithDebounce } from '../../hooks/useSearchWithDebounce';
 import { unwrapArray } from '../../lib/unwrap-response';
 import { useConfirm } from '../../hooks/useConfirm';
+import { getErrorMessage } from '../../lib/error-utils';
+import { formatDate } from '../../lib/date-format';
+
+interface PromotionProductOption {
+  _id?: string;
+  id?: string;
+  name: string;
+  category?: string;
+}
 
 interface Promotion {
   _id: string;
@@ -67,9 +76,13 @@ export const PromotionsManagementPage = () => {
   const { register, handleSubmit, reset, watch, formState: { errors } } = useForm<PromotionFormData>();
 
   const promotionType = watch('type');
+  const promotionScope = watch('scope');
+
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   // Fetch promotions
-  const { data: promotions, isLoading, error } = useQuery({
+  const { data: promotions, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.promotions.list({ search: debouncedSearchQuery }),
     queryFn: async () => {
       const response = await apiClient.get(buildApiUrl('/promotions', { search: debouncedSearchQuery }));
@@ -77,36 +90,73 @@ export const PromotionsManagementPage = () => {
     },
   });
 
+  // Fetch products for scope selectors
+  const { data: productOptions } = useQuery({
+    queryKey: queryKeys.products.list({ limit: 1000 }),
+    queryFn: async () => {
+      const response = await apiClient.get(buildApiUrl('/products', { limit: 1000 }));
+      return unwrapArray<PromotionProductOption>(response.data);
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const categoryOptions = useMemo(
+    () => Array.from(new Set((productOptions || []).map((p) => p.category).filter((c): c is string => !!c))),
+    [productOptions]
+  );
+
+  const productKey = (p: PromotionProductOption) => p._id || p.id || '';
+
+  const toggleProduct = (id: string) => {
+    setSelectedProducts((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const toggleCategory = (category: string) => {
+    setSelectedCategories((prev) => (prev.includes(category) ? prev.filter((x) => x !== category) : [...prev, category]));
+  };
+
+  const buildPayload = (data: PromotionFormData): Record<string, unknown> => {
+    const payload: Record<string, unknown> = {
+      name: data.name.trim(),
+      description: data.description?.trim() || undefined,
+      type: data.type,
+      scope: data.scope || 'entire_transaction',
+      value: Number(data.value),
+      startDate: new Date(data.startDate).toISOString(),
+      endDate: new Date(data.endDate).toISOString(),
+    };
+    if (data.minimumPurchase !== undefined && data.minimumPurchase !== null && !isNaN(Number(data.minimumPurchase))) {
+      payload.minimumPurchase = Number(data.minimumPurchase);
+    }
+    if (data.maximumDiscount !== undefined && data.maximumDiscount !== null && !isNaN(Number(data.maximumDiscount))) {
+      payload.maximumDiscount = Number(data.maximumDiscount);
+    }
+    if (data.usageLimit !== undefined && data.usageLimit !== null && !isNaN(Number(data.usageLimit))) {
+      payload.usageLimit = Number(data.usageLimit);
+    }
+    if (data.scope === 'specific_item') {
+      payload.applicableProducts = selectedProducts;
+    }
+    if (data.scope === 'category') {
+      payload.applicableCategories = selectedCategories;
+    }
+    return payload;
+  };
+
   // Create promotion mutation
   const createMutation = useMutation({
     mutationFn: async (data: PromotionFormData) => {
-      const payload: Record<string, unknown> = {
-        name: data.name.trim(),
-        description: data.description?.trim() || undefined,
-        type: data.type,
-        scope: data.scope || 'entire_transaction',
-        value: Number(data.value),
-        startDate: new Date(data.startDate).toISOString(),
-        endDate: new Date(data.endDate).toISOString(),
-      };
-      if (data.minimumPurchase !== undefined && data.minimumPurchase !== null && !isNaN(Number(data.minimumPurchase))) {
-        payload.minimumPurchase = Number(data.minimumPurchase);
-      }
-      if (data.maximumDiscount !== undefined && data.maximumDiscount !== null && !isNaN(Number(data.maximumDiscount))) {
-        payload.maximumDiscount = Number(data.maximumDiscount);
-      }
-      if (data.usageLimit !== undefined && data.usageLimit !== null && !isNaN(Number(data.usageLimit))) {
-        payload.usageLimit = Number(data.usageLimit);
-      }
-      return apiClient.post('/promotions', payload);
+      return apiClient.post('/promotions', buildPayload(data));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.promotions.all(), exact: false });
       setIsModalOpen(false);
+      setSelectedProducts([]);
+      setSelectedCategories([]);
       reset();
       showSuccess('Promotion created');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to create promotion'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to create promotion')),
   });
 
   // Update promotion mutation
@@ -114,34 +164,18 @@ export const PromotionsManagementPage = () => {
     mutationFn: async (data: PromotionFormData) => {
       const id = editingPromotion?._id || editingPromotion?.id;
       if (!id) return;
-      const payload: Record<string, unknown> = {
-        name: data.name.trim(),
-        description: data.description?.trim() || undefined,
-        type: data.type,
-        scope: data.scope || 'entire_transaction',
-        value: Number(data.value),
-        startDate: new Date(data.startDate).toISOString(),
-        endDate: new Date(data.endDate).toISOString(),
-      };
-      if (data.minimumPurchase !== undefined && data.minimumPurchase !== null && !isNaN(Number(data.minimumPurchase))) {
-        payload.minimumPurchase = Number(data.minimumPurchase);
-      }
-      if (data.maximumDiscount !== undefined && data.maximumDiscount !== null && !isNaN(Number(data.maximumDiscount))) {
-        payload.maximumDiscount = Number(data.maximumDiscount);
-      }
-      if (data.usageLimit !== undefined && data.usageLimit !== null && !isNaN(Number(data.usageLimit))) {
-        payload.usageLimit = Number(data.usageLimit);
-      }
-      return apiClient.patch(`/promotions/${id}`, payload);
+      return apiClient.patch(`/promotions/${id}`, buildPayload(data));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.promotions.all(), exact: false });
       setIsModalOpen(false);
       setEditingPromotion(null);
+      setSelectedProducts([]);
+      setSelectedCategories([]);
       reset();
       showSuccess('Promotion updated');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update promotion'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to update promotion')),
   });
 
   // Toggle promotion status mutation
@@ -154,7 +188,7 @@ export const PromotionsManagementPage = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.promotions.all(), exact: false });
       showSuccess('Promotion status updated');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update status'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to update status')),
   });
 
   // Delete promotion mutation
@@ -167,12 +201,14 @@ export const PromotionsManagementPage = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.promotions.all(), exact: false });
       showSuccess('Promotion deleted');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to delete promotion'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to delete promotion')),
   });
 
   const handleOpenModal = (promotion?: Promotion) => {
     if (promotion) {
       setEditingPromotion(promotion);
+      setSelectedProducts(promotion.applicableProducts || []);
+      setSelectedCategories(promotion.applicableCategories || []);
       reset({
         name: promotion.name,
         description: promotion.description || '',
@@ -187,6 +223,8 @@ export const PromotionsManagementPage = () => {
       });
     } else {
       setEditingPromotion(null);
+      setSelectedProducts([]);
+      setSelectedCategories([]);
       const today = new Date().toISOString().split('T')[0];
       reset({
         name: '',
@@ -204,10 +242,20 @@ export const PromotionsManagementPage = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingPromotion(null);
+    setSelectedProducts([]);
+    setSelectedCategories([]);
     reset();
   };
 
   const onSubmit = (data: PromotionFormData) => {
+    if (data.scope === 'specific_item' && selectedProducts.length === 0) {
+      showError('Select at least one product', 'Choose the products this promotion applies to.');
+      return;
+    }
+    if (data.scope === 'category' && selectedCategories.length === 0) {
+      showError('Select at least one category', 'Choose the categories this promotion applies to.');
+      return;
+    }
     if (editingPromotion) {
       updateMutation.mutate(data);
     } else {
@@ -215,16 +263,13 @@ export const PromotionsManagementPage = () => {
     }
   };
 
-  if (isLoading) return <AdminLayout><Loading /></AdminLayout>;
-  if (error) return <AdminLayout><Error message="Failed to load promotions" /></AdminLayout>;
-
   const columns = [
     { key: 'name', header: 'Promotion Name' },
     {
       key: 'type',
       header: 'Type',
       render: (promotion: Promotion) => (
-        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-500/20 text-purple-300">
           {promotion.type === 'percentage' && 'Percentage'}
           {promotion.type === 'fixed_amount' && 'Fixed Amount'}
           {promotion.type === 'buy_x_get_y' && 'Buy X Get Y'}
@@ -245,8 +290,8 @@ export const PromotionsManagementPage = () => {
       header: 'Period',
       render: (promotion: Promotion) => (
         <div className="text-sm">
-          <div>{new Date(promotion.startDate).toLocaleDateString()}</div>
-          <div className="text-gray-500">to {new Date(promotion.endDate).toLocaleDateString()}</div>
+          <div>{formatDate(promotion.startDate)}</div>
+          <div className="text-slate-500">to {formatDate(promotion.endDate)}</div>
         </div>
       ),
     },
@@ -256,7 +301,7 @@ export const PromotionsManagementPage = () => {
       render: (promotion: Promotion) => (
         <div>
           <span className="font-semibold">{promotion.usageCount}</span>
-          {promotion.usageLimit && <span className="text-gray-500"> / {promotion.usageLimit}</span>}
+          {promotion.usageLimit && <span className="text-slate-500"> / {promotion.usageLimit}</span>}
         </div>
       ),
     },
@@ -266,20 +311,12 @@ export const PromotionsManagementPage = () => {
       render: (promotion: Promotion) => {
         const isExpired = new Date(promotion.endDate) < new Date();
         if (isExpired) {
-          return (
-            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-white/10 text-white/60">
-              Expired
-            </span>
-          );
+          return <AdminStatusBadge tone="neutral">Expired</AdminStatusBadge>;
         }
-        return promotion.isActive ? (
-          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-500/20 text-green-300">
-            Active
-          </span>
-        ) : (
-          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-500/20 text-red-300">
-            Inactive
-          </span>
+        return (
+          <AdminStatusBadge tone={promotion.isActive ? 'success' : 'neutral'}>
+            {promotion.isActive ? 'Active' : 'Inactive'}
+          </AdminStatusBadge>
         );
       },
     },
@@ -298,6 +335,7 @@ export const PromotionsManagementPage = () => {
           <Button
             variant={promotion.isActive ? 'danger' : 'primary'}
             size="sm"
+            isLoading={toggleStatusMutation.isPending && toggleStatusMutation.variables?._id === promotion._id}
             onClick={() => toggleStatusMutation.mutate(promotion)}
           >
             {promotion.isActive ? 'Deactivate' : 'Activate'}
@@ -305,6 +343,7 @@ export const PromotionsManagementPage = () => {
           <Button
             variant="danger"
             size="sm"
+            isLoading={deleteMutation.isPending && deleteMutation.variables?._id === promotion._id}
             onClick={async () => {
               const confirmed = await requestConfirmation({
                 title: 'Delete promotion?',
@@ -325,15 +364,15 @@ export const PromotionsManagementPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Promotions & Discounts</h1>
-            <p className="text-sm text-slate-400 mt-1">Manage promotional campaigns, coupon codes, and percentage discounts</p>
-          </div>
-          <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-emerald-500/15">
-            Create Promotion
-          </Button>
-        </div>
+        <AdminPageHeader
+          title="Promotions & Discounts"
+          subtitle="Manage promotional campaigns, coupon codes, and percentage discounts"
+          actions={
+            <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-emerald-500/15">
+              Create Promotion
+            </Button>
+          }
+        />
 
         {/* Search Bar */}
         <div className="max-w-md">
@@ -345,11 +384,16 @@ export const PromotionsManagementPage = () => {
         </div>
 
         {/* Promotions Table */}
-        <Table
-          data={promotions || []}
-          columns={columns}
-          emptyMessage="No promotions found"
-        />
+        {error ? (
+          <Error message="Failed to load promotions" onRetry={() => { void refetch(); }} />
+        ) : (
+          <Table
+            data={promotions || []}
+            columns={columns}
+            isLoading={isLoading}
+            emptyMessage="No promotions found"
+          />
+        )}
 
         {/* Promotion Form Modal */}
         <Modal
@@ -376,9 +420,9 @@ export const PromotionsManagementPage = () => {
                 {...register('type', { required: 'Type is required' })}
                 error={errors.type?.message}
               >
-                <option value="percentage" className="bg-primary-dark text-white">Percentage Discount</option>
-                <option value="fixed_amount" className="bg-primary-dark text-white">Fixed Amount Discount</option>
-                <option value="buy_x_get_y" className="bg-primary-dark text-white">Buy X Get Y</option>
+                <option value="percentage">Percentage Discount</option>
+                <option value="fixed_amount">Fixed Amount Discount</option>
+                <option value="buy_x_get_y">Buy X Get Y</option>
               </Select>
 
               <Select
@@ -386,11 +430,76 @@ export const PromotionsManagementPage = () => {
                 {...register('scope', { required: 'Scope is required' })}
                 error={errors.scope?.message}
               >
-                <option value="entire_transaction" className="bg-primary-dark text-white">Entire Order / Transaction</option>
-                <option value="specific_item" className="bg-primary-dark text-white">Specific Item</option>
-                <option value="category" className="bg-primary-dark text-white">Product Category</option>
+                <option value="entire_transaction">Entire Order / Transaction</option>
+                <option value="specific_item">Specific Item</option>
+                <option value="category">Product Category</option>
               </Select>
             </div>
+
+            {promotionScope === 'specific_item' && (
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-slate-300">Applicable Products</label>
+                  <span className="text-xs text-slate-500">{selectedProducts.length} selected</span>
+                </div>
+                <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-lg border border-white/10 bg-slate-950/60 p-2">
+                  {(productOptions || []).map((p) => {
+                    const id = productKey(p);
+                    return (
+                      <label
+                        key={id}
+                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-300 hover:bg-white/[0.04]"
+                      >
+                        <input
+                          type="checkbox"
+                          className="accent-emerald-500"
+                          checked={selectedProducts.includes(id)}
+                          onChange={() => toggleProduct(id)}
+                        />
+                        <span className="truncate">{p.name}</span>
+                      </label>
+                    );
+                  })}
+                  {(!productOptions || productOptions.length === 0) && (
+                    <p className="px-2 py-1 text-xs text-slate-500">No products available.</p>
+                  )}
+                </div>
+                {selectedProducts.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-300/90">Select at least one product for this promotion to apply.</p>
+                )}
+              </div>
+            )}
+
+            {promotionScope === 'category' && (
+              <div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-slate-300">Applicable Categories</label>
+                  <span className="text-xs text-slate-500">{selectedCategories.length} selected</span>
+                </div>
+                <div className="mt-2 max-h-48 space-y-1 overflow-y-auto rounded-lg border border-white/10 bg-slate-950/60 p-2">
+                  {categoryOptions.map((category) => (
+                    <label
+                      key={category}
+                      className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-300 hover:bg-white/[0.04]"
+                    >
+                      <input
+                        type="checkbox"
+                        className="accent-emerald-500"
+                        checked={selectedCategories.includes(category)}
+                        onChange={() => toggleCategory(category)}
+                      />
+                      <span className="truncate">{category}</span>
+                    </label>
+                  ))}
+                  {categoryOptions.length === 0 && (
+                    <p className="px-2 py-1 text-xs text-slate-500">No product categories available.</p>
+                  )}
+                </div>
+                {selectedCategories.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-300/90">Select at least one category for this promotion to apply.</p>
+                )}
+              </div>
+            )}
 
             <Input
               label={promotionType === 'percentage' ? 'Discount Percentage (%)' : 'Discount Value'}
@@ -473,10 +582,6 @@ export const PromotionsManagementPage = () => {
                 {editingPromotion ? 'Update Promotion' : 'Create Promotion'}
               </Button>
             </div>
-
-            {(createMutation.isError || updateMutation.isError) && (
-              <Error message="Failed to save promotion. Please try again." />
-            )}
           </form>
         </Modal>
       </div>

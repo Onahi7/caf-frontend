@@ -48,7 +48,7 @@ const statusBadge = (status: string) => {
     fully_settled: 'bg-green-500/10 text-green-400 border-green-500/20',
     written_off: 'bg-red-500/10 text-red-400 border-red-500/20',
   };
-  return s[status] || 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+  return s[status] || 'bg-gray-500/10 text-slate-400 border-gray-500/20';
 };
 
 interface CartItem { productId: string; productName: string; quantity: number; unitPrice: number }
@@ -266,8 +266,8 @@ export function FinanceAdvancesPage() {
             <p className="text-xs text-amber-300">Active</p>
             <p className="text-2xl font-bold text-white">{stats.totalActive}</p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-primary-dark/70 p-4">
-            <p className="text-xs text-gray-400">Total Outstanding</p>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
+            <p className="text-xs text-slate-400">Total Outstanding</p>
             <p
               className="text-lg sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
               title={format(stats.totalOutstanding)}
@@ -345,12 +345,12 @@ export function FinanceAdvancesPage() {
               <input value={productSearch} onChange={(e) => setProductSearch(e.target.value)} placeholder="Search products..."
                 className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10" />
               {productSearch && (products?.length ?? 0) > 0 ? (
-                <div className="mt-2 max-h-40 overflow-y-auto bg-primary-darker border border-white/10 rounded-lg">
+                <div className="mt-2 max-h-40 overflow-y-auto bg-slate-950 border border-white/10 rounded-lg">
                   {(products || []).map((p) => (
                     <button key={p._id} type="button" onClick={() => addToCart(p)}
                       className="w-full text-left px-3 py-2 hover:bg-white/5 border-b border-white/5 last:border-0">
                       <p className="text-white text-sm">{p.name}</p>
-                      <p className="text-xs text-gray-400">{p.sku} - {format(p.sellingPrice)}</p>
+                      <p className="text-xs text-slate-400">{p.sku} - {format(p.sellingPrice)}</p>
                     </button>
                   ))}
                 </div>
@@ -361,9 +361,9 @@ export function FinanceAdvancesPage() {
                     <div key={c.productId} className="flex items-center gap-2 bg-white/5 rounded-lg p-2">
                       <span className="flex-1 text-white text-sm whitespace-normal break-words min-w-0">{c.productName}</span>
                       <input type="number" min="0.01" step="0.01" value={c.quantity} onChange={(e) => updateCartItem(c.productId, 'quantity', Number(e.target.value))}
-                        className="w-20 px-2 py-1 rounded bg-primary-darker border border-white/10 text-white text-sm" />
+                        className="w-20 px-2 py-1 rounded bg-slate-950 border border-white/10 text-white text-sm" />
                       <input type="number" min="0" step="0.01" value={c.unitPrice} onChange={(e) => updateCartItem(c.productId, 'unitPrice', Number(e.target.value))}
-                        className="w-28 px-2 py-1 rounded bg-primary-darker border border-white/10 text-white text-sm" />
+                        className="w-28 px-2 py-1 rounded bg-slate-950 border border-white/10 text-white text-sm" />
                       <span className="w-28 text-right text-white font-semibold text-sm">{format(c.quantity * c.unitPrice)}</span>
                       <button type="button" onClick={() => removeFromCart(c.productId)} className="text-red-400 hover:text-red-300">
                         <Trash2 className="w-4 h-4" />
@@ -371,7 +371,7 @@ export function FinanceAdvancesPage() {
                     </div>
                   ))}
                   <div className="flex justify-between items-center pt-2 border-t border-white/10">
-                    <span className="text-gray-400 text-sm">Total</span>
+                    <span className="text-slate-400 text-sm">Total</span>
                     <span className="text-white font-bold">{format(cartTotal)}</span>
                   </div>
                 </div>
@@ -405,7 +405,7 @@ export function FinanceAdvancesPage() {
           <div className="space-y-4">
             <div className="bg-white/5 rounded-xl p-4">
               <p className="text-white font-medium">{repayModal.referenceNumber} - {repayModal.employeeId?.firstName} {repayModal.employeeId?.lastName}</p>
-              <p className="text-sm text-gray-400">Outstanding: {format(repayModal.outstandingAmount)}</p>
+              <p className="text-sm text-slate-400">Outstanding: {format(repayModal.outstandingAmount)}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-white mb-1">Amount</label>
@@ -425,7 +425,7 @@ export function FinanceAdvancesPage() {
           <div className="space-y-4">
             <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
               <p className="text-white font-medium">Write off {format(writeOffModal.outstandingAmount)}?</p>
-              <p className="text-sm text-gray-400">This will create a bad-debt expense entry. This cannot be undone.</p>
+              <p className="text-sm text-slate-400">This will create a bad-debt expense entry. This cannot be undone.</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-white mb-1">Reason</label>
@@ -449,20 +449,20 @@ export function FinanceAdvancesPage() {
               <Undo2 className="inline h-4 w-4 mr-2" />
               Returning items will restore inventory and reduce the advance outstanding amount.
             </div>
-            <div className="bg-white/5 rounded-xl p-3 text-sm text-gray-300">
+            <div className="bg-white/5 rounded-xl p-3 text-sm text-slate-300">
               <span className="text-white font-medium">{returnModal.referenceNumber}</span> - {returnModal.employeeId?.firstName} {returnModal.employeeId?.lastName}
             </div>
             <div className="space-y-2 max-h-60 overflow-y-auto">
               {returnItems.map((it, idx) => (
                 <div key={it.productId} className="flex items-center gap-2 bg-white/5 rounded-lg p-2">
                   <span className="flex-1 text-white text-sm">{it.productName}</span>
-                  <span className="text-xs text-gray-400">max {it.maxQuantity}</span>
+                  <span className="text-xs text-slate-400">max {it.maxQuantity}</span>
                   <input type="number" min="0" max={it.maxQuantity} step="1" value={it.returnQuantity}
                     onChange={(e) => {
                       const v = Math.max(0, Math.min(it.maxQuantity, Number(e.target.value) || 0));
                       setReturnItems(returnItems.map((x, i) => i === idx ? { ...x, returnQuantity: v } : x));
                     }}
-                    className="w-20 px-2 py-1 rounded bg-primary-darker border border-white/10 text-white text-sm" />
+                    className="w-20 px-2 py-1 rounded bg-slate-950 border border-white/10 text-white text-sm" />
                   <span className="w-28 text-right text-white text-sm">{format(it.returnQuantity * it.unitPrice)}</span>
                 </div>
               ))}
@@ -473,7 +473,7 @@ export function FinanceAdvancesPage() {
                 className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10" />
             </div>
             <div className="flex justify-between items-center pt-2 border-t border-white/10">
-              <span className="text-gray-400 text-sm">Return value</span>
+              <span className="text-slate-400 text-sm">Return value</span>
               <span className="text-white font-bold">{format(returnItems.reduce((s, it) => s + it.returnQuantity * it.unitPrice, 0))}</span>
             </div>
             <div className="flex justify-end gap-3">

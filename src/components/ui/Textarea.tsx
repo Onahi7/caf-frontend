@@ -32,7 +32,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             border ${error ? 'border-red-500/50 focus:border-red-500' : 'border-white/10 focus:border-accent-green/50'}
             focus:outline-none focus:ring-2 ${error ? 'focus:ring-red-500/20' : 'focus:ring-accent-green/20'}
             disabled:opacity-50 disabled:cursor-not-allowed
-            placeholder-gray-500
+            placeholder-slate-500
             transition-all duration-200
             resize-y
             ${className}
@@ -43,7 +43,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           <p id={errorId} className="mt-1 text-sm text-red-500">{error}</p>
         )}
         {helperText && !error && (
-          <p id={helperId} className="mt-1 text-sm text-gray-400">{helperText}</p>
+          <p id={helperId} className="mt-1 text-sm text-slate-400">{helperText}</p>
         )}
       </div>
     );

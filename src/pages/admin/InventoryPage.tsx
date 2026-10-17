@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { AdminLayout } from '../../components/AdminLayout';
 import { AdminMobileBottomNav } from '../../components/admin/AdminMobileBottomNav';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { useAuthStore } from '../../stores/auth-store';
 
 type InventoryIcon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -146,6 +147,14 @@ export function InventoryPage() {
           </p>
         </header>
 
+        {visibleActions.length === 0 && visibleReports.length === 0 ? (
+          <EmptyState
+            icon={<Package className="h-12 w-12" aria-hidden="true" />}
+            title="No inventory tools for your role"
+            message="Your account does not have access to inventory modules. Contact an administrator if you believe this is a mistake."
+          />
+        ) : null}
+
         {visibleActions.length > 0 ? (
           <section aria-labelledby="inventory-actions-heading">
             <div className="mb-4 hidden items-center justify-between sm:flex">
@@ -165,7 +174,7 @@ export function InventoryPage() {
                     className={`group flex min-h-44 flex-col items-center justify-center rounded-2xl border px-3 py-5 text-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 sm:min-h-56 sm:px-6 sm:py-6 shadow-lg shadow-black/20 ${
                       module.featured
                         ? 'border-amber-500/30 bg-amber-500/10 hover:border-amber-400 hover:bg-amber-500/15'
-                        : 'border-white/[0.08] bg-slate-900/80 hover:border-emerald-500/40 hover:bg-slate-850'
+                        : 'border-white/[0.08] bg-slate-900/80 hover:border-emerald-500/40 hover:bg-slate-800'
                     }`}
                   >
                     <span

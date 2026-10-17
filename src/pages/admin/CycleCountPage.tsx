@@ -12,6 +12,8 @@ import { BranchSelector } from '../../components/BranchSelector';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
+import { getErrorMessage } from '../../lib/error-utils';
+import { formatDate } from '../../lib/date-format';
 import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 
@@ -99,8 +101,8 @@ export function CycleCountPage() {
       setSelectedCount(data);
       setCountedValues({});
     },
-    onError: (err: any) => {
-      showError(err?.response?.data?.message ?? 'Failed to create cycle count');
+    onError: (err: unknown) => {
+      showError(getErrorMessage(err, 'Failed to create cycle count'));
     },
   });
 
@@ -115,8 +117,8 @@ export function CycleCountPage() {
       showSuccess('Cycle count submitted for review');
       setSelectedCount(data);
     },
-    onError: (err: any) => {
-      showError(err?.response?.data?.message ?? 'Failed to submit cycle count');
+    onError: (err: unknown) => {
+      showError(getErrorMessage(err, 'Failed to submit cycle count'));
     },
   });
 
@@ -132,8 +134,8 @@ export function CycleCountPage() {
       showSuccess('Cycle count approved - product stock levels adjusted');
       setSelectedCount(data);
     },
-    onError: (err: any) => {
-      showError(err?.response?.data?.message ?? 'Failed to approve cycle count');
+    onError: (err: unknown) => {
+      showError(getErrorMessage(err, 'Failed to approve cycle count'));
     },
   });
 
@@ -148,20 +150,29 @@ export function CycleCountPage() {
       showSuccess('Cycle count cancelled');
       setSelectedCount(data);
     },
-    onError: (err: any) => {
-      showError(err?.response?.data?.message ?? 'Failed to cancel cycle count');
+    onError: (err: unknown) => {
+      showError(getErrorMessage(err, 'Failed to cancel cycle count'));
     },
   });
 
   function handleSubmitCount() {
     if (!selectedCount) return;
-    const lines = (countDetail?.lines ?? []).map((line) => {
+    const detailLines = countDetail?.lines ?? [];
+    const missingLines = detailLines.filter((line) => {
       const val = countedValues[line.batchId];
-      return {
-        batchId: line.batchId,
-        countedQuantity: typeof val === 'number' && !isNaN(val) ? val : Number(line.systemQuantity || 0),
-      };
+      return typeof val !== 'number' || isNaN(val);
     });
+    if (missingLines.length > 0) {
+      showError(
+        'Count incomplete',
+        `Enter a counted quantity for ${missingLines.length} line${missingLines.length === 1 ? '' : 's'} before submitting.`,
+      );
+      return;
+    }
+    const lines = detailLines.map((line) => ({
+      batchId: line.batchId,
+      countedQuantity: Number(countedValues[line.batchId]),
+    }));
     submitMutation.mutate({ id: selectedCount._id, lines });
   }
 
@@ -214,6 +225,11 @@ export function CycleCountPage() {
 
           {activeDetail && (
             <>
+              {activeDetail.status === CycleCountStatus.DRAFT && activeDetail.lines.length > 0 && (
+                <p className="mb-3 text-xs text-amber-300/90">
+                  Enter a counted quantity for every line. Lines with an amber border are still uncounted and will block submission.
+                </p>
+              )}
               <div className="mb-6 overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60">
                 <table className="w-full text-sm min-w-[600px]">
                   <thead className="bg-slate-900 border-b border-slate-800 text-slate-400 uppercase text-xs">
@@ -249,14 +265,23 @@ export function CycleCountPage() {
                               <input
                                 type="number"
                                 min={0}
-                                defaultValue={line.systemQuantity}
-                                className="w-24 rounded border border-slate-700 bg-slate-800 px-2 py-1 text-right text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                placeholder={String(line.systemQuantity)}
+                                aria-label={`Counted quantity for ${productName}`}
+                                className={`w-24 rounded border bg-slate-800 px-2 py-1 text-right text-sm text-white focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 ${
+                                  typeof countedValues[line.batchId] === 'number'
+                                    ? 'border-slate-700'
+                                    : 'border-amber-500/60'
+                                }`}
                                 onChange={(e) => {
-                                  const parsed = Math.max(0, parseInt(e.target.value, 10) || 0);
-                                  setCountedValues((prev) => ({
-                                    ...prev,
-                                    [line.batchId]: parsed,
-                                  }));
+                                  const raw = e.target.value;
+                                  setCountedValues((prev) => {
+                                    if (raw.trim() === '') {
+                                      const next = { ...prev };
+                                      delete next[line.batchId];
+                                      return next;
+                                    }
+                                    return { ...prev, [line.batchId]: Math.max(0, parseInt(raw, 10) || 0) };
+                                  });
                                 }}
                               />
                             ) : (
@@ -379,14 +404,13 @@ export function CycleCountPage() {
             )}
 
             {cycleCounts && cycleCounts.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60">
-                <Table
-                  columns={[
+              <Table
+                columns={[
                     {
                       key: 'createdAt',
                       header: 'Date',
                       render: (row: CycleCount) =>
-                        new Date(row.createdAt).toLocaleDateString(),
+                        formatDate(row.createdAt),
                     },
                     {
                       key: 'status',
@@ -434,7 +458,6 @@ export function CycleCountPage() {
                   ]}
                   data={cycleCounts}
                 />
-              </div>
             )}
           </>
         )}

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { FileSearch, PackagePlus, Upload } from 'lucide-react';
 import { AdminLayout } from '../../components/AdminLayout';
 import { Modal } from '../../components/ui/Modal';
@@ -8,6 +8,7 @@ import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useToast } from '../../hooks/useToast';
 import { useCurrency } from '../../hooks/useCurrency';
 import { getErrorMessage } from '../../lib/error-utils';
+import { queryKeys } from '../../lib/query-keys';
 import apiClient from '../../lib/api-client';
 
 interface MatchedProduct {
@@ -58,6 +59,7 @@ export function RequestAnalysisPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const selectedBranch = useBranchStore((state) => state.selectedBranch);
   const branchId = getBranchId(selectedBranch);
+  const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
   const { format } = useCurrency();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -97,7 +99,7 @@ export function RequestAnalysisPage() {
         throw new Error('Missing branch or request item');
       }
 
-      const barcodeSeed = Date.now().toString();
+      const barcodeSeed = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`.toUpperCase();
       const payload = {
         branchId,
         name: quickAddForm.name,
@@ -117,6 +119,7 @@ export function RequestAnalysisPage() {
     },
     onSuccess: (product) => {
       showSuccess('Product created from request item');
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all() });
       setResults((current) =>
         current.map((item) =>
           item.rowNumber === quickAddTarget?.rowNumber
@@ -161,32 +164,32 @@ export function RequestAnalysisPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white">Request Uploads</h1>
-            <p className="mt-2 max-w-3xl text-sm text-gray-400">
+            <p className="mt-2 max-w-3xl text-sm text-slate-400">
               Upload client request sheets, Word files, or pictures. We extract the requested items, match them against live inventory, and let you create missing products on the spot.
             </p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 w-full lg:max-w-[430px]">
-            <div className="rounded-2xl border border-white/10 bg-primary-dark/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-400">Lines extracted</p>
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Lines extracted</p>
               <p className="mt-2 text-2xl font-bold text-white">{summary.total}</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-primary-dark/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-400">Matched</p>
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Matched</p>
               <p className="mt-2 text-2xl font-bold text-emerald-300">{summary.matched}</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-primary-dark/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-400">Missing</p>
+            <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Missing</p>
               <p className="mt-2 text-2xl font-bold text-amber-300">{summary.missing}</p>
             </div>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-primary-dark/70 p-5">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-lg font-semibold text-white">Upload a request file</h2>
-              <p className="mt-1 text-sm text-gray-400">
+              <p className="mt-1 text-sm text-slate-400">
                 Supported now: `.xlsx`, `.csv`, `.docx`, `.png`, `.jpg`, `.jpeg`, `.webp`.
               </p>
             </div>
@@ -210,7 +213,7 @@ export function RequestAnalysisPage() {
             </div>
           </div>
 
-          <div className="mt-4 rounded-xl border border-dashed border-white/10 bg-primary-darker/40 px-4 py-3 text-sm text-gray-300">
+          <div className="mt-4 rounded-xl border border-dashed border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
             {selectedFile ? (
               <span>
                 Selected file: <span className="font-medium text-white">{selectedFile.name}</span>
@@ -223,7 +226,7 @@ export function RequestAnalysisPage() {
 
         <div className="space-y-4">
           {results.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-white/10 bg-primary-dark/40 p-10 text-center text-gray-400">
+            <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/40 p-10 text-center text-slate-400">
               Upload a client request file and the results will show up here.
             </div>
           ) : (
@@ -238,26 +241,26 @@ export function RequestAnalysisPage() {
               return (
                 <div
                   key={`${item.rowNumber}-${item.itemName}`}
-                  className="rounded-2xl border border-white/10 bg-primary-dark/70 p-5"
+                  className="rounded-2xl border border-white/10 bg-slate-900/60 p-5"
                 >
                   <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-gray-300">
+                        <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300">
                           Row {item.rowNumber}
                         </span>
                         <span className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${tone}`}>
                           {item.status}
                         </span>
                         {item.confidence > 0 ? (
-                          <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-gray-300">
+                          <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300">
                             {Math.round(item.confidence * 100)}% confidence
                           </span>
                         ) : null}
                       </div>
                       <h2 className="text-lg font-semibold text-white">{item.itemName}</h2>
-                      <p className="text-sm text-gray-500">{item.rawText}</p>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-300">
+                      <p className="text-sm text-slate-500">{item.rawText}</p>
+                      <div className="flex flex-wrap gap-4 text-sm text-slate-300">
                         <span>Requested quantity: {item.quantityRequested ?? 'Unknown'}</span>
                         <span>Unit: {item.requestedUnit || 'Unspecified'}</span>
                       </div>
@@ -265,23 +268,23 @@ export function RequestAnalysisPage() {
 
                     <div className="w-full xl:max-w-[420px]">
                       {item.matchedProduct ? (
-                        <div className="rounded-2xl border border-white/10 bg-primary-darker/70 p-4">
+                        <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <p className="text-sm font-semibold text-white">{item.matchedProduct.name}</p>
-                              <p className="mt-1 text-sm text-gray-400">
+                              <p className="mt-1 text-sm text-slate-400">
                                 {item.matchedProduct.brand} | {item.matchedProduct.category}
                               </p>
                             </div>
-                            <FileSearch className="h-5 w-5 text-accent-green" />
+                            <FileSearch className="h-5 w-5 text-emerald-400" />
                           </div>
                           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                             <div className="rounded-xl bg-white/5 p-3">
-                              <p className="text-gray-400">Stock</p>
+                              <p className="text-slate-400">Stock</p>
                               <p className="mt-1 font-semibold text-white">{item.matchedProduct.stock}</p>
                             </div>
                             <div className="rounded-xl bg-white/5 p-3">
-                              <p className="text-gray-400">Price</p>
+                              <p className="text-slate-400">Price</p>
                               <p className="mt-1 font-semibold text-white">{format(item.matchedProduct.price || 0)}</p>
                             </div>
                           </div>
@@ -313,8 +316,8 @@ export function RequestAnalysisPage() {
                       )}
 
                       {item.alternatives?.length ? (
-                        <div className="mt-3 rounded-xl border border-white/10 bg-primary-darker/50 p-3">
-                          <p className="text-xs uppercase tracking-wide text-gray-400">Other possible matches</p>
+                        <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/50 p-3">
+                          <p className="text-xs uppercase tracking-wide text-slate-400">Other possible matches</p>
                           <div className="mt-2 space-y-2">
                             {item.alternatives.map((alternative) => (
                               <div
@@ -323,9 +326,9 @@ export function RequestAnalysisPage() {
                               >
                                 <div>
                                   <p className="text-white">{alternative.name}</p>
-                                  <p className="text-gray-500">{alternative.brand}</p>
+                                  <p className="text-slate-500">{alternative.brand}</p>
                                 </div>
-                                <span className="text-gray-300">
+                                <span className="text-slate-300">
                                   {Math.round(alternative.confidence * 100)}%
                                 </span>
                               </div>
@@ -350,10 +353,10 @@ export function RequestAnalysisPage() {
       >
         {quickAddTarget ? (
           <div className="space-y-5">
-            <div className="rounded-2xl border border-white/10 bg-primary-darker/70 p-4">
-              <p className="text-sm text-gray-400">Request item</p>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+              <p className="text-sm text-slate-400">Request item</p>
               <p className="mt-1 text-lg font-semibold text-white">{quickAddTarget.itemName}</p>
-              <p className="mt-1 text-sm text-gray-500">{quickAddTarget.rawText}</p>
+              <p className="mt-1 text-sm text-slate-500">{quickAddTarget.rawText}</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -367,7 +370,7 @@ export function RequestAnalysisPage() {
                 { key: 'basePrice', label: 'Base price', type: 'number' },
               ].map((field) => (
                 <label key={field.key} className="space-y-2">
-                  <span className="text-sm text-gray-300">{field.label}</span>
+                  <span className="text-sm text-slate-300">{field.label}</span>
                   <input
                     type={field.type}
                     value={quickAddForm[field.key as keyof QuickAddForm]}
@@ -377,7 +380,7 @@ export function RequestAnalysisPage() {
                         [field.key]: event.target.value,
                       }))
                     }
-                    className="w-full rounded-xl border border-white/10 bg-primary-darker px-4 py-3 text-white outline-none focus:border-accent-green"
+                    className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-400/60"
                   />
                 </label>
               ))}

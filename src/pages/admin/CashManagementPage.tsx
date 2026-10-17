@@ -4,16 +4,21 @@ import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
+import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
+import { Textarea } from '../../components/ui/Textarea';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { AdminStatusBadge } from '../../components/admin';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { queryKeys } from '../../lib/query-keys';
 import apiClient from '../../lib/api-client';
 import { buildApiUrl } from '../../lib/api-utils';
 import { getErrorMessage } from '../../lib/error-utils';
 import { formatStatusLabel, toneForStatus } from '../../lib/admin-tones';
+import { formatDate } from '../../lib/date-format';
 import { Plus, TrendingUp, TrendingDown, DollarSign, ArrowRightLeft } from 'lucide-react';
 import { useCurrency } from '../../hooks/useCurrency';
 
@@ -42,6 +47,23 @@ interface CashSummary {
 const CATEGORIES = ['sales', 'services', 'supplies', 'maintenance', 'utilities', 'rent', 'salaries', 'transport', 'marketing', 'insurance', 'tax', 'petty_cash', 'other'];
 const TYPES = ['income', 'expense', 'transfer', 'loan', 'salary', 'other'];
 
+const amountStyleForType = (type: string): { className: string; sign: string } => {
+  switch (type) {
+    case 'income':
+      return { className: 'text-emerald-400', sign: '+' };
+    case 'expense':
+      return { className: 'text-rose-400', sign: '-' };
+    case 'transfer':
+      return { className: 'text-blue-400', sign: '' };
+    case 'loan':
+      return { className: 'text-amber-400', sign: '' };
+    case 'salary':
+      return { className: 'text-purple-400', sign: '' };
+    default:
+      return { className: 'text-slate-300', sign: '' };
+  }
+};
+
 export function CashManagementPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [startDate, setStartDate] = useState('');
@@ -51,7 +73,16 @@ export function CashManagementPage() {
   const branchId = getBranchId(selectedBranch);
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
+  const requestConfirmation = useConfirm();
   const { format: formatMoney } = useCurrency();
+
+  const emptyForm = { type: 'expense', category: 'supplies', amount: '', description: '', notes: '', receiptNumber: '', entryDate: '' };
+  const canSubmit = Number(form.amount) > 0 && form.description.trim().length > 0;
+
+  const handleCloseCreate = () => {
+    setIsCreateOpen(false);
+    setForm(emptyForm);
+  };
 
   const { data: entries, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.financeManager.cashEntries.list({ branchId, startDate: startDate || undefined, endDate: endDate || undefined }),
@@ -79,7 +110,7 @@ export function CashManagementPage() {
       showSuccess('Cash entry recorded');
       queryClient.invalidateQueries({ queryKey: queryKeys.financeManager.cashEntries.all() });
       setIsCreateOpen(false);
-      setForm({ type: 'expense', category: 'supplies', amount: '', description: '', notes: '', receiptNumber: '', entryDate: '' });
+      setForm(emptyForm);
     },
     onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to create cash entry')),
   });
@@ -93,22 +124,46 @@ export function CashManagementPage() {
     onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to delete entry')),
   });
 
+  const handleDelete = async (entry: CashEntry) => {
+    const confirmed = await requestConfirmation({
+      title: 'Delete this cash entry?',
+      message: `${formatStatusLabel(entry.type)} of ${formatMoney(entry.amount)} — "${entry.description}" will be removed. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    deleteMutation.mutate(entry._id);
+  };
+
   const columns = [
     { key: 'type', header: 'Type', render: (e: CashEntry) => (
       <AdminStatusBadge tone={toneForStatus(e.type)}>
         {formatStatusLabel(e.type)}
       </AdminStatusBadge>
     )},
-    { key: 'category', header: 'Category', render: (e: CashEntry) => <span className="text-gray-300 text-sm">{e.category.replace('_', ' ')}</span> },
+    { key: 'category', header: 'Category', render: (e: CashEntry) => <span className="text-slate-300 text-sm">{e.category.replace('_', ' ')}</span> },
     { key: 'description', header: 'Description' },
-    { key: 'amount', header: 'Amount', render: (e: CashEntry) => (
-      <span className={`font-semibold ${e.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>
-        {e.type === 'income' ? '+' : '-'}{formatMoney(e.amount)}
-      </span>
-    )},
-    { key: 'entryDate', header: 'Date', render: (e: CashEntry) => new Date(e.entryDate).toLocaleDateString() },
+    { key: 'amount', header: 'Amount', render: (e: CashEntry) => {
+      const style = amountStyleForType(e.type);
+      return (
+        <span className={`font-semibold ${style.className}`}>
+          {style.sign}{formatMoney(e.amount)}
+        </span>
+      );
+    }},
+    { key: 'entryDate', header: 'Date', render: (e: CashEntry) => formatDate(e.entryDate) },
     { key: 'recordedBy', header: 'Recorded By', render: (e: CashEntry) => e.recordedBy ? `${e.recordedBy.firstName} ${e.recordedBy.lastName}` : '-' },
-    { key: 'actions', header: '', render: (e: CashEntry) => <Button size="sm" variant="ghost" className="text-red-400" onClick={() => deleteMutation.mutate(e._id)}>Delete</Button> },
+    { key: 'actions', header: '', render: (e: CashEntry) => (
+      <Button
+        size="sm"
+        variant="ghost"
+        className="text-rose-400"
+        onClick={() => void handleDelete(e)}
+        isLoading={deleteMutation.isPending && deleteMutation.variables === e._id}
+      >
+        Delete
+      </Button>
+    )},
   ];
 
   return (
@@ -117,7 +172,7 @@ export function CashManagementPage() {
         <div className="flex items-center gap-3">
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
             className="px-3 py-2 rounded-xl bg-white/5 text-white border border-white/10 text-sm" />
-          <span className="text-gray-400">to</span>
+          <span className="text-slate-400">to</span>
           <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
             className="px-3 py-2 rounded-xl bg-white/5 text-white border border-white/10 text-sm" />
         </div>
@@ -136,7 +191,7 @@ export function CashManagementPage() {
           ].map((c) => (
             <div key={c.label} className={`rounded-xl border p-3 ${c.color}`}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-gray-400">{c.label}</span>
+                <span className="text-xs text-slate-400">{c.label}</span>
                 {c.icon}
               </div>
               <p className="text-lg font-bold text-white">{formatMoney(c.value)}</p>
@@ -153,54 +208,66 @@ export function CashManagementPage() {
         />
       )}
 
-      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Record Cash Entry">
+      <Modal isOpen={isCreateOpen} onClose={handleCloseCreate} title="Record Cash Entry">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-white mb-1">Type</label>
-              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10">
-                {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-white mb-1">Category</label>
-              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10">
-                {CATEGORIES.map((c) => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}
-              </select>
-            </div>
+            <Select
+              label="Type"
+              value={form.type}
+              onChange={(e) => setForm({ ...form, type: e.target.value })}
+            >
+              {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </Select>
+            <Select
+              label="Category"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+            >
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}
+            </Select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-white mb-1">Amount</label>
-            <input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10" placeholder="0.00" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-white mb-1">Description</label>
-            <input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10" placeholder="What was this for?" />
-          </div>
+          <Input
+            label="Amount"
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.amount}
+            onChange={(e) => setForm({ ...form, amount: e.target.value })}
+            placeholder="0.00"
+          />
+          <Input
+            label="Description"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            placeholder="What was this for?"
+          />
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-white mb-1">Receipt #</label>
-              <input value={form.receiptNumber} onChange={(e) => setForm({ ...form, receiptNumber: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-white mb-1">Date</label>
-              <input type="date" value={form.entryDate} onChange={(e) => setForm({ ...form, entryDate: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10" />
-            </div>
+            <Input
+              label="Receipt #"
+              value={form.receiptNumber}
+              onChange={(e) => setForm({ ...form, receiptNumber: e.target.value })}
+            />
+            <Input
+              label="Date"
+              type="date"
+              value={form.entryDate}
+              onChange={(e) => setForm({ ...form, entryDate: e.target.value })}
+            />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-white mb-1">Notes</label>
-            <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2}
-              className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10" />
-          </div>
+          <Textarea
+            label="Notes"
+            rows={2}
+            value={form.notes}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+          />
+          {!canSubmit && (
+            <p className="text-xs text-slate-500">
+              Enter an amount greater than zero and a description to record this entry.
+            </p>
+          )}
           <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-            <Button onClick={() => createMutation.mutate()} isLoading={createMutation.isPending}>Record</Button>
+            <Button variant="ghost" onClick={handleCloseCreate}>Cancel</Button>
+            <Button onClick={() => createMutation.mutate()} isLoading={createMutation.isPending} disabled={!canSubmit}>Record</Button>
           </div>
         </div>
       </Modal>

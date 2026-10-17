@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../lib/api-client';
 import { unwrapResponse } from '../../lib/unwrap-response';
@@ -12,6 +12,8 @@ import { Select } from '../../components/ui/Select';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useToast } from '../../hooks/useToast';
+import { getErrorMessage } from '../../lib/error-utils';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
@@ -100,7 +102,25 @@ export default function SalesReportsPage() {
   const isSuperAdmin = user?.role === 'super_admin';
   const isPosContext = location.pathname.startsWith('/pos') || user?.role === 'cashier';
   
-  const [filters, setFilters] = useState<SalesReportFilters>(defaultFilters);
+  const [searchParams] = useSearchParams();
+  const [filters, setFilters] = useState<SalesReportFilters>(() => {
+    const initial: SalesReportFilters = { ...defaultFilters };
+    const branchIdParam = searchParams.get('branchId');
+    const cashierIdParam = searchParams.get('cashierId');
+    const productIdParam = searchParams.get('productId');
+    const startDateParam = searchParams.get('startDate');
+    const endDateParam = searchParams.get('endDate');
+    const groupByParam = searchParams.get('groupBy');
+    if (branchIdParam) initial.branchId = branchIdParam;
+    if (cashierIdParam) initial.cashierId = cashierIdParam;
+    if (productIdParam) initial.productId = productIdParam;
+    if (startDateParam) initial.startDate = startDateParam;
+    if (endDateParam) initial.endDate = endDateParam;
+    if (groupByParam) initial.groupBy = groupByParam as SalesReportFilters['groupBy'];
+    return initial;
+  });
+  const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
+  const { showSuccess, showError } = useToast();
   const effectiveBranchId = filters.branchId ?? (isSuperAdmin ? undefined : selectedBranchId);
   const isCashier = user?.role === 'cashier';
   // Cashiers always see only their own sales
@@ -161,6 +181,7 @@ export default function SalesReportsPage() {
   });
 
   const handleExport = async (format: 'pdf' | 'excel') => {
+    setExporting(format);
     try {
       const response = await apiClient.get(buildApiUrl('/reports/sales', {
         branchId: effectiveBranchId,
@@ -181,8 +202,12 @@ export default function SalesReportsPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
-    } catch (error) {
-      console.error('Export failed:', error);
+      window.URL.revokeObjectURL(url);
+      showSuccess('Export ready', 'Your report download has started.');
+    } catch (err) {
+      showError(getErrorMessage(err, 'Export failed'));
+    } finally {
+      setExporting(null);
     }
   };
 
@@ -218,7 +243,7 @@ export default function SalesReportsPage() {
       key: 'count', 
       header: 'Transactions',
       render: (row: PaymentMethodBreakdown) => (
-        <span className={row.count > 0 ? 'text-white' : 'text-gray-500'}>
+        <span className={row.count > 0 ? 'text-white' : 'text-slate-500'}>
           {row.count}
         </span>
       )
@@ -227,7 +252,7 @@ export default function SalesReportsPage() {
       key: 'totalAmount', 
       header: 'Total Amount',
       render: (row: PaymentMethodBreakdown) => (
-        <span className={row.count > 0 ? 'text-white font-semibold' : 'text-gray-500'}>
+        <span className={row.count > 0 ? 'text-white font-semibold' : 'text-slate-500'}>
           {format(row.totalAmount)}
         </span>
       )
@@ -236,9 +261,9 @@ export default function SalesReportsPage() {
 
   if (!isSuperAdmin && !selectedBranchId) {
     const noBranchContent = (
-      <div className="rounded-2xl border border-white/10 bg-primary-dark/60 p-8 text-center">
+      <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-8 text-center">
         <h2 className="text-xl font-semibold text-white">Select a Branch First</h2>
-        <p className="mt-2 text-gray-400">
+        <p className="mt-2 text-slate-400">
           Sales reports use your assigned branch. Choose a branch to continue.
         </p>
       </div>
@@ -258,8 +283,8 @@ export default function SalesReportsPage() {
             reportKey="sales"
             route="/admin/reports/sales"
             params={{
-              branchId: filters.branchId,
-              cashierId: filters.cashierId,
+              branchId: effectiveBranchId,
+              cashierId: effectiveCashierId,
               productId: filters.productId,
               startDate: filters.startDate,
               endDate: filters.endDate,
@@ -270,7 +295,7 @@ export default function SalesReportsPage() {
         </div>
 
         {/* Filters */}
-        <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+        <div className="bg-slate-900/60 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
           <h2 className="text-lg font-semibold text-white mb-4">Report Filters</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {isSuperAdmin && (
@@ -279,9 +304,9 @@ export default function SalesReportsPage() {
                 value={filters.branchId ?? ''}
                 onChange={(e) => setFilters(prev => ({ ...prev, branchId: e.target.value || undefined }))}
               >
-                <option value="" className="bg-primary-dark text-white">All Branches</option>
+                <option value="" className="bg-slate-900 text-white">All Branches</option>
                 {branches?.map(branch => (
-                  <option key={branch._id} value={branch._id} className="bg-primary-dark text-white">
+                  <option key={branch._id} value={branch._id} className="bg-slate-900 text-white">
                     {branch.name}
                   </option>
                 ))}
@@ -294,9 +319,9 @@ export default function SalesReportsPage() {
                 value={filters.cashierId ?? ''}
                 onChange={(e) => setFilters(prev => ({ ...prev, cashierId: e.target.value || undefined }))}
               >
-                <option value="" className="bg-primary-dark text-white">All Cashiers</option>
+                <option value="" className="bg-slate-900 text-white">All Cashiers</option>
                 {cashiers?.map(cashier => (
-                  <option key={cashier._id} value={cashier._id} className="bg-primary-dark text-white">
+                  <option key={cashier._id} value={cashier._id} className="bg-slate-900 text-white">
                     {cashier.firstName} {cashier.lastName}
                   </option>
                 ))}
@@ -308,9 +333,9 @@ export default function SalesReportsPage() {
               value={filters.productId ?? ''}
               onChange={(e) => setFilters(prev => ({ ...prev, productId: e.target.value || undefined }))}
             >
-              <option value="" className="bg-primary-dark text-white">All Products</option>
+              <option value="" className="bg-slate-900 text-white">All Products</option>
               {products?.map(product => (
-                <option key={product._id} value={product._id} className="bg-primary-dark text-white">
+                <option key={product._id} value={product._id} className="bg-slate-900 text-white">
                   {product.name} ({product.sku})
                 </option>
               ))}
@@ -335,31 +360,31 @@ export default function SalesReportsPage() {
               value={filters.groupBy ?? ''}
               onChange={(e) => setFilters(prev => ({ ...prev, groupBy: (e.target.value || undefined) as SalesReportFilters['groupBy'] }))}
             >
-              <option value="" className="bg-primary-dark text-white">No Grouping</option>
-              <option value="branch" className="bg-primary-dark text-white">Branch</option>
-              <option value="cashier" className="bg-primary-dark text-white">Cashier</option>
-              <option value="product" className="bg-primary-dark text-white">Product</option>
+              <option value="" className="bg-slate-900 text-white">No Grouping</option>
+              <option value="branch" className="bg-slate-900 text-white">Branch</option>
+              <option value="cashier" className="bg-slate-900 text-white">Cashier</option>
+              <option value="product" className="bg-slate-900 text-white">Product</option>
             </Select>
           </div>
         </div>
 
         {/* Report Results */}
         {isLoading && (
-          <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+          <div className="bg-slate-900/60 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
             <Loading />
           </div>
         )}
 
         {error && (
-          <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+          <div className="bg-slate-900/60 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
             <Error message="Failed to load report. Please try again." />
           </div>
         )}
 
-        {data && (
+        {data?.summary && (
           <>
             {/* Summary Cards */}
-            <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
+            <div className="bg-slate-900/60 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
               <div className="px-6 py-4 border-b border-white/5 flex justify-between items-center">
                 <h2 className="text-lg font-semibold text-white">Sales Summary</h2>
                 <div className="flex space-x-2">
@@ -367,6 +392,8 @@ export default function SalesReportsPage() {
                     variant="secondary"
                     size="sm"
                     onClick={() => handleExport('pdf')}
+                    isLoading={exporting === 'pdf'}
+                    disabled={exporting !== null}
                   >
                     Export PDF
                   </Button>
@@ -374,6 +401,8 @@ export default function SalesReportsPage() {
                     variant="secondary"
                     size="sm"
                     onClick={() => handleExport('excel')}
+                    isLoading={exporting === 'excel'}
+                    disabled={exporting !== null}
                   >
                     Export Excel
                   </Button>
@@ -434,10 +463,10 @@ export default function SalesReportsPage() {
             </div>
 
             {/* Payment Method Breakdown */}
-            <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
+            <div className="bg-slate-900/60 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
               <div className="px-6 py-4 border-b border-white/5">
                 <h2 className="text-lg font-semibold text-white">Payment Method Breakdown</h2>
-                <p className="text-sm text-gray-400 mt-1">All payment methods are shown, including those with zero transactions</p>
+                <p className="text-sm text-slate-400 mt-1">All payment methods are shown, including those with zero transactions</p>
               </div>
               <Table
                 data={data.paymentMethodBreakdown}
@@ -447,7 +476,7 @@ export default function SalesReportsPage() {
 
             {/* Breakdown by Group */}
             {data.breakdown && data.breakdown.length > 0 && (
-              <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
+              <div className="bg-slate-900/60 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
                 <div className="px-6 py-4 border-b border-white/5">
                   <h2 className="text-lg font-semibold text-white">Breakdown by {filters.groupBy}</h2>
                 </div>
@@ -458,12 +487,6 @@ export default function SalesReportsPage() {
               </div>
             )}
           </>
-        )}
-
-        {data && data.summary.transactionCount === 0 && (
-          <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6 text-center">
-            <p className="text-gray-400">No sales data found for the selected filters.</p>
-          </div>
         )}
       </div>
   );

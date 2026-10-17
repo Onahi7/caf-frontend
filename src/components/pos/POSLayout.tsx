@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode, useEffect } from 'react';
+import { createContext, useContext, type ReactNode, useEffect } from 'react';
 import { useLocation, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Menu } from 'lucide-react';
@@ -43,16 +43,6 @@ export const POSLayout = ({ children, title, hideHeader = false }: POSLayoutProp
   const selectedBranch = useBranchStore((state) => state.selectedBranch);
   const setSelectedBranch = useBranchStore((state) => state.setSelectedBranch);
 
-  // If inside AdminLayout or an /admin/ route, step aside completely and render contents directly!
-  if (adminContext.isInAdminLayout || location.pathname.startsWith('/admin/')) {
-    return <>{children || <Outlet />}</>;
-  }
-
-  // If already inside an outer POSLayout, don't duplicate layout
-  if (parentPOS.isInPOSLayout) {
-    return <>{children || <Outlet />}</>;
-  }
-
   // Re-fetch branch from API to ensure currencyCode is up-to-date
   // (handles stale localStorage from before currencyCode was added)
   const { data: freshBranch } = useQuery({
@@ -72,15 +62,25 @@ export const POSLayout = ({ children, title, hideHeader = false }: POSLayoutProp
     }
   }, [freshBranch, selectedBranch, setSelectedBranch]);
 
+  // If inside AdminLayout or an /admin/ route, step aside completely and render contents directly!
+  if (adminContext.isInAdminLayout || location.pathname.startsWith('/admin/')) {
+    return <>{children || <Outlet />}</>;
+  }
+
+  // If already inside an outer POSLayout, don't duplicate layout
+  if (parentPOS.isInPOSLayout) {
+    return <>{children || <Outlet />}</>;
+  }
+
   if (!selectedBranch) {
     return (
       <div className="min-h-dvh bg-slate-950 flex items-center justify-center pt-safe-top">
         <div className="text-center">
-          <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-16 h-16 text-slate-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
           <h2 className="text-xl font-semibold text-white mb-2">No Branch Selected</h2>
-          <p className="text-gray-400">Please select a branch to use the POS terminal</p>
+          <p className="text-slate-400">Please select a branch to use the POS terminal</p>
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useAuthStore } from '../stores/auth-store';
+import { useAuthStore, type User } from '../stores/auth-store';
+import apiClient from '../lib/api-client';
 import { useBranchStore } from '../stores/branch-store';
 import { SyncService } from '../services/sync-service';
 
@@ -85,6 +86,7 @@ export const useWebSocket = (options: UseWebSocketOptions = {}) => {
     });
 
     socketRef.current = socket;
+    let disposed = false;
 
     // Connection event handlers
     socket.on('connect', () => {
@@ -105,10 +107,22 @@ export const useWebSocket = (options: UseWebSocketOptions = {}) => {
       optionsRef.current.onConnect?.();
     });
 
-    socket.on('disconnect', (reason) => {
+    socket.on('disconnect', async (reason) => {
       console.log('WebSocket disconnected:', reason);
       setIsConnected(false);
       optionsRef.current.onDisconnect?.();
+      // Server revocation requires a fresh permission check before reconnecting.
+      if (reason === 'io server disconnect' && !disposed) {
+        try {
+          const { data: user } = await apiClient.get<User>('/auth/me');
+          if (disposed) return;
+          useAuthStore.getState().updateUser({ ...user, branchId: user.branchId ?? undefined });
+          socket.auth = { token: useAuthStore.getState().accessToken };
+          socket.connect();
+        } catch {
+          // Remain disconnected when the account no longer has access.
+        }
+      }
     });
 
     socket.on('connect_error', (error) => {
@@ -141,6 +155,7 @@ export const useWebSocket = (options: UseWebSocketOptions = {}) => {
 
     // Cleanup on unmount
     return () => {
+      disposed = true;
       if (socket) {
         socket.disconnect();
       }

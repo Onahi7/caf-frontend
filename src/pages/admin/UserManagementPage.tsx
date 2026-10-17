@@ -46,6 +46,7 @@ interface Branch {
   name: string;
   code: string;
   isHeadquarters?: boolean;
+  isActive?: boolean;
 }
 
 interface UserFormData {
@@ -84,14 +85,20 @@ export const UserManagementPage = () => {
 
   // Fetch users
   const { data: users, isLoading, error } = useQuery({
-    queryKey: queryKeys.users.list(),
+    queryKey: [...queryKeys.users.list(), currentUser?.id, currentUser?.role, currentUser?.branchId],
     queryFn: async () => {
-      const response = await apiClient.get('/users');
-      const payload = response.data?.data ?? response.data;
-      return (Array.isArray(payload) ? payload : []).map((u: any) => ({
-        ...u,
-        id: u.id || u._id,
-      })) as User[];
+      const users: User[] = [];
+      let page = 1;
+      let hasNext = true;
+      while (hasNext) {
+        const response = await apiClient.get('/users', { params: { page, limit: 100 } });
+        const payload = response.data?.data ?? response.data;
+        const batch: User[] = Array.isArray(payload) ? payload : [];
+        users.push(...batch.map((u) => ({ ...u, id: u.id || u._id || '' })));
+        hasNext = batch.length > 0 && response.data?.pagination?.hasNext === true;
+        page += 1;
+      }
+      return users;
     },
   });
 
@@ -115,7 +122,7 @@ export const UserManagementPage = () => {
   const branchOptions = canChooseBranch
     ? [
         { value: '', label: requiresBranch ? 'Select a branch' : 'No branch (HQ)' },
-        ...(branches || []).map(branch => ({
+        ...(branches || []).filter(branch => branch.isActive !== false).map(branch => ({
           value: branch._id || branch.id,
           label: `${branch.name} (${branch.code})`,
         })),
@@ -154,7 +161,7 @@ export const UserManagementPage = () => {
   // Create user mutation
   const createMutation = useMutation({
     mutationFn: async (data: UserFormData) => {
-      const branchId = requiresBranch ? (canChooseBranch ? data.branchId : outletBranchId) : '';
+      const branchId = canChooseBranch ? data.branchId : outletBranchId;
       const payload = {
         ...data,
         branchId: branchId || undefined,
@@ -177,13 +184,13 @@ export const UserManagementPage = () => {
   const updateMutation = useMutation({
     mutationFn: async (data: UserFormData) => {
       if (!editingUser) return;
-      const branchId = requiresBranch ? (canChooseBranch ? data.branchId : outletBranchId) : '';
-      const payload: Partial<UserFormData> = {
+      const branchId = canChooseBranch ? data.branchId : outletBranchId;
+      const payload: Omit<Partial<UserFormData>, 'branchId'> & { branchId?: string | null } = {
         email: data.email,
         firstName: data.firstName,
         lastName: data.lastName,
         role: data.role,
-        branchId: branchId || undefined,
+        branchId: branchId || null,
       };
       // Only include password if it's provided
       if (data.password) {
@@ -374,6 +381,8 @@ export const UserManagementPage = () => {
         const targetUserId = user._id || user.id;
         const isSelf = Boolean(currentUserId && targetUserId && currentUserId === targetUserId);
         const canDelete = currentUser?.role === 'super_admin' && !isSelf;
+        const canManage = currentUser?.role === 'super_admin' ||
+          (user.role !== 'super_admin' && (canChooseBranch || ['cashier', 'marketer'].includes(user.role)));
         const isTogglingThisUser = toggleStatusMutation.isPending && 
           ((toggleStatusMutation.variables?._id || toggleStatusMutation.variables?.id) === targetUserId);
         return (
@@ -382,10 +391,11 @@ export const UserManagementPage = () => {
               size="sm"
               variant="secondary"
               onClick={() => handleOpenModal(user)}
+              disabled={!canManage}
             >
               Edit
             </Button>
-            {!isSelf && (
+            {!isSelf && canManage && (
               <Button
                 size="sm"
                 variant="ghost"
@@ -491,7 +501,7 @@ export const UserManagementPage = () => {
                   placeholder="--------"
                 />
                 {!editingUser && (
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     Min 8 chars with uppercase, lowercase, number & special char (@$!%*?&)
                   </p>
                 )}
@@ -539,7 +549,7 @@ export const UserManagementPage = () => {
                   })}
                   error={errors.branchId?.message}
                   options={branchOptions}
-                  disabled={!requiresBranch || !canChooseBranch}
+                  disabled={!canChooseBranch}
                 />
               </div>
 

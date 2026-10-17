@@ -1,6 +1,13 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+
+// Module-level modal stack so stacked overlays behave correctly:
+// only the top-most modal reacts to Escape, and background scroll is
+// only released when the last open modal has closed.
+let openModalCount = 0;
+let bodyOverflowBeforeLock = '';
+const modalStack: symbol[] = [];
 
 interface ModalProps {
   isOpen: boolean;
@@ -19,11 +26,19 @@ export const Modal = ({
 }: ModalProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const modalIdRef = useRef<symbol>(Symbol('modal'));
+  const titleId = useId();
 
   useEffect(() => {
     if (isOpen) {
+      const modalId = modalIdRef.current;
+      modalStack.push(modalId);
+      openModalCount += 1;
+      if (openModalCount === 1) {
+        bodyOverflowBeforeLock = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+      }
       previousFocusRef.current = document.activeElement as HTMLElement;
-      document.body.style.overflow = 'hidden';
 
       const timer = setTimeout(() => {
         if (!containerRef.current) return;
@@ -65,7 +80,12 @@ export const Modal = ({
 
       return () => {
         clearTimeout(timer);
-        document.body.style.overflow = 'unset';
+        const index = modalStack.lastIndexOf(modalId);
+        if (index !== -1) modalStack.splice(index, 1);
+        openModalCount = Math.max(0, openModalCount - 1);
+        if (openModalCount === 0) {
+          document.body.style.overflow = bodyOverflowBeforeLock;
+        }
       };
     }
     return undefined;
@@ -75,6 +95,9 @@ export const Modal = ({
     if (!isOpen) return undefined;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Only the top-most open modal handles keyboard shortcuts
+      if (modalStack[modalStack.length - 1] !== modalIdRef.current) return;
+
       if (e.key === 'Escape') {
         onClose();
         return;
@@ -88,11 +111,19 @@ export const Modal = ({
 
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
+        const active = document.activeElement;
 
-        if (e.shiftKey && document.activeElement === first) {
+        // If focus escaped the dialog entirely, pull it back to the first element
+        if (!containerRef.current?.contains(active)) {
+          e.preventDefault();
+          first.focus();
+          return;
+        }
+
+        if (e.shiftKey && active === first) {
           e.preventDefault();
           last.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
+        } else if (!e.shiftKey && active === last) {
           e.preventDefault();
           first.focus();
         }
@@ -102,7 +133,6 @@ export const Modal = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = 'unset';
       if (
         previousFocusRef.current &&
         typeof previousFocusRef.current.focus === 'function' &&
@@ -128,7 +158,7 @@ export const Modal = ({
       className="fixed inset-0 z-[70] flex items-end justify-center overflow-hidden p-0 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
-      aria-labelledby={title ? 'modal-title' : undefined}
+      aria-labelledby={title ? titleId : undefined}
     >
       {/* Backdrop */}
       <div
@@ -150,7 +180,7 @@ export const Modal = ({
         {/* Header */}
         {title && (
           <div className="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-white/[0.08] bg-slate-900/80 backdrop-blur-md px-5 py-4 sm:px-6">
-            <h2 id="modal-title" className="min-w-0 truncate text-base font-semibold text-slate-100 sm:text-lg">
+            <h2 id={titleId} className="min-w-0 truncate text-base font-semibold text-slate-100 sm:text-lg">
               {title}
             </h2>
             <button

@@ -8,9 +8,12 @@ import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { Select } from '../../components/ui/Select';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useToast } from '../../hooks/useToast';
+import { getErrorMessage } from '../../lib/error-utils';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDate } from '../../lib/date-format';
 import { buildApiUrl } from '../../lib/api-utils';
 import { SaveReportButton } from '../../components/finance/SaveReportButton';
 import {
@@ -83,6 +86,8 @@ export function ExpenseReportPage() {
     return d.toISOString().split('T')[0];
   });
   const [to, setTo] = useState(() => new Date().toISOString().split('T')[0]);
+  const [exporting, setExporting] = useState(false);
+  const { showSuccess, showError } = useToast();
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.reports.expenses({ branchId: effectiveBranchId, from, to, groupBy }),
@@ -110,6 +115,7 @@ export function ExpenseReportPage() {
   });
 
   const handleExport = async () => {
+    setExporting(true);
     try {
       const response = await apiClient.get(
         buildApiUrl('/reports/expenses/export', {
@@ -127,8 +133,12 @@ export function ExpenseReportPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
+      showSuccess('Export ready', 'Your report download has started.');
     } catch (err) {
-      console.error('Export failed:', err);
+      showError(getErrorMessage(err, 'Export failed'));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -149,7 +159,7 @@ export function ExpenseReportPage() {
     {
       key: 'percentage',
       header: '%',
-      render: (item: ExpenseByCategory) => <span className="text-gray-400">{item.percentage.toFixed(1)}%</span>,
+      render: (item: ExpenseByCategory) => <span className="text-slate-400">{item.percentage.toFixed(1)}%</span>,
     },
   ];
 
@@ -175,7 +185,7 @@ export function ExpenseReportPage() {
     {
       key: 'date',
       header: 'Date',
-      render: (item: TopExpense) => new Date(item.date).toLocaleDateString(),
+      render: (item: TopExpense) => formatDate(item.date),
     },
     {
       key: 'amount',
@@ -196,13 +206,13 @@ export function ExpenseReportPage() {
               params={{ branchId: filterBranchId || undefined, from, to, groupBy }}
               defaultName="Expense Report"
             />
-            <Button variant="secondary" onClick={handleExport} disabled={!data}>
+            <Button variant="secondary" onClick={handleExport} disabled={!data || exporting} isLoading={exporting}>
               Export CSV
             </Button>
           </div>
         </div>
 
-        <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6 mb-6">
+        <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-end gap-4">
             {isSuperAdmin && (
               <div className="flex-1">
@@ -215,11 +225,11 @@ export function ExpenseReportPage() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Group By</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Group By</label>
               <select
                 value={groupBy}
                 onChange={(e) => setGroupBy(e.target.value)}
-                className="bg-white/5 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm"
               >
                 {GROUP_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
@@ -227,21 +237,21 @@ export function ExpenseReportPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">From</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">From</label>
               <input
                 type="date"
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
-                className="bg-white/5 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">To</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">To</label>
               <input
                 type="date"
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
-                className="bg-white/5 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm"
               />
             </div>
             <Button variant="primary" onClick={() => refetch()}>Apply</Button>
@@ -282,7 +292,7 @@ export function ExpenseReportPage() {
             {/* Category Breakdown Chart */}
             {data.byCategory && data.byCategory.length > 0 && (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+                <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
                   <h2 className="text-lg font-semibold text-white mb-4">Expenses by Category</h2>
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
@@ -310,7 +320,7 @@ export function ExpenseReportPage() {
                   </ResponsiveContainer>
                 </div>
 
-                <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+                <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
                   <h2 className="text-lg font-semibold text-white mb-4">Expenses by Period</h2>
                   {data.byPeriod && data.byPeriod.length > 0 ? (
                     <ResponsiveContainer width="100%" height={300}>
@@ -326,7 +336,7 @@ export function ExpenseReportPage() {
                       </BarChart>
                     </ResponsiveContainer>
                   ) : (
-                    <p className="text-gray-400 text-center py-12">No period data available</p>
+                    <p className="text-slate-400 text-center py-12">No period data available</p>
                   )}
                 </div>
               </div>
@@ -335,7 +345,7 @@ export function ExpenseReportPage() {
             {/* Tables */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {data.byCategory && data.byCategory.length > 0 && (
-                <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
+                <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
                   <div className="px-6 py-4 border-b border-white/5">
                     <h2 className="text-lg font-semibold text-white">By Category</h2>
                   </div>
@@ -344,7 +354,7 @@ export function ExpenseReportPage() {
               )}
 
               {groupBy !== 'category' && data.byPeriod && data.byPeriod.length > 0 && (
-                <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
+                <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
                   <div className="px-6 py-4 border-b border-white/5">
                     <h2 className="text-lg font-semibold text-white">By Period</h2>
                   </div>
@@ -354,7 +364,7 @@ export function ExpenseReportPage() {
             </div>
 
             {data.topExpenses && data.topExpenses.length > 0 && (
-              <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
+              <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
                 <div className="px-6 py-4 border-b border-white/5">
                   <h2 className="text-lg font-semibold text-white">Top 10 Expenses</h2>
                 </div>

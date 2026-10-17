@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Search, Plus, Package } from 'lucide-react';
 import apiClient from '../../lib/api-client';
@@ -35,9 +35,10 @@ export const ProductPickerModal = ({ open, onClose, branchId }: ProductPickerMod
   const keysCount = useQuickKeysStore((s) => s.keys.length);
   const isFull = keysCount >= MAX_QUICK_KEYS;
 
-  useEffect(() => {
-    if (!open) setSearch('');
-  }, [open]);
+  const handleClose = () => {
+    setSearch('');
+    onClose();
+  };
 
   const { data: products, isLoading } = useQuery({
     queryKey: ['quick-key-picker', debouncedSearch, branchId],
@@ -46,8 +47,9 @@ export const ProductPickerModal = ({ open, onClose, branchId }: ProductPickerMod
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (branchId) params.set('branchId', branchId);
       params.set('limit', '30');
-      const res = await apiClient.get<PickerProduct[]>(`/products?${params}`);
-      return res.data;
+      const res = await apiClient.get<PickerProduct[] | { data?: PickerProduct[] }>(`/products?${params}`);
+      const body = res.data;
+      return Array.isArray(body) ? body : (body?.data ?? []);
     },
     enabled: open,
   });
@@ -78,7 +80,7 @@ export const ProductPickerModal = ({ open, onClose, branchId }: ProductPickerMod
   return (
     <Modal
       isOpen={open}
-      onClose={onClose}
+      onClose={handleClose}
       title={`Add Quick Key (${keysCount}/${MAX_QUICK_KEYS})`}
       size="lg"
     >

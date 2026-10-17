@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
+import { AdminPageHeader } from '../../components/admin';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
@@ -15,6 +16,7 @@ import { BranchSelector } from '../../components/BranchSelector';
 import { useToast } from '../../hooks/useToast';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDate } from '../../lib/date-format';
 import { useCurrency } from '../../hooks/useCurrency';
 import { unwrapArray } from '../../lib/unwrap-response';
 
@@ -312,7 +314,7 @@ export const BatchManagementPage = () => {
       render: (batch: Batch) => (
         <div>
           <div className="font-medium whitespace-normal break-words max-w-xs">{batch.productName}</div>
-          <div className="text-sm text-gray-400">SKU: {batch.productSku}</div>
+          <div className="text-sm text-slate-400">SKU: {batch.productSku}</div>
         </div>
       ),
     },
@@ -322,7 +324,7 @@ export const BatchManagementPage = () => {
       render: (batch: Batch) => (
         <div>
           <div className="text-sm">Lot: {batch.lotNumber}</div>
-          <div className="text-xs text-gray-400">{batch.branchName}</div>
+          <div className="text-xs text-slate-400">{batch.branchName}</div>
         </div>
       ),
     },
@@ -358,7 +360,7 @@ export const BatchManagementPage = () => {
         return (
           <div>
             <div className="text-sm">
-              {new Date(batch.expiryDate).toLocaleDateString()}
+              {formatDate(batch.expiryDate)}
             </div>
             <div className={`text-xs font-medium ${warning.color}`}>
               {warning.label}
@@ -393,19 +395,16 @@ export const BatchManagementPage = () => {
   return (
     <AdminLayout title="Batch Management">
       <div className="space-y-5">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Batches</h1>
-            <p className="text-gray-400 mt-1">Manage inventory batches and expiry dates</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <BranchSelector />
-            <Button onClick={() => handleOpenModal()}>
-              Add Batch
-            </Button>
-          </div>
-        </div>
+        <AdminPageHeader
+          title="Batches"
+          subtitle="Manage inventory batches and expiry dates"
+          actions={
+            <>
+              <BranchSelector />
+              <Button onClick={() => handleOpenModal()}>Add Batch</Button>
+            </>
+          }
+        />
 
         {/* Filters */}
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -448,7 +447,7 @@ export const BatchManagementPage = () => {
                 type="checkbox"
                 checked={showExpiring}
                 onChange={(e) => setShowExpiring(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-accent-green focus:ring-accent-green"
+                className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
               />
               <span className="text-sm">Show Expiring Soon (90 days)</span>
             </label>
@@ -532,7 +531,7 @@ export const BatchManagementPage = () => {
               disabled={!!editingBatch}
             />
             {editingBatch ? (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-slate-400">
                 Quantity cannot be edited here. Use Stock Adjustments for stock corrections so the movement is audited.
               </p>
             ) : null}

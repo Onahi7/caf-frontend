@@ -14,6 +14,8 @@ import { buildApiUrl } from '../../lib/api-utils';
 import { getErrorMessage } from '../../lib/error-utils';
 import { Plus, TrendingUp, TrendingDown, DollarSign, ArrowRightLeft } from 'lucide-react';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useConfirm } from '../../hooks/useConfirm';
+import { formatDate } from '../../lib/date-format';
 
 interface CashEntry {
   _id: string;
@@ -39,18 +41,37 @@ interface CashSummary {
 
 const typeBadge = (type: string) => {
   const s: Record<string, string> = {
-    income: 'bg-green-500/10 text-green-400 border-green-500/20',
-    expense: 'bg-red-500/10 text-red-400 border-red-500/20',
+    income: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    expense: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
     transfer: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     loan: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     salary: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
-    other: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
+    other: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
   };
   return s[type] || s.other;
 };
 
+const amountStyleForType = (type: string): { className: string; sign: string } => {
+  switch (type) {
+    case 'income':
+      return { className: 'text-emerald-400', sign: '+' };
+    case 'expense':
+      return { className: 'text-rose-400', sign: '-' };
+    case 'transfer':
+      return { className: 'text-blue-400', sign: '' };
+    case 'loan':
+      return { className: 'text-amber-400', sign: '' };
+    case 'salary':
+      return { className: 'text-purple-400', sign: '' };
+    default:
+      return { className: 'text-slate-300', sign: '' };
+  }
+};
+
 const CATEGORIES = ['sales', 'services', 'supplies', 'maintenance', 'utilities', 'rent', 'salaries', 'transport', 'marketing', 'insurance', 'tax', 'petty_cash', 'other'];
 const TYPES = ['income', 'expense', 'transfer', 'loan', 'salary', 'other'];
+
+const EMPTY_FORM = { type: 'expense', category: 'supplies', amount: '', description: '', notes: '', receiptNumber: '', entryDate: '' };
 
 export function FinanceCashBookPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -60,12 +81,18 @@ export function FinanceCashBookPage() {
     return d.toISOString().slice(0, 10);
   });
   const [endDate, setEndDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [form, setForm] = useState({ type: 'expense', category: 'supplies', amount: '', description: '', notes: '', receiptNumber: '', entryDate: '' });
+  const [form, setForm] = useState({ ...EMPTY_FORM });
   const { selectedBranch } = useBranchStore();
   const branchId = getBranchId(selectedBranch);
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
   const { format } = useCurrency();
+  const requestConfirmation = useConfirm();
+
+  const handleCloseCreate = () => {
+    setIsCreateOpen(false);
+    setForm({ ...EMPTY_FORM });
+  };
 
   const { data: entries, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.financeManager.cashEntries.list({ branchId, startDate, endDate, page: 1, limit: 200 }),
@@ -92,8 +119,7 @@ export function FinanceCashBookPage() {
     onSuccess: () => {
       showSuccess('Cash entry recorded');
       queryClient.invalidateQueries({ queryKey: queryKeys.financeManager.cashEntries.all() });
-      setIsCreateOpen(false);
-      setForm({ type: 'expense', category: 'supplies', amount: '', description: '', notes: '', receiptNumber: '', entryDate: '' });
+      handleCloseCreate();
     },
     onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to create cash entry')),
   });
@@ -107,20 +133,44 @@ export function FinanceCashBookPage() {
     onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to delete entry')),
   });
 
+  const handleDelete = async (entry: CashEntry) => {
+    const confirmed = await requestConfirmation({
+      title: 'Delete this cash entry?',
+      message: `The ${entry.type} of ${format(entry.amount)} — "${entry.description}" will be removed from the cash book. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    deleteMutation.mutate(entry._id);
+  };
+
   const columns = [
     { key: 'type', header: 'Type', render: (e: CashEntry) => (
       <span className={`px-2 py-1 rounded-full text-xs font-medium border ${typeBadge(e.type)}`}>{e.type}</span>
     )},
-    { key: 'category', header: 'Category', render: (e: CashEntry) => <span className="text-gray-300 text-sm">{e.category.replace('_', ' ')}</span> },
+    { key: 'category', header: 'Category', render: (e: CashEntry) => <span className="text-slate-300 text-sm">{e.category.replace('_', ' ')}</span> },
     { key: 'description', header: 'Description' },
-    { key: 'amount', header: 'Amount', render: (e: CashEntry) => (
-      <span className={`font-semibold ${e.type === 'income' ? 'text-green-400' : 'text-red-400'}`}>
-        {e.type === 'income' ? '+' : '-'}{format(e.amount)}
-      </span>
-    )},
-    { key: 'entryDate', header: 'Date', render: (e: CashEntry) => new Date(e.entryDate).toLocaleDateString() },
+    { key: 'amount', header: 'Amount', render: (e: CashEntry) => {
+      const style = amountStyleForType(e.type);
+      return (
+        <span className={`font-semibold ${style.className}`}>
+          {style.sign}{format(e.amount)}
+        </span>
+      );
+    }},
+    { key: 'entryDate', header: 'Date', render: (e: CashEntry) => formatDate(e.entryDate) },
     { key: 'recordedBy', header: 'Recorded By', render: (e: CashEntry) => e.recordedBy ? `${e.recordedBy.firstName} ${e.recordedBy.lastName}` : '-' },
-    { key: 'actions', header: '', render: (e: CashEntry) => <Button size="sm" variant="ghost" className="text-red-400" onClick={() => deleteMutation.mutate(e._id)}>Delete</Button> },
+    { key: 'actions', header: '', render: (e: CashEntry) => (
+      <Button
+        size="sm"
+        variant="ghost"
+        className="text-rose-400"
+        onClick={() => void handleDelete(e)}
+        isLoading={deleteMutation.isPending && deleteMutation.variables === e._id}
+      >
+        Delete
+      </Button>
+    )},
   ];
 
   return (
@@ -129,7 +179,7 @@ export function FinanceCashBookPage() {
         <div className="flex items-center gap-3">
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
             className="px-3 py-2 rounded-xl bg-white/5 text-white border border-white/10 text-sm" />
-          <span className="text-gray-400">to</span>
+          <span className="text-slate-400">to</span>
           <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
             className="px-3 py-2 rounded-xl bg-white/5 text-white border border-white/10 text-sm" />
         </div>
@@ -139,8 +189,8 @@ export function FinanceCashBookPage() {
       {summary && (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
           {[
-            { label: 'Income', value: summary.totalIncome, icon: <TrendingUp className="w-4 h-4 text-green-400" />, color: 'bg-green-500/10 border-green-500/20' },
-            { label: 'Expenses', value: summary.totalExpense, icon: <TrendingDown className="w-4 h-4 text-red-400" />, color: 'bg-red-500/10 border-red-500/20' },
+            { label: 'Income', value: summary.totalIncome, icon: <TrendingUp className="w-4 h-4 text-emerald-400" />, color: 'bg-emerald-500/10 border-emerald-500/20' },
+            { label: 'Expenses', value: summary.totalExpense, icon: <TrendingDown className="w-4 h-4 text-rose-400" />, color: 'bg-rose-500/10 border-rose-500/20' },
             { label: 'Transfers', value: summary.totalTransfer, icon: <ArrowRightLeft className="w-4 h-4 text-blue-400" />, color: 'bg-blue-500/10 border-blue-500/20' },
             { label: 'Loans', value: summary.totalLoan, icon: <DollarSign className="w-4 h-4 text-amber-400" />, color: 'bg-amber-500/10 border-amber-500/20' },
             { label: 'Salaries', value: summary.totalSalary, icon: <DollarSign className="w-4 h-4 text-purple-400" />, color: 'bg-purple-500/10 border-purple-500/20' },
@@ -148,7 +198,7 @@ export function FinanceCashBookPage() {
           ].map((c) => (
             <div key={c.label} className={`rounded-xl border p-3 ${c.color}`}>
               <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-gray-400">{c.label}</span>
+                <span className="text-xs text-slate-400">{c.label}</span>
                 {c.icon}
               </div>
               <p className="text-lg font-bold text-white">{format(c.value)}</p>
@@ -165,7 +215,7 @@ export function FinanceCashBookPage() {
         />
       )}
 
-      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Record Cash Entry">
+      <Modal isOpen={isCreateOpen} onClose={handleCloseCreate} title="Record Cash Entry">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -211,7 +261,7 @@ export function FinanceCashBookPage() {
               className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10" />
           </div>
           <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={handleCloseCreate}>Cancel</Button>
             <Button onClick={() => createMutation.mutate()} isLoading={createMutation.isPending}>Record</Button>
           </div>
         </div>

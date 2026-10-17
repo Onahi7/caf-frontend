@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CreditCard, ReceiptText, Wallet } from 'lucide-react';
@@ -8,12 +8,15 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Loading } from '../../components/ui/Loading';
 import { Error as ErrorDisplay } from '../../components/ui/Error';
+import { Pagination } from '../../components/ui/Pagination';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useToast } from '../../hooks/useToast';
+import { usePagination, calculatePaginationMeta } from '../../hooks/usePagination';
 import { queryKeys } from '../../lib/query-keys';
 import { getErrorMessage } from '../../lib/error-utils';
+import { formatDate, formatDateTime } from '../../lib/date-format';
 import apiClient from '../../lib/api-client';
 
 type CreditPaymentStatus = 'unpaid' | 'partial' | 'paid' | 'overdue';
@@ -42,6 +45,12 @@ interface CreditSale {
   payments?: SalePayment[];
 }
 
+interface CreditSummary {
+  openCount: number;
+  outstandingBalance: number;
+  paidCount: number;
+}
+
 const paymentMethodOptions = [
   { value: 'cash', label: 'Cash' },
   { value: 'card', label: 'Card' },
@@ -66,36 +75,50 @@ export function CreditSalesPage() {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [paymentReference, setPaymentReference] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
+  const pagination = usePagination({ initialLimit: 20 });
+
+  useEffect(() => {
+    pagination.setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
+
+  const statusParam =
+    statusFilter === 'open' ? 'unpaid,partial,overdue' : statusFilter === 'paid' ? 'paid' : undefined;
 
   const params = useMemo(() => {
-    const base: Record<string, string> = {
+    const base: Record<string, string | number> = {
       branchId: branchId || '',
       saleType: 'credit',
-      limit: '200',
+      skip: (pagination.state.page - 1) * pagination.state.limit,
+      limit: pagination.state.limit,
     };
-
-    if (statusFilter === 'paid') {
-      base.paymentStatus = 'paid';
+    if (statusParam) {
+      base.paymentStatus = statusParam;
     }
-
-    if (user?.role === 'cashier' && user?.id) {
-      base.cashierId = user.id;
-    }
-
     return base;
-  }, [branchId, statusFilter, user?.role, user?.id]);
+  }, [branchId, pagination.state.page, pagination.state.limit, statusParam]);
 
-  const { data, isLoading, error } = useQuery({
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: queryKeys.sales.credit(params),
     queryFn: async () => {
       const response = await apiClient.get('/sales', { params });
-      const sales = (response.data?.data || []) as CreditSale[];
+      const body = response.data as { data?: CreditSale[]; total?: number };
+      const sales = (body?.data ?? []) as CreditSale[];
+      return { sales, total: Number(body?.total ?? sales.length) };
+    },
+    enabled: !!branchId,
+  });
 
-      if (statusFilter === 'open') {
-        return sales.filter((sale) => sale.paymentStatus === 'unpaid' || sale.paymentStatus === 'partial' || sale.paymentStatus === 'overdue');
-      }
-
-      return sales;
+  const { data: summary } = useQuery({
+    queryKey: [...queryKeys.sales.all(), 'credit-summary', branchId],
+    queryFn: async () => {
+      const response = await apiClient.get('/sales/credit-summary', { params: { branchId } });
+      return (response.data?.data ?? response.data) as CreditSummary;
     },
     enabled: !!branchId,
   });
@@ -134,7 +157,8 @@ export function CreditSalesPage() {
     },
   });
 
-  const sales = data || [];
+  const sales = data?.sales ?? [];
+  const total = data?.total ?? 0;
   const parsedPaymentAmount = Number(paymentAmount);
   const paymentWouldOverpay = selectedSale
     ? Number.isFinite(parsedPaymentAmount) && parsedPaymentAmount > selectedSale.balanceDue
@@ -142,9 +166,6 @@ export function CreditSalesPage() {
   const remainingAfterPayment = selectedSale && Number.isFinite(parsedPaymentAmount)
     ? Math.max(0, selectedSale.balanceDue - parsedPaymentAmount)
     : selectedSale?.balanceDue ?? 0;
-  const outstandingBalance = sales
-    .filter((sale) => sale.paymentStatus !== 'paid')
-    .reduce((sum, sale) => sum + (sale.balanceDue || 0), 0);
 
   const pageContent = (
     <>
@@ -152,7 +173,7 @@ export function CreditSalesPage() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-white">Credit Sales</h1>
-            <p className="mt-2 text-sm text-gray-400">
+            <p className="mt-2 text-sm text-slate-400">
               Track outstanding balances, record customer payments, and keep branch receivables tidy.
             </p>
             {user?.role === 'cashier' && (
@@ -166,20 +187,22 @@ export function CreditSalesPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 w-full lg:max-w-[520px]">
-            <div className="rounded-2xl border border-white/10 bg-primary-dark/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-400">Open credit sales</p>
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Open credit sales</p>
               <p className="mt-2 text-2xl font-bold text-white">
-                {sales.filter((sale) => sale.paymentStatus !== 'paid').length}
+                {summary ? summary.openCount : '—'}
               </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-primary-dark/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-400">Outstanding balance</p>
-              <p className="mt-2 text-2xl font-bold text-amber-300">{format(outstandingBalance)}</p>
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Outstanding balance</p>
+              <p className="mt-2 text-2xl font-bold text-amber-300">
+                {summary ? format(summary.outstandingBalance) : '—'}
+              </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-primary-dark/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-gray-400">Fully paid</p>
+            <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Fully paid</p>
               <p className="mt-2 text-2xl font-bold text-emerald-300">
-                {sales.filter((sale) => sale.paymentStatus === 'paid').length}
+                {summary ? summary.paidCount : '—'}
               </p>
             </div>
           </div>
@@ -197,8 +220,8 @@ export function CreditSalesPage() {
               onClick={() => setStatusFilter(option.key as typeof statusFilter)}
               className={`rounded-xl border px-4 py-2 text-sm transition-colors ${
                 statusFilter === option.key
-                  ? 'border-accent-green bg-accent-green/15 text-accent-green'
-                  : 'border-white/10 bg-primary-dark/60 text-gray-300 hover:border-white/20 hover:text-white'
+                  ? 'border-emerald-500 bg-emerald-500/15 text-emerald-400'
+                  : 'border-white/10 bg-slate-900/60 text-slate-300 hover:border-white/20 hover:text-white'
               }`}
             >
               {option.label}
@@ -209,97 +232,107 @@ export function CreditSalesPage() {
         {isLoading ? (
           <Loading />
         ) : error ? (
-          <ErrorDisplay message="Failed to load credit sales" />
+          <ErrorDisplay message="Failed to load credit sales" onRetry={() => { void refetch(); }} />
         ) : (
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            {sales.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-primary-dark/50 p-8 text-center text-gray-400 xl:col-span-2">
-                No credit sales match this filter yet.
-              </div>
-            ) : (
-              sales.map((sale) => {
-                const statusTone =
-                  sale.paymentStatus === 'paid'
-                    ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
-                    : sale.paymentStatus === 'partial'
-                      ? 'text-amber-300 border-amber-500/30 bg-amber-500/10'
-                      : 'text-rose-300 border-rose-500/30 bg-rose-500/10';
+          <>
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+              {sales.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-white/10 bg-slate-900/50 p-8 text-center text-slate-400 xl:col-span-2">
+                  No credit sales match this filter yet.
+                </div>
+              ) : (
+                sales.map((sale) => {
+                  const statusTone =
+                    sale.paymentStatus === 'paid'
+                      ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10'
+                      : sale.paymentStatus === 'partial'
+                        ? 'text-amber-300 border-amber-500/30 bg-amber-500/10'
+                        : 'text-rose-300 border-rose-500/30 bg-rose-500/10';
 
-                return (
-                  <div
-                    key={sale._id}
-                    className="rounded-2xl border border-white/10 bg-primary-dark/70 p-5 shadow-sm"
-                  >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h2 className="text-lg font-semibold text-white">
-                            {sale.customerName || 'Walk-in credit customer'}
-                          </h2>
-                          <span className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${statusTone}`}>
-                            {sale.paymentStatus}
+                  return (
+                    <div
+                      key={sale._id}
+                      className="rounded-2xl border border-white/10 bg-slate-900/70 p-5 shadow-sm"
+                    >
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-lg font-semibold text-white">
+                              {sale.customerName || 'Walk-in credit customer'}
+                            </h2>
+                            <span className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${statusTone}`}>
+                              {sale.paymentStatus}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-sm text-slate-400">{sale.receiptNumber}</p>
+                          {sale.customerPhone ? (
+                            <p className="mt-1 text-sm text-slate-500">{sale.customerPhone}</p>
+                          ) : null}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 text-sm w-full sm:max-w-[260px]">
+                          <div className="rounded-xl bg-white/5 p-3">
+                            <p className="text-slate-400">Total</p>
+                            <p className="mt-1 font-semibold text-white">{format(sale.total)}</p>
+                          </div>
+                          <div className="rounded-xl bg-white/5 p-3">
+                            <p className="text-slate-400">Balance</p>
+                            <p className="mt-1 font-semibold text-amber-300">{format(sale.balanceDue)}</p>
+                          </div>
+                          <div className="rounded-xl bg-white/5 p-3">
+                            <p className="text-slate-400">Paid</p>
+                            <p className="mt-1 font-semibold text-emerald-300">{format(sale.amountPaid)}</p>
+                          </div>
+                          <div className="rounded-xl bg-white/5 p-3">
+                            <p className="text-slate-400">Due date</p>
+                            <p className="mt-1 font-semibold text-white">
+                              {sale.dueDate ? formatDate(sale.dueDate) : 'Not set'}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex flex-col gap-3 border-t border-white/5 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-wrap gap-4 text-sm text-slate-400">
+                          <span className="inline-flex items-center gap-2">
+                            <ReceiptText className="h-4 w-4" />
+                            Created {formatDateTime(sale.createdAt)}
+                          </span>
+                          <span className="inline-flex items-center gap-2">
+                            <Wallet className="h-4 w-4" />
+                            {sale.payments?.length || 0} payment entries
                           </span>
                         </div>
-                        <p className="mt-1 text-sm text-gray-400">{sale.receiptNumber}</p>
-                        {sale.customerPhone ? (
-                          <p className="mt-1 text-sm text-gray-500">{sale.customerPhone}</p>
+
+                        {sale.paymentStatus !== 'paid' ? (
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              setSelectedSale(sale);
+                              setPaymentAmount(String(sale.balanceDue));
+                              setPaymentMethod('cash');
+                              setPaymentReference('');
+                              setPaymentNotes('');
+                            }}
+                          >
+                            Record Payment
+                          </Button>
                         ) : null}
                       </div>
-
-                      <div className="grid grid-cols-2 gap-3 text-sm w-full sm:max-w-[260px]">
-                        <div className="rounded-xl bg-white/5 p-3">
-                          <p className="text-gray-400">Total</p>
-                          <p className="mt-1 font-semibold text-white">{format(sale.total)}</p>
-                        </div>
-                        <div className="rounded-xl bg-white/5 p-3">
-                          <p className="text-gray-400">Balance</p>
-                          <p className="mt-1 font-semibold text-amber-300">{format(sale.balanceDue)}</p>
-                        </div>
-                        <div className="rounded-xl bg-white/5 p-3">
-                          <p className="text-gray-400">Paid</p>
-                          <p className="mt-1 font-semibold text-emerald-300">{format(sale.amountPaid)}</p>
-                        </div>
-                        <div className="rounded-xl bg-white/5 p-3">
-                          <p className="text-gray-400">Due date</p>
-                          <p className="mt-1 font-semibold text-white">
-                            {sale.dueDate ? new Date(sale.dueDate).toLocaleDateString() : 'Not set'}
-                          </p>
-                        </div>
-                      </div>
                     </div>
+                  );
+                })
+              )}
+            </div>
 
-                    <div className="mt-4 flex flex-col gap-3 border-t border-white/5 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-400">
-                        <span className="inline-flex items-center gap-2">
-                          <ReceiptText className="h-4 w-4" />
-                          Created {new Date(sale.createdAt).toLocaleString()}
-                        </span>
-                        <span className="inline-flex items-center gap-2">
-                          <Wallet className="h-4 w-4" />
-                          {sale.payments?.length || 0} payment entries
-                        </span>
-                      </div>
-
-                      {sale.paymentStatus !== 'paid' ? (
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            setSelectedSale(sale);
-                            setPaymentAmount(String(sale.balanceDue));
-                            setPaymentMethod('cash');
-                            setPaymentReference('');
-                            setPaymentNotes('');
-                          }}
-                        >
-                          Record Payment
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })
+            {total > 0 && (
+              <Pagination
+                meta={calculatePaginationMeta(pagination.state.page, pagination.state.limit, total)}
+                onPageChange={pagination.setPage}
+                onLimitChange={pagination.setLimit}
+              />
             )}
-          </div>
+          </>
         )}
       </div>
 
@@ -311,18 +344,18 @@ export function CreditSalesPage() {
       >
         {selectedSale ? (
           <div className="space-y-5">
-            <div className="rounded-2xl border border-white/10 bg-primary-darker/70 p-4">
-              <p className="text-sm text-gray-400">{selectedSale.receiptNumber}</p>
+            <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-4">
+              <p className="text-sm text-slate-400">{selectedSale.receiptNumber}</p>
               <h3 className="mt-1 text-lg font-semibold text-white">
                 {selectedSale.customerName || 'Credit customer'}
               </h3>
               <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                 <div className="rounded-xl bg-white/5 p-3">
-                  <p className="text-gray-400">Outstanding</p>
+                  <p className="text-slate-400">Outstanding</p>
                   <p className="mt-1 font-semibold text-amber-300">{format(selectedSale.balanceDue)}</p>
                 </div>
                 <div className="rounded-xl bg-white/5 p-3">
-                  <p className="text-gray-400">Already paid</p>
+                  <p className="text-slate-400">Already paid</p>
                   <p className="mt-1 font-semibold text-emerald-300">{format(selectedSale.amountPaid)}</p>
                 </div>
               </div>
@@ -330,7 +363,7 @@ export function CreditSalesPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-2">
-                <span className="text-sm text-gray-300">Amount received</span>
+                <span className="text-sm text-slate-300">Amount received</span>
                 <input
                   value={paymentAmount}
                   onChange={(event) => setPaymentAmount(event.target.value)}
@@ -338,7 +371,7 @@ export function CreditSalesPage() {
                   min="0"
                   max={selectedSale.balanceDue}
                   step="0.01"
-                  className="w-full rounded-xl border border-white/10 bg-primary-darker px-4 py-3 text-white outline-none focus:border-accent-green"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-400/60"
                 />
                 {paymentWouldOverpay ? (
                   <p className="text-xs text-rose-300">Payment cannot exceed the outstanding balance.</p>
@@ -346,11 +379,11 @@ export function CreditSalesPage() {
               </label>
 
               <label className="space-y-2">
-                <span className="text-sm text-gray-300">Payment method</span>
+                <span className="text-sm text-slate-300">Payment method</span>
                 <select
                   value={paymentMethod}
                   onChange={(event) => setPaymentMethod(event.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-primary-darker px-4 py-3 text-white outline-none focus:border-accent-green"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-400/60"
                 >
                   {paymentMethodOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -361,29 +394,29 @@ export function CreditSalesPage() {
               </label>
 
               <label className="space-y-2 sm:col-span-2">
-                <span className="text-sm text-gray-300">Reference</span>
+                <span className="text-sm text-slate-300">Reference</span>
                 <input
                   value={paymentReference}
                   onChange={(event) => setPaymentReference(event.target.value)}
                   type="text"
-                  className="w-full rounded-xl border border-white/10 bg-primary-darker px-4 py-3 text-white outline-none focus:border-accent-green"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-400/60"
                 />
               </label>
 
               <label className="space-y-2 sm:col-span-2">
-                <span className="text-sm text-gray-300">Notes</span>
+                <span className="text-sm text-slate-300">Notes</span>
                 <textarea
                   value={paymentNotes}
                   onChange={(event) => setPaymentNotes(event.target.value)}
                   rows={3}
-                  className="w-full rounded-xl border border-white/10 bg-primary-darker px-4 py-3 text-white outline-none focus:border-accent-green"
+                  className="w-full rounded-xl border border-white/10 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-400/60"
                 />
               </label>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-400">Remaining after payment</span>
+                <span className="text-slate-400">Remaining after payment</span>
                 <span className="font-semibold text-white">{format(remainingAfterPayment)}</span>
               </div>
             </div>
@@ -396,9 +429,9 @@ export function CreditSalesPage() {
                     <div key={`${payment.receivedAt}-${index}`} className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
                       <div className="flex items-center justify-between gap-3">
                         <span className="font-medium text-white">{format(payment.amount)}</span>
-                        <span className="text-xs text-gray-400">{new Date(payment.receivedAt).toLocaleString()}</span>
+                        <span className="text-xs text-slate-400">{formatDateTime(payment.receivedAt)}</span>
                       </div>
-                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+                      <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
                         <span className="capitalize">{payment.paymentMethod.replace(/_/g, ' ')}</span>
                         {payment.paymentReceiptNumber ? <span>{payment.paymentReceiptNumber}</span> : null}
                         {payment.balanceAfterPayment !== undefined ? <span>Balance: {format(payment.balanceAfterPayment)}</span> : null}

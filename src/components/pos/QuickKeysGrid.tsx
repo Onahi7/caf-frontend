@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useQuickKeysStore, type QuickKeyProduct, MAX_QUICK_KEYS } from '../../stores/quick-keys-store';
 import { useToast } from '../../hooks/useToast';
+import apiClient from '../../lib/api-client';
 import { ProductPickerModal } from './ProductPickerModal';
 
 export interface QuickKeyProductLite {
@@ -19,6 +21,20 @@ interface QuickKeysGridProps {
   format: (n: number) => string;
   branchId: string | undefined;
   products: QuickKeyProductLite[];
+}
+
+interface ProductDoc {
+  _id?: string;
+  name?: string;
+  brand?: string;
+  sku?: string;
+  price?: number;
+  sellingPrice?: number;
+  basePrice?: number;
+  stock?: number;
+  quantityAvailable?: number;
+  imageUrl?: string;
+  packSizes?: QuickKeyProductLite['packSizes'];
 }
 
 const PACK_KEY_SEP = '::';
@@ -41,10 +57,53 @@ export const QuickKeysGrid = ({
     return m;
   }, [products]);
 
+  // Quick keys may reference products that are no longer in the loaded
+  // catalog pages. Fetch those by ID so tiles always work.
+  const missingIds = useMemo(() => {
+    const ids = new Set(keys.map((k) => k.productId));
+    return Array.from(ids).filter((id) => !productById.has(id)).sort();
+  }, [keys, productById]);
+
+  const { data: fetchedProducts } = useQuery({
+    queryKey: ['quick-key-products', branchId, missingIds.join(',')],
+    queryFn: async () => {
+      const results = await Promise.all(
+        missingIds.map(async (id) => {
+          try {
+            const response = await apiClient.get(`/products/${id}`);
+            return (response.data?.data ?? response.data) as ProductDoc;
+          } catch {
+            return null;
+          }
+        }),
+      );
+      return results
+        .filter((doc): doc is ProductDoc => !!doc)
+        .map((doc): QuickKeyProductLite => ({
+          _id: doc._id ?? '',
+          name: doc.name ?? '',
+          brand: doc.brand,
+          sku: doc.sku ?? '',
+          price: doc.price ?? doc.sellingPrice ?? doc.basePrice ?? 0,
+          stock: doc.stock ?? doc.quantityAvailable ?? 0,
+          imageUrl: doc.imageUrl,
+          packSizes: doc.packSizes,
+        }));
+    },
+    enabled: missingIds.length > 0 && !!branchId,
+    staleTime: 60_000,
+  });
+
+  const resolvedById = useMemo(() => {
+    const m = new Map(productById);
+    for (const p of fetchedProducts ?? []) m.set(p._id, p);
+    return m;
+  }, [productById, fetchedProducts]);
+
   const handleTileClick = (key: QuickKeyProduct) => {
-    const product = productById.get(key.productId);
+    const product = resolvedById.get(key.productId);
     if (!product) {
-      showError(`"${key.productName}" not in current catalog. Scroll products to load, or re-add.`);
+      showError(`"${key.productName}" could not be loaded. It may have been removed.`);
       return;
     }
     if (product.stock <= 0) {
@@ -61,7 +120,7 @@ export const QuickKeysGrid = ({
       <div className="mb-4">
         <button
           onClick={() => setManageMode(true)}
-          className="w-full py-3 bg-primary-dark border border-dashed border-gray-700 text-gray-400 rounded-xl text-sm font-medium hover:border-accent-green/40 hover:text-accent-green transition-all flex items-center justify-center gap-2"
+          className="w-full py-3 bg-slate-900 border border-dashed border-white/15 text-slate-400 rounded-xl text-sm font-medium hover:border-emerald-400/40 hover:text-emerald-400 transition-all flex items-center justify-center gap-2"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
@@ -73,23 +132,23 @@ export const QuickKeysGrid = ({
   }
 
   return (
-    <div className="mb-4 bg-primary-dark border border-gray-700 rounded-xl p-3">
+    <div className="mb-4 bg-slate-900 border border-white/10 rounded-xl p-3">
       <div className="flex items-center justify-between mb-2 px-1">
-        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
           Quick Keys - {keys.length}/{MAX_QUICK_KEYS}
         </h3>
         <div className="flex gap-2">
           {!isFull && (
             <button
               onClick={() => setPickerOpen(true)}
-              className="text-xs text-accent-green hover:text-accent-light font-medium"
+              className="text-xs text-emerald-400 hover:text-emerald-300 font-medium"
             >
               + Add
             </button>
           )}
           <button
             onClick={() => setManageMode((m) => !m)}
-            className="text-xs text-gray-400 hover:text-white font-medium"
+            className="text-xs text-slate-400 hover:text-white font-medium"
           >
             {manageMode ? 'Done' : 'Manage'}
           </button>
@@ -98,7 +157,7 @@ export const QuickKeysGrid = ({
 
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
         {keys.map((key) => {
-          const product = productById.get(key.productId);
+          const product = resolvedById.get(key.productId);
           const outOfStock = !product || product.stock <= 0;
           return (
             <div
@@ -106,7 +165,7 @@ export const QuickKeysGrid = ({
               className={`relative group rounded-lg border p-2 flex flex-col items-center justify-center text-center min-h-[80px] transition-all cursor-pointer ${
                 outOfStock
                   ? 'border-red-500/30 bg-red-500/5 text-red-400'
-                  : 'border-gray-700 bg-primary-darker hover:border-accent-green hover:bg-accent-green/5 text-white'
+                  : 'border-white/10 bg-slate-950 hover:border-emerald-500/60 hover:bg-emerald-500/10 text-white'
               }`}
               onClick={() => !manageMode && handleTileClick(key)}
               title={manageMode ? 'Manage' : `Add ${key.productName} to cart`}
@@ -127,9 +186,9 @@ export const QuickKeysGrid = ({
                 {key.productName}
               </p>
               {key.brand && (
-                <p className="text-[10px] text-gray-500 truncate max-w-full">{key.brand}</p>
+                <p className="text-[10px] text-slate-500 truncate max-w-full">{key.brand}</p>
               )}
-              <p className="text-xs text-accent-green font-bold mt-1">
+              <p className="text-xs text-emerald-400 font-bold mt-1">
                 {format(key.unitPrice)}
               </p>
               {outOfStock && !manageMode && (
@@ -143,7 +202,7 @@ export const QuickKeysGrid = ({
         {!isFull && manageMode && (
           <button
             onClick={() => setPickerOpen(true)}
-            className="rounded-lg border-2 border-dashed border-gray-700 text-gray-500 hover:border-accent-green/40 hover:text-accent-green text-xs font-medium flex items-center justify-center min-h-[80px]"
+            className="rounded-lg border-2 border-dashed border-white/15 text-slate-500 hover:border-emerald-400/40 hover:text-emerald-400 text-xs font-medium flex items-center justify-center min-h-[80px]"
           >
             + Add Key
           </button>

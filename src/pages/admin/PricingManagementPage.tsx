@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form';
 import { DollarSign, Layers } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
+import { AdminPageHeader, AdminStatCard } from '../../components/admin';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -13,10 +14,12 @@ import { Error } from '../../components/ui/Error';
 import { BranchSelector } from '../../components/BranchSelector';
 import { unwrapArray } from '../../lib/unwrap-response';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
+import { getErrorMessage } from '../../lib/error-utils';
 
 interface ProductPricing {
   productId: string;
@@ -62,6 +65,7 @@ export const PricingManagementPage = () => {
   const { format } = useCurrency();
   const { selectedBranch } = useBranchStore();
   const { showSuccess, showError } = useToast();
+  const requestConfirmation = useConfirm();
   const branchId = getBranchId(selectedBranch);
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<BulkPriceUpdate>();
@@ -129,10 +133,30 @@ export const PricingManagementPage = () => {
       reset();
       showSuccess('Prices updated successfully');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update prices'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to update prices')),
   });
 
-  const handleBulkUpdate = (data: BulkPriceUpdate) => {
+  const closeBulkUpdateModal = () => {
+    setIsBulkUpdateModalOpen(false);
+    reset();
+  };
+
+  const handleBulkUpdate = async (data: BulkPriceUpdate) => {
+    const hasStrategy = Boolean(data.strategy?.useProductBasePrice) || Boolean(data.strategy?.useCostPlusMarkup);
+    const hasValue = (data.newBasePrice !== undefined && !isNaN(Number(data.newBasePrice))) || (data.newMarkupPercentage !== undefined && !isNaN(Number(data.newMarkupPercentage)));
+    if (!hasStrategy && !hasValue) {
+      showError('Nothing to update', 'Select a pricing strategy or enter a new base price / markup before updating.');
+      return;
+    }
+
+    const confirmed = await requestConfirmation({
+      title: 'Apply bulk price update?',
+      message: `This will update ${hasStrategy && hasValue ? 'prices for' : hasStrategy ? 'products in' : 'prices for all products in'} ${selectedBranch?.name ?? 'this branch'} using the selected strategy${hasValue ? ' and/or values' : ''}. This cannot be undone.`,
+      confirmLabel: 'Update prices',
+      variant: 'warning',
+    });
+    if (!confirmed) return;
+
     const payload: BulkPriceUpdate = {
       strategy: {
         useProductBasePrice: Boolean(data.strategy?.useProductBasePrice),
@@ -153,16 +177,26 @@ export const PricingManagementPage = () => {
   if (!branchId) {
     return (
       <AdminLayout title="Pricing Management">
-        <div className="max-w-md mx-auto text-center py-16 px-4">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-            <DollarSign className="w-8 h-8" />
-          </div>
-          <h2 className="text-xl font-bold text-white mb-2">Select a Branch</h2>
-          <p className="text-sm text-slate-400 mb-6">
-            Pricing is branch-scoped. Choose a branch below to review product prices and run updates.
-          </p>
-          <div className="flex justify-center">
-            <BranchSelector />
+        <div className="space-y-5">
+          <AdminPageHeader
+            title="Pricing Management"
+            subtitle="Pricing is branch-scoped. Choose a branch to review product prices and run updates."
+          />
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-950/25 p-6 shadow-lg backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-500/25 bg-amber-500/15 text-amber-300">
+                <DollarSign className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-white tracking-tight">Select a branch</h2>
+                <p className="mt-0.5 text-sm text-slate-400">
+                  Use the selector below to load branch pricing.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 max-w-sm">
+              <BranchSelector />
+            </div>
           </div>
         </div>
       </AdminLayout>
@@ -174,46 +208,36 @@ export const PricingManagementPage = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Pricing Management</h1>
-            <p className="text-sm text-slate-400 mt-1">Manage pricing strategies and bulk updates</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <BranchSelector />
-            <Button 
-              onClick={() => setIsBulkUpdateModalOpen(true)}
-              className="bg-accent-green hover:bg-accent-green/90"
-            >
-              Bulk Price Update
-            </Button>
-          </div>
-        </div>
+        <AdminPageHeader
+          title="Pricing Management"
+          subtitle="Manage pricing strategies and bulk updates"
+          actions={
+            <>
+              <BranchSelector />
+              <Button onClick={() => setIsBulkUpdateModalOpen(true)}>Bulk Price Update</Button>
+            </>
+          }
+        />
 
         {/* Analytics Cards */}
         {analytics && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-              <h3 className="text-sm font-medium text-gray-400 mb-2">Total Products</h3>
-              <p className="text-2xl font-bold text-white">{analytics.totalProducts}</p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-              <h3 className="text-sm font-medium text-gray-400 mb-2">Average Markup</h3>
-              <p className="text-2xl font-bold text-accent-green">{analytics.averageMarkup?.toFixed(1) ?? '0.0'}%</p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-              <h3 className="text-sm font-medium text-gray-400 mb-2">Average Price</h3>
-              <p
-                className="text-xl sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
-                title={format(analytics.averageSellingPrice || 0)}
-              >
-                {format(analytics.averageSellingPrice || 0)}
-              </p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-              <h3 className="text-sm font-medium text-gray-400 mb-2">Custom Pricing</h3>
-              <p className="text-2xl font-bold text-blue-400">{analytics.productsWithCustomPricing || 0}</p>
-            </div>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <AdminStatCard label="Total Products" value={analytics.totalProducts} tone="neutral" />
+            <AdminStatCard
+              label="Average Markup"
+              value={`${analytics.averageMarkup?.toFixed(1) ?? '0.0'}%`}
+              tone="success"
+            />
+            <AdminStatCard
+              label="Average Price"
+              value={format(analytics.averageSellingPrice || 0)}
+              tone="neutral"
+            />
+            <AdminStatCard
+              label="Custom Pricing"
+              value={analytics.productsWithCustomPricing || 0}
+              tone="info"
+            />
           </div>
         )}
 
@@ -241,7 +265,7 @@ export const PricingManagementPage = () => {
               ) : pricingError ? (
                 <div className="text-center py-8">
                   <p className="text-red-400 mb-2">Failed to load pricing data</p>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-slate-400">
                     {pricingError instanceof Error ? pricingError.message : 'Unknown error occurred'}
                   </p>
                 </div>
@@ -249,24 +273,24 @@ export const PricingManagementPage = () => {
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-                      <p className="text-sm text-gray-400 mb-2">Cost Price</p>
+                      <p className="text-sm text-slate-400 mb-2">Cost Price</p>
                       <p
                         className="text-2xl sm:text-3xl font-bold text-white tabular-nums break-words leading-tight"
                         title={format(productPricing.costPrice)}
                       >
                         {format(productPricing.costPrice)}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">What you paid for it</p>
+                      <p className="text-xs text-slate-500 mt-1">What you paid for it</p>
                     </div>
                     <div className="bg-white/5 rounded-xl p-6 border border-white/10">
-                      <p className="text-sm text-gray-400 mb-2">Selling Price</p>
+                      <p className="text-sm text-slate-400 mb-2">Selling Price</p>
                       <p
-                        className="text-2xl sm:text-3xl font-bold text-accent-green tabular-nums break-words leading-tight"
+                        className="text-2xl sm:text-3xl font-bold text-emerald-400 tabular-nums break-words leading-tight"
                         title={format(productPricing.effectiveSellingPrice)}
                       >
                         {format(productPricing.effectiveSellingPrice)}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">What customers pay</p>
+                      <p className="text-xs text-slate-500 mt-1">What customers pay</p>
                     </div>
                   </div>
 
@@ -284,7 +308,7 @@ export const PricingManagementPage = () => {
 
                   <div>
                     <h3 className="text-md font-semibold text-white">Pack / Unit Prices</h3>
-                    <p className="mt-1 text-sm text-gray-400">
+                    <p className="mt-1 text-sm text-slate-400">
                       Pack prices come from the product's unit conversion setup.
                     </p>
                   </div>
@@ -294,10 +318,10 @@ export const PricingManagementPage = () => {
                       <table className="w-full">
                         <thead className="bg-white/5 border-b border-white/10">
                           <tr>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-400">Pack</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-400">Unit</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-400">Base Units</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-400">Selling Price</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-slate-400">Pack</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-slate-400">Unit</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-slate-400">Base Units</th>
+                            <th className="px-4 py-3 text-left text-sm font-semibold text-slate-400">Selling Price</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-white/5">
@@ -306,14 +330,14 @@ export const PricingManagementPage = () => {
                               <td className="px-4 py-3 text-sm text-white">{pack.name}</td>
                               <td className="px-4 py-3 text-sm text-white">{pack.unit}</td>
                               <td className="px-4 py-3 text-sm text-white">{pack.quantityPerPack}</td>
-                              <td className="px-4 py-3 text-sm text-accent-green font-semibold">{format(pack.sellingPrice)}</td>
+                              <td className="px-4 py-3 text-sm text-emerald-400 font-semibold">{format(pack.sellingPrice)}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                   ) : (
-                    <p className="text-gray-400 text-center py-4">
+                    <p className="text-slate-400 text-center py-4">
                       No pack sizes configured. Edit the product to add unit-level prices.
                     </p>
                   )}
@@ -329,7 +353,7 @@ export const PricingManagementPage = () => {
       {/* Bulk Price Update Modal */}
       <Modal
         isOpen={isBulkUpdateModalOpen}
-        onClose={() => setIsBulkUpdateModalOpen(false)}
+        onClose={closeBulkUpdateModal}
         title="Bulk Price Update"
       >
         <form onSubmit={handleSubmit(handleBulkUpdate)} className="space-y-4">
@@ -341,7 +365,7 @@ export const PricingManagementPage = () => {
                 type="checkbox"
                 id="useProductBasePrice"
                 {...register('strategy.useProductBasePrice')}
-                className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-accent-green"
+                className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-emerald-400"
               />
               <label htmlFor="useProductBasePrice" className="text-sm text-white">
                 Update Product Base Prices
@@ -353,7 +377,7 @@ export const PricingManagementPage = () => {
                 type="checkbox"
                 id="useCostPlusMarkup"
                 {...register('strategy.useCostPlusMarkup')}
-                className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-accent-green"
+                className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-emerald-400"
               />
               <label htmlFor="useCostPlusMarkup" className="text-sm text-white">
                 Apply Cost + Markup Strategy
@@ -389,14 +413,13 @@ export const PricingManagementPage = () => {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setIsBulkUpdateModalOpen(false)}
+              onClick={closeBulkUpdateModal}
             >
               Cancel
             </Button>
             <Button
               type="submit"
               isLoading={bulkUpdateMutation.isPending}
-              className="bg-accent-green hover:bg-accent-green/90"
             >
               Update Prices
             </Button>

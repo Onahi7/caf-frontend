@@ -28,7 +28,7 @@ export const ParkedSalesBar = ({
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <div className="bg-primary-dark border border-yellow-500/30 rounded-xl overflow-hidden">
+    <div className="bg-slate-900 border border-yellow-500/30 rounded-xl overflow-hidden">
       <button
         onClick={() => setExpanded((e) => !e)}
         className="w-full px-4 py-3 flex items-center justify-between hover:bg-yellow-500/5 transition-colors"
@@ -43,13 +43,13 @@ export const ParkedSalesBar = ({
             <p className="text-sm font-semibold text-white">
               {heldSales.length} parked sale{heldSales.length !== 1 ? 's' : ''}
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-400">
               Total {format(heldSales.reduce((s, h) => s + h.total, 0))}
             </p>
           </div>
         </div>
         <svg
-          className={`w-5 h-5 text-gray-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          className={`w-5 h-5 text-slate-400 transition-transform ${expanded ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -59,15 +59,15 @@ export const ParkedSalesBar = ({
       </button>
 
       {expanded && (
-        <div className="border-t border-gray-800 p-3 space-y-2 max-h-72 overflow-y-auto">
+        <div className="border-t border-white/[0.08] p-3 space-y-2 max-h-72 overflow-y-auto">
           {heldSales.map((sale) => (
             <div
               key={sale.id}
-              className="bg-primary-darker border border-gray-800 rounded-lg p-3 flex items-center justify-between gap-3"
+              className="bg-slate-950 border border-white/[0.08] rounded-lg p-3 flex items-center justify-between gap-3"
             >
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white truncate">{sale.label}</p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-slate-400">
                   {sale.items.length} item{sale.items.length !== 1 ? 's' : ''} - {format(sale.total)} - {timeAgo(sale.heldAt)}
                   {sale.customerName ? ` - ${sale.customerName}` : ''}
                 </p>
@@ -75,7 +75,7 @@ export const ParkedSalesBar = ({
               <div className="flex gap-2 shrink-0">
                 <button
                   onClick={() => onRecall(sale.id)}
-                  className="px-3 py-1.5 text-xs font-medium bg-accent-green text-primary-dark rounded-lg hover:bg-accent-light transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium bg-emerald-500 text-slate-950 rounded-lg hover:bg-emerald-400 transition-colors"
                 >
                   Recall
                 </button>

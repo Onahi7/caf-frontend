@@ -13,6 +13,7 @@ import { useToast } from '../../hooks/useToast';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useCurrency } from '../../hooks/useCurrency';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDate } from '../../lib/date-format';
 import { buildApiUrl } from '../../lib/api-utils';
 import { formatStatusLabel, toneForStatus } from '../../lib/admin-tones';
 import { FileText, Upload, CheckCircle, XCircle, Eye } from 'lucide-react';
@@ -104,7 +105,7 @@ export function CustomerOrdersPage() {
     },
     {
       key: 'createdAt', header: 'Date',
-      render: (item: CustomerOrder) => new Date(item.createdAt).toLocaleDateString(),
+      render: (item: CustomerOrder) => formatDate(item.createdAt),
     },
   ];
 
@@ -185,7 +186,7 @@ export function CustomerOrdersPage() {
               <div className="flex items-center justify-between pb-4 border-b border-slate-800">
                 <div>
                   <p className="text-sm font-medium text-white">File: {selectedOrder.sourceFile?.originalName}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Date: {new Date(selectedOrder.createdAt).toLocaleDateString()}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Date: {formatDate(selectedOrder.createdAt)}</p>
                 </div>
                 <AdminStatusBadge tone={toneForStatus(selectedOrder.status)}>
                   {formatStatusLabel(selectedOrder.status)}

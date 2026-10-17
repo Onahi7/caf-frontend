@@ -27,7 +27,7 @@ interface TableProps<T> {
   onLimitChange?: (limit: number) => void;
   onSort?: (key: string) => void;
   currentSort?: { key: string; order: "asc" | "desc" };
-  rowKey?: (item: T) => string;
+  rowKey?: (item: T, index: number) => string;
   onRowClick?: (item: T) => void;
   /** Enable mobile card view (defaults to true) */
   mobileCardView?: boolean;
@@ -49,7 +49,7 @@ export const Table = <T extends Record<string, any>>({
   onLimitChange,
   onSort,
   currentSort,
-  rowKey = (item) => item._id ?? item.id ?? "unknown",
+  rowKey = (item, index) => item._id ?? item.id ?? String(index),
   onRowClick,
   mobileCardView = true,
   showViewToggle = true,
@@ -291,9 +291,9 @@ export const Table = <T extends Record<string, any>>({
         {renderToolbar()}
 
         <div className="divide-y divide-white/[0.06]">
-          {sortedData.map((item) => (
+          {sortedData.map((item, index) => (
             <div
-              key={rowKey(item)}
+              key={rowKey(item, index)}
               onClick={() => onRowClick?.(item)}
               className={`p-4 transition-colors ${
                 onRowClick
@@ -380,42 +380,55 @@ export const Table = <T extends Record<string, any>>({
                 {columns.map((column) => {
                   const sortable = isColumnSortable(column);
                   const alignClass = getAlignmentClass(column.align);
+                  const sortDirection =
+                    activeSort?.key === column.key ? activeSort.order : null;
                   return (
                     <th
                       key={column.key}
                       scope="col"
-                      className={`px-4 py-3.5 sm:px-6 text-xs font-semibold text-slate-400 uppercase tracking-wider ${
+                      aria-sort={
                         sortable
-                          ? "cursor-pointer hover:text-white select-none transition-colors"
-                          : ""
-                      } ${column.className || ""}`}
-                      onClick={() => sortable && handleSort(column.key)}
+                          ? sortDirection === "asc"
+                            ? "ascending"
+                            : sortDirection === "desc"
+                              ? "descending"
+                              : "none"
+                          : undefined
+                      }
+                      className={`px-4 py-3.5 sm:px-6 text-xs font-semibold text-slate-400 uppercase tracking-wider ${column.className || ""}`}
                     >
-                      <div className={`flex items-center space-x-1.5 ${alignClass}`}>
-                        <span>{column.header}</span>
-                        {sortable && (
+                      {sortable ? (
+                        <button
+                          type="button"
+                          onClick={() => handleSort(column.key)}
+                          className={`flex w-full items-center space-x-1.5 ${alignClass} rounded-sm transition-colors hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60`}
+                          aria-label={`Sort by ${column.header}`}
+                        >
+                          <span>{column.header}</span>
                           <span className="text-slate-500">
-                            {activeSort?.key === column.key ? (
-                              activeSort.order === "asc" ? (
-                                <ChevronUp className="w-4 h-4 text-emerald-400" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4 text-emerald-400" />
-                              )
+                            {sortDirection === "asc" ? (
+                              <ChevronUp className="w-4 h-4 text-emerald-400" />
+                            ) : sortDirection === "desc" ? (
+                              <ChevronDown className="w-4 h-4 text-emerald-400" />
                             ) : (
                               <ChevronsUpDown className="w-3.5 h-3.5 text-slate-500 hover:text-slate-300" />
                             )}
                           </span>
-                        )}
-                      </div>
+                        </button>
+                      ) : (
+                        <div className={`flex items-center space-x-1.5 ${alignClass}`}>
+                          <span>{column.header}</span>
+                        </div>
+                      )}
                     </th>
                   );
                 })}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
-              {sortedData.map((item) => (
+              {sortedData.map((item, index) => (
                 <tr
-                  key={rowKey(item)}
+                  key={rowKey(item, index)}
                   onClick={() => onRowClick?.(item)}
                   className={`transition-colors ${
                     onRowClick

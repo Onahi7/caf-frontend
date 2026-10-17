@@ -121,7 +121,7 @@ export function CustomerTypeahead({
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
           {selectedCustomerId && (
-            <span className="ml-2 inline-flex items-center rounded-md bg-accent-green/15 px-2 py-0.5 text-[10px] font-medium text-accent-green">
+            <span className="ml-2 inline-flex items-center rounded-md bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-500">
               <UserPlus className="h-3 w-3 mr-1" />
               Linked
             </span>
@@ -145,7 +145,7 @@ export function CustomerTypeahead({
             if (value.length >= 1) setIsOpen(true);
           }}
           onKeyDown={handleKeyDown}
-          className="w-full px-4 py-2.5 pr-16 rounded-xl bg-white/5 text-white border border-white/10 focus:border-accent-green/50 focus:outline-none placeholder:text-gray-500"
+          className="w-full px-4 py-2.5 pr-16 rounded-xl bg-white/5 text-white border border-white/10 focus:border-emerald-500/50 focus:outline-none placeholder:text-slate-500"
         />
         <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
           {value ? (
@@ -153,25 +153,25 @@ export function CustomerTypeahead({
               type="button"
               tabIndex={-1}
               onClick={handleClear}
-              className="rounded p-1 text-gray-400 hover:text-white hover:bg-white/10"
+              className="rounded p-1 text-slate-400 hover:text-white hover:bg-white/10"
               aria-label="Clear"
             >
               <X className="h-4 w-4" />
             </button>
           ) : null}
           <ChevronDown
-            className={`h-4 w-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+            className={`h-4 w-4 text-slate-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
           />
         </div>
       </div>
-      {helperText && <p className="mt-1 text-xs text-gray-500">{helperText}</p>}
+      {helperText && <p className="mt-1 text-xs text-slate-500">{helperText}</p>}
 
       {showDropdown ? (
-        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-xl border border-white/10 bg-primary-darker shadow-2xl shadow-black/40">
+        <div className="absolute z-30 mt-1 w-full overflow-hidden rounded-xl border border-white/10 bg-slate-950 shadow-2xl shadow-black/40">
           {isLoading ? (
-            <div className="px-4 py-3 text-sm text-gray-400">Searching customers...</div>
+            <div className="px-4 py-3 text-sm text-slate-400">Searching customers...</div>
           ) : options.length === 0 ? (
-            <div className="px-4 py-3 text-sm text-gray-400">
+            <div className="px-4 py-3 text-sm text-slate-400">
               No matches.{allowFreeText ? ' Press Enter to use as a walk-in name.' : ''}
             </div>
           ) : (
@@ -192,9 +192,9 @@ export function CustomerTypeahead({
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm text-white">{c.name}</p>
-                    <p className="truncate text-xs text-gray-400">{c.phone}{c.email ? ` - ${c.email}` : ''}</p>
+                    <p className="truncate text-xs text-slate-400">{c.phone}{c.email ? ` - ${c.email}` : ''}</p>
                   </div>
-                  <UserPlus className="h-4 w-4 shrink-0 text-accent-green" />
+                  <UserPlus className="h-4 w-4 shrink-0 text-emerald-500" />
                 </li>
               ))}
             </ul>

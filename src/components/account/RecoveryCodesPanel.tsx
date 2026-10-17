@@ -120,7 +120,7 @@ ${generated.map((c, i) => `${i + 1}. ${c}`).join('\n')}
     <div className="rounded-2xl border border-white/10 bg-white/5 p-5 space-y-4">
       <div>
         <h3 className="text-base font-semibold text-white">Recovery codes</h3>
-        <p className="mt-1 text-sm text-gray-400 leading-6">
+        <p className="mt-1 text-sm text-slate-400 leading-6">
           One-time codes you can use to sign in if you lose access to all your
           passkeys (lost device, factory reset, etc.). Treat them like passwords.
         </p>
@@ -133,7 +133,7 @@ ${generated.map((c, i) => `${i + 1}. ${c}`).join('\n')}
               ? 'text-red-300 font-semibold'
               : unused !== null && unused <= 3
                 ? 'text-amber-300 font-semibold'
-                : 'text-gray-300'
+                : 'text-slate-300'
           }
         >
           {unused === null ? 'Loading\u2026' : `${unused} unused codes remaining`}

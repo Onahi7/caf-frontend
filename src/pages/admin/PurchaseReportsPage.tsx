@@ -12,7 +12,10 @@ import { Error } from '../../components/ui/Error';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useToast } from '../../hooks/useToast';
+import { getErrorMessage } from '../../lib/error-utils';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDate } from '../../lib/date-format';
 import { buildApiUrl } from '../../lib/api-utils';
 import { SaveReportButton } from '../../components/finance/SaveReportButton';
 
@@ -53,6 +56,8 @@ export const PurchaseReportsPage = () => {
   const isSuperAdmin = user?.role === 'super_admin';
   const effectiveBranchId = isSuperAdmin ? undefined : branchId;
   const { format } = useCurrency();
+  const [exporting, setExporting] = useState(false);
+  const { showSuccess, showError } = useToast();
 
   // Fetch purchase reports
   const { data: reportData, isLoading, error } = useQuery({
@@ -75,6 +80,7 @@ export const PurchaseReportsPage = () => {
   });
 
   const handleExport = async () => {
+    setExporting(true);
     try {
       const response = await apiClient.get(buildApiUrl('/reports/purchases/export', {
         from: dateFrom,
@@ -93,17 +99,21 @@ export const PurchaseReportsPage = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
+      showSuccess('Export ready', 'Your report download has started.');
     } catch (err) {
-      console.error('Export failed:', err);
+      showError(getErrorMessage(err, 'Export failed'));
+    } finally {
+      setExporting(false);
     }
   };
 
   if (!isSuperAdmin && !branchId) {
     return (
       <AdminLayout>
-        <div className="rounded-2xl border border-white/10 bg-primary-dark/60 p-8 text-center">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-8 text-center">
           <h2 className="text-xl font-semibold text-white">Select a Branch First</h2>
-          <p className="mt-2 text-gray-400">
+          <p className="mt-2 text-slate-400">
             Purchase reports use your assigned branch. Choose a branch to continue.
           </p>
         </div>
@@ -126,14 +136,14 @@ export const PurchaseReportsPage = () => {
               params={{ branchId: effectiveBranchId, dateFrom, dateTo }}
               defaultName="Purchase Report"
             />
-            <Button onClick={handleExport}>
+            <Button onClick={handleExport} isLoading={exporting} disabled={exporting}>
               Export to CSV
             </Button>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+        <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input
               label="From Date"
@@ -152,9 +162,9 @@ export const PurchaseReportsPage = () => {
               value={groupBy}
               onChange={(e) => setGroupBy(e.target.value as 'day' | 'week' | 'month')}
             >
-              <option value="day" className="bg-primary-dark text-white">Daily</option>
-              <option value="week" className="bg-primary-dark text-white">Weekly</option>
-              <option value="month" className="bg-primary-dark text-white">Monthly</option>
+              <option value="day" className="bg-slate-900 text-white">Daily</option>
+              <option value="week" className="bg-slate-900 text-white">Weekly</option>
+              <option value="month" className="bg-slate-900 text-white">Monthly</option>
             </Select>
           </div>
         </div>
@@ -163,12 +173,12 @@ export const PurchaseReportsPage = () => {
         {reportData && (
           <>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-                <p className="text-sm text-gray-400">Total Purchases</p>
+              <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+                <p className="text-sm text-slate-400">Total Purchases</p>
                 <p className="text-3xl font-bold text-white">{reportData.totalPurchases}</p>
               </div>
-              <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-                <p className="text-sm text-gray-400">Total Amount</p>
+              <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+                <p className="text-sm text-slate-400">Total Amount</p>
                 <p
                   className="text-2xl sm:text-3xl font-bold text-blue-400 tabular-nums break-words leading-tight"
                   title={format(reportData.totalAmount)}
@@ -176,8 +186,8 @@ export const PurchaseReportsPage = () => {
                   {format(reportData.totalAmount)}
                 </p>
               </div>
-              <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-                <p className="text-sm text-gray-400">Total Items</p>
+              <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+                <p className="text-sm text-slate-400">Total Items</p>
                 <p className="text-3xl font-bold text-green-400">{reportData.totalItems}</p>
               </div>
             </div>
@@ -211,19 +221,19 @@ export const PurchaseReportsPage = () => {
             </div>
 
             {/* Trend Chart */}
-            <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+            <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
               <h2 className="text-xl font-bold text-white mb-4">Purchase Trend</h2>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-white/5">
                   <thead className="bg-white/5">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                         Date
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                         Purchase Count
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
                         Amount
                       </th>
                     </tr>
@@ -232,9 +242,9 @@ export const PurchaseReportsPage = () => {
                     {reportData.byPeriod.map((period, index) => (
                       <tr key={index}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-white">
-                          {new Date(period.date).toLocaleDateString()}
+                          {formatDate(period.date)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400">
                           {period.purchaseCount}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-white">

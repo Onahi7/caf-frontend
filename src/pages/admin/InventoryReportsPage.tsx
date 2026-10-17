@@ -9,6 +9,8 @@ import { Select } from '../../components/ui/Select';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useToast } from '../../hooks/useToast';
+import { getErrorMessage } from '../../lib/error-utils';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
@@ -42,6 +44,8 @@ export const InventoryReportsPage = () => {
   const [includeExpired, setIncludeExpired] = useState(false);
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [valuationMethod, setValuationMethod] = useState<'fifo' | 'moving_average'>('fifo');
+  const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
+  const { showSuccess, showError } = useToast();
 
   // Fetch branches
   const { data: branches } = useQuery({
@@ -71,6 +75,7 @@ export const InventoryReportsPage = () => {
   });
 
   const handleExport = async (format: 'pdf' | 'excel') => {
+    setExporting(format);
     try {
       const response = await apiClient.get(buildApiUrl('/reports/inventory', {
         branchId: effectiveBranchId || undefined,
@@ -89,8 +94,12 @@ export const InventoryReportsPage = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
+      showSuccess('Export ready', 'Your report download has started.');
     } catch (error) {
-      console.error('Export failed:', error);
+      showError(getErrorMessage(error, 'Export failed'));
+    } finally {
+      setExporting(null);
     }
   };
 
@@ -142,10 +151,10 @@ export const InventoryReportsPage = () => {
                 params={{ branchId: effectiveBranchId, includeExpired, lowStockOnly, valuationMethod }}
                 defaultName="Inventory Report"
               />
-              <Button variant="secondary" size="sm" onClick={() => handleExport('pdf')}>
+              <Button variant="secondary" size="sm" onClick={() => handleExport('pdf')} isLoading={exporting === 'pdf'} disabled={exporting !== null}>
                 Export PDF
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => handleExport('excel')}>
+              <Button variant="secondary" size="sm" onClick={() => handleExport('excel')} isLoading={exporting === 'excel'} disabled={exporting !== null}>
                 Export Excel
               </Button>
             </div>
@@ -153,7 +162,7 @@ export const InventoryReportsPage = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+        <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
           <h2 className="text-lg font-semibold text-white mb-4">Report Filters</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {isSuperAdmin && (
@@ -186,7 +195,7 @@ export const InventoryReportsPage = () => {
                 id="includeExpired"
                 checked={includeExpired}
                 onChange={(e) => setIncludeExpired(e.target.checked)}
-                className="h-4 w-4 text-accent-green focus:ring-accent-green/50 border-gray-600 rounded"
+                className="h-4 w-4 text-emerald-500 focus:ring-emerald-500/50 border-white/15 rounded"
               />
               <label htmlFor="includeExpired" className="ml-2 block text-sm text-white">
                 Include Expired
@@ -199,7 +208,7 @@ export const InventoryReportsPage = () => {
                 id="lowStockOnly"
                 checked={lowStockOnly}
                 onChange={(e) => setLowStockOnly(e.target.checked)}
-                className="h-4 w-4 text-accent-green focus:ring-accent-green border-gray-600 rounded bg-primary-darker"
+                className="h-4 w-4 text-emerald-500 focus:ring-emerald-500 border-white/15 rounded bg-slate-950"
               />
               <label htmlFor="lowStockOnly" className="ml-2 block text-sm text-white">
                 Low Stock Only
@@ -210,19 +219,19 @@ export const InventoryReportsPage = () => {
 
         {/* Report Results */}
         {isLoading && (
-          <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
             <Loading />
           </div>
         )}
 
         {error && (
-          <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
             <Error message="Failed to load report. Please try again." />
           </div>
         )}
 
         {data && data.length > 0 && (
-          <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
             <div className="px-6 py-4 border-b border-white/5">
               <h2 className="text-lg font-semibold text-white">Report Results</h2>
             </div>
@@ -258,8 +267,8 @@ export const InventoryReportsPage = () => {
         )}
 
         {data && data.length === 0 && (
-          <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6 text-center">
-            <p className="text-gray-400">No inventory data found for the selected filters.</p>
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6 text-center">
+            <p className="text-slate-400">No inventory data found for the selected filters.</p>
           </div>
         )}
       </div>

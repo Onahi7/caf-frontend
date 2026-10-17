@@ -35,7 +35,7 @@ export function ReportsPage() {
       description: 'Daily, weekly, and monthly sales analysis',
       icon: DollarSign,
       path: '/admin/reports/sales',
-      color: 'bg-emerald-500',
+      color: 'bg-emerald-500/15 text-emerald-300',
       stats: 'Revenue & Profit',
       roles: ['super_admin', 'branch_manager', 'auditor', 'cashier']
     },
@@ -44,7 +44,7 @@ export function ReportsPage() {
       description: 'Stock levels and movement tracking',
       icon: Package,
       path: '/admin/reports/inventory',
-      color: 'bg-blue-500',
+      color: 'bg-blue-500/15 text-blue-300',
       stats: 'Stock Analysis',
       roles: ['super_admin', 'branch_manager', 'auditor']
     },
@@ -53,7 +53,7 @@ export function ReportsPage() {
       description: 'Expiring and expired product monitoring',
       icon: AlertTriangle,
       path: '/admin/reports/expiry',
-      color: 'bg-rose-500',
+      color: 'bg-rose-500/15 text-rose-300',
       stats: 'Expiry Tracking',
       roles: ['super_admin', 'branch_manager', 'auditor']
     },
@@ -62,7 +62,7 @@ export function ReportsPage() {
       description: 'Customer purchase patterns and loyalty',
       icon: Users,
       path: '/admin/reports/customers',
-      color: 'bg-purple-500',
+      color: 'bg-purple-500/15 text-purple-300',
       stats: 'Customer Insights',
       roles: ['super_admin', 'branch_manager', 'auditor', 'cashier']
     },
@@ -71,7 +71,7 @@ export function ReportsPage() {
       description: 'Supplier orders and purchase analysis',
       icon: ShoppingCart,
       path: '/admin/reports/purchases',
-      color: 'bg-indigo-500',
+      color: 'bg-indigo-500/15 text-indigo-300',
       stats: 'Procurement Insights',
       roles: ['super_admin', 'branch_manager', 'auditor']
     },
@@ -80,7 +80,7 @@ export function ReportsPage() {
       description: 'Inter-branch transfer history and status',
       icon: ArrowLeftRight,
       path: '/admin/reports/transfers',
-      color: 'bg-teal-500',
+      color: 'bg-teal-500/15 text-teal-300',
       stats: 'Branch Transfers',
       roles: ['super_admin', 'branch_manager', 'auditor']
     },
@@ -89,7 +89,7 @@ export function ReportsPage() {
       description: 'System activities and changes log',
       icon: FileText,
       path: '/admin/audit/trail',
-      color: 'bg-gray-600',
+      color: 'bg-slate-500/15 text-slate-300',
       stats: 'Security & Compliance',
       roles: ['super_admin', 'auditor']
     },
@@ -98,7 +98,7 @@ export function ReportsPage() {
       description: 'User actions and access logs',
       icon: TrendingUp,
       path: '/admin/audit/user-activity',
-      color: 'bg-indigo-500',
+      color: 'bg-indigo-500/15 text-indigo-300',
       stats: 'Activity Monitoring',
       roles: ['super_admin', 'branch_manager', 'auditor']
     },
@@ -107,7 +107,7 @@ export function ReportsPage() {
       description: 'Revenue, costs, and profit margins',
       icon: BarChart3,
       path: '/admin/reports/profit-loss',
-      color: 'bg-emerald-600',
+      color: 'bg-emerald-500/15 text-emerald-300',
       stats: 'P&L Statement',
       roles: ['super_admin', 'branch_manager', 'auditor', 'finance_manager']
     },
@@ -116,7 +116,7 @@ export function ReportsPage() {
       description: 'Expense breakdown by category and period',
       icon: Receipt,
       path: '/admin/reports/expenses',
-      color: 'bg-rose-500',
+      color: 'bg-rose-500/15 text-rose-300',
       stats: 'Cost Analysis',
       roles: ['super_admin', 'branch_manager', 'auditor', 'finance_manager']
     },
@@ -125,7 +125,7 @@ export function ReportsPage() {
       description: 'Slow-moving and unsold inventory',
       icon: Clock,
       path: '/admin/reports/dead-stock',
-      color: 'bg-amber-600',
+      color: 'bg-amber-500/15 text-amber-300',
       stats: 'Inventory Efficiency',
       roles: ['super_admin', 'branch_manager', 'auditor']
     },
@@ -134,7 +134,7 @@ export function ReportsPage() {
       description: 'Cashier shift logs and cash reconciliations',
       icon: Clock,
       path: '/pos/shifts/logs',
-      color: 'bg-amber-500',
+      color: 'bg-amber-500/15 text-amber-300',
       stats: 'Register Audits',
       roles: ['super_admin', 'branch_manager', 'cashier', 'auditor']
     },
@@ -143,7 +143,7 @@ export function ReportsPage() {
       description: 'Inbound and outbound stock history',
       icon: Activity,
       path: '/admin/reports/stock-movements',
-      color: 'bg-cyan-600',
+      color: 'bg-cyan-500/15 text-cyan-300',
       stats: 'Movement Tracking',
       roles: ['super_admin', 'branch_manager', 'auditor']
     },
@@ -152,7 +152,7 @@ export function ReportsPage() {
       description: 'Financial reconciliation and variance tracking',
       icon: ShieldCheck,
       path: '/finance/reconciliations',
-      color: 'bg-amber-500',
+      color: 'bg-amber-500/15 text-amber-300',
       stats: 'Variance Tracking',
       roles: ['super_admin', 'branch_manager', 'finance_manager', 'auditor']
     },
@@ -182,7 +182,7 @@ export function ReportsPage() {
               <div className="bg-slate-900/80 rounded-2xl shadow-xl border border-white/10 p-5 hover:border-emerald-500/50 hover:bg-slate-900 transition-all backdrop-blur-md group-hover:scale-[1.01]">
                 <div className="flex flex-col space-y-3.5">
                   <div className="flex items-start justify-between">
-                    <div className={`${module.color} rounded-xl p-3 text-white group-hover:scale-110 transition-transform shadow-md`}>
+                    <div className={`${module.color} rounded-xl p-3 group-hover:scale-110 transition-transform shadow-md`}>
                       <Icon className="h-5 w-5" />
                     </div>
                   </div>

@@ -5,7 +5,7 @@ export const UnauthorizedPage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-primary-darker pt-safe-top">
+    <div className="min-h-screen flex items-center justify-center bg-slate-950 pt-safe-top">
       <div className="max-w-md w-full p-8 text-center">
         <div className="rounded-full bg-red-500/20 p-4 inline-block mb-4">
           <svg
@@ -23,7 +23,7 @@ export const UnauthorizedPage = () => {
           </svg>
         </div>
         <h1 className="text-3xl font-bold text-white mb-2">Access Denied</h1>
-        <p className="text-gray-400 mb-6">
+        <p className="text-slate-400 mb-6">
           You don't have permission to access this page.
         </p>
         <Button onClick={() => navigate(-1)}>Go Back</Button>

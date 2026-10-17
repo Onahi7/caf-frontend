@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { Building2, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
 import { AdminPageHeader } from '../../components/admin';
@@ -11,11 +11,11 @@ import { Modal } from '../../components/ui/Modal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { useToast } from '../../hooks/useToast';
 import { queryKeys } from '../../lib/query-keys';
 import { unwrapArray } from '../../lib/unwrap-response';
+import { getErrorMessage } from '../../lib/error-utils';
 
 interface Branch {
   id: string;
@@ -54,7 +54,6 @@ export const BranchManagementPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
 
@@ -66,7 +65,7 @@ export const BranchManagementPage = () => {
   } = useForm<BranchFormData>();
 
   // Fetch branches
-  const { data: branches, isLoading, error } = useQuery({
+  const { data: branches, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.branches.list(),
     queryFn: async () => {
       const response = await apiClient.get<Branch[]>('/branches');
@@ -82,7 +81,12 @@ export const BranchManagementPage = () => {
         .map((value) => Number.parseInt(value.trim(), 10))
         .filter((value) => Number.isFinite(value));
       const payload = {
-        ...data,
+        name: data.name,
+        code: data.code,
+        address: data.address,
+        phone: data.phone,
+        email: data.email,
+        isHeadquarters: data.isHeadquarters,
         currencyCode: data.currencyCode,
         config: {
           reorderThreshold: data.reorderThreshold,
@@ -99,7 +103,7 @@ export const BranchManagementPage = () => {
       reset();
       showSuccess('Branch created');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to create branch'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to create branch')),
   });
 
   // Update branch mutation
@@ -111,7 +115,12 @@ export const BranchManagementPage = () => {
         .map((value) => Number.parseInt(value.trim(), 10))
         .filter((value) => Number.isFinite(value));
       const payload = {
-        ...data,
+        name: data.name,
+        code: data.code,
+        address: data.address,
+        phone: data.phone,
+        email: data.email,
+        isHeadquarters: data.isHeadquarters,
         currencyCode: data.currencyCode,
         config: {
           reorderThreshold: data.reorderThreshold,
@@ -129,7 +138,7 @@ export const BranchManagementPage = () => {
       reset();
       showSuccess('Branch updated');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update branch'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to update branch')),
   });
 
   // Toggle branch active status mutation
@@ -146,7 +155,7 @@ export const BranchManagementPage = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.branches.all(), exact: false });
       showSuccess(`Branch "${branch.name}" ${branch.isActive ? 'deactivated' : 'activated'}`);
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update branch status'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to update branch status')),
   });
 
   // Delete branch mutation
@@ -159,7 +168,7 @@ export const BranchManagementPage = () => {
       setBranchToDelete(null);
       showSuccess('Branch deleted successfully');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to delete branch'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to delete branch')),
   });
 
   const handleOpenModal = (branch?: Branch) => {
@@ -209,9 +218,6 @@ export const BranchManagementPage = () => {
     }
   };
 
-  if (isLoading) return <Loading />;
-  if (error) return <Error message="Failed to load branches" />;
-
   const columns = [
     {
       key: 'name',
@@ -219,7 +225,7 @@ export const BranchManagementPage = () => {
       render: (branch: Branch) => (
         <div>
           <div className="font-medium">{branch.name}</div>
-          <div className="text-sm text-gray-400">{branch.code}</div>
+          <div className="text-sm text-slate-400">{branch.code}</div>
         </div>
       ),
     },
@@ -233,7 +239,7 @@ export const BranchManagementPage = () => {
       render: (branch: Branch) => (
         <div>
           <div className="text-sm">{branch.phone}</div>
-          <div className="text-sm text-gray-400">{branch.email}</div>
+          <div className="text-sm text-slate-400">{branch.email}</div>
         </div>
       ),
     },
@@ -328,11 +334,16 @@ export const BranchManagementPage = () => {
         />
 
         {/* Table */}
-        <Table
-          data={branches || []}
-          columns={columns}
-          emptyMessage="No branches found"
-        />
+        {error ? (
+          <Error message="Failed to load branches" onRetry={() => { void refetch(); }} />
+        ) : (
+          <Table
+            data={branches || []}
+            columns={columns}
+            isLoading={isLoading}
+            emptyMessage="No branches found"
+          />
+        )}
 
         {/* Modal */}
         <Modal
@@ -426,7 +437,7 @@ export const BranchManagementPage = () => {
                   <input
                     type="checkbox"
                     {...register('isHeadquarters')}
-                    className="w-4 h-4 rounded border-gray-600 bg-primary-dark text-accent-green focus:ring-accent-green"
+                    className="w-4 h-4 rounded border-white/20 bg-slate-900 text-emerald-500 focus:ring-emerald-400/60"
                   />
                   <span>Headquarters</span>
                 </label>
@@ -434,7 +445,7 @@ export const BranchManagementPage = () => {
                   <input
                     type="checkbox"
                     {...register('allowNegativeStock')}
-                    className="w-4 h-4 rounded border-gray-600 bg-primary-dark text-accent-green focus:ring-accent-green"
+                    className="w-4 h-4 rounded border-white/20 bg-slate-900 text-emerald-500 focus:ring-emerald-400/60"
                   />
                   <span>Allow Negative Stock</span>
                 </label>

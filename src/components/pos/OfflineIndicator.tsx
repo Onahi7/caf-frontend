@@ -35,7 +35,7 @@ export const OfflineIndicator = () => {
           </div>
         </div>
       ) : queuedCount > 0 ? (
-        <div className="bg-primary-dark border border-accent-green text-white px-4 py-3 rounded-lg shadow-lg">
+        <div className="bg-slate-900 border border-emerald-500/40 text-white px-4 py-3 rounded-lg shadow-lg">
           <div className="flex items-center justify-between space-x-4">
             <div className="flex items-center space-x-3">
               <svg
@@ -55,7 +55,7 @@ export const OfflineIndicator = () => {
                 <p className="font-semibold">
                   {isSyncing ? 'Syncing...' : 'Pending Sync'}
                 </p>
-                <p className="text-xs text-gray-300">
+                <p className="text-xs text-slate-300">
                   {queuedCount} sale{queuedCount > 1 ? 's' : ''} in queue
                 </p>
               </div>

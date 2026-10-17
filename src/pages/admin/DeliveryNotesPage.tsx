@@ -12,8 +12,10 @@ import { useToast } from '../../hooks/useToast';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
+import { getErrorMessage } from '../../lib/error-utils';
+import { formatDate } from '../../lib/date-format';
 import { formatStatusLabel, toneForStatus } from '../../lib/admin-tones';
-import { Truck, CheckCircle, Download, Eye } from 'lucide-react';
+import { CheckCircle, Download } from 'lucide-react';
 
 interface DeliveryNoteItem {
   productId: string;
@@ -54,8 +56,14 @@ export function DeliveryNotesPage() {
 
   const markDeliveredMutation = useMutation({
     mutationFn: (id: string) => apiClient.patch(`/delivery-notes/${id}/deliver`),
-    onSuccess: () => { showSuccess('Marked as delivered'); queryClient.invalidateQueries({ queryKey: queryKeys.deliveryNotes.all() }); },
-    onError: (err: any) => showError(err?.response?.data?.message || 'Failed to mark delivered'),
+    onSuccess: () => {
+      showSuccess('Marked as delivered');
+      setSelectedDn((prev) =>
+        prev ? { ...prev, status: 'delivered', deliveredAt: new Date().toISOString() } : null,
+      );
+      queryClient.invalidateQueries({ queryKey: queryKeys.deliveryNotes.all() });
+    },
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to mark delivered')),
   });
 
   const handleDownloadPdf = async (id: string) => {
@@ -67,8 +75,8 @@ export function DeliveryNotesPage() {
       a.download = `delivery-note-${id}.pdf`;
       a.click();
       window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      showError('Failed to download PDF');
+    } catch (err: unknown) {
+      showError(getErrorMessage(err, 'Failed to download PDF'));
     }
   };
 
@@ -99,14 +107,14 @@ export function DeliveryNotesPage() {
     },
     {
       key: 'createdAt', header: 'Date',
-      render: (dn: DeliveryNote) => new Date(dn.createdAt).toLocaleDateString(),
+      render: (dn: DeliveryNote) => formatDate(dn.createdAt),
     },
   ];
 
   return (
     <AdminLayout title="Delivery Notes">
       <div className="mb-6 flex items-center justify-between">
-        <p className="text-gray-400">Track deliveries for proforma invoices</p>
+        <p className="text-slate-400">Track deliveries for proforma invoices</p>
       </div>
 
       {isLoading ? (
@@ -127,10 +135,10 @@ export function DeliveryNotesPage() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-400">Customer: {getCustomerName(selectedDn)}</p>
-                <p className="text-sm text-gray-400">Date: {new Date(selectedDn.createdAt).toLocaleDateString()}</p>
+                <p className="text-sm text-slate-400">Customer: {getCustomerName(selectedDn)}</p>
+                <p className="text-sm text-slate-400">Date: {formatDate(selectedDn.createdAt)}</p>
                 {selectedDn.deliveredAt && (
-                  <p className="text-sm text-gray-400">Delivered: {new Date(selectedDn.deliveredAt).toLocaleDateString()}</p>
+                  <p className="text-sm text-slate-400">Delivered: {formatDate(selectedDn.deliveredAt)}</p>
                 )}
               </div>
               <AdminStatusBadge tone={toneForStatus(selectedDn.status)}>
@@ -144,17 +152,20 @@ export function DeliveryNotesPage() {
                 {selectedDn.items.map((item, i) => (
                   <div key={i} className="flex items-center justify-between gap-3 bg-white/5 rounded-xl p-3">
                     <p className="text-white font-medium whitespace-normal break-words min-w-0 flex-1">{item.productName}</p>
-                    <p className="shrink-0 text-gray-400">Qty: {item.quantity}</p>
+                    <p className="shrink-0 text-slate-400">Qty: {item.quantity}</p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {selectedDn.notes && <p className="text-gray-400 text-sm">Notes: {selectedDn.notes}</p>}
+            {selectedDn.notes && <p className="text-slate-400 text-sm">Notes: {selectedDn.notes}</p>}
 
             <div className="flex flex-wrap gap-3">
               {selectedDn.status === 'pending' && (
-                <Button onClick={() => markDeliveredMutation.mutate(selectedDn._id)}>
+                <Button
+                  onClick={() => markDeliveredMutation.mutate(selectedDn._id)}
+                  isLoading={markDeliveredMutation.isPending}
+                >
                   <CheckCircle className="w-4 h-4 mr-2" />Mark as Delivered
                 </Button>
               )}

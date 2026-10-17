@@ -1,14 +1,19 @@
-import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../lib/api-client';
 import { useToast } from './useToast';
 import { getErrorMessage } from '../lib/error-utils';
+import { unwrapResponse } from '../lib/unwrap-response';
 
-const unwrapResponseData = <T,>(payload: unknown): T => {
-  if (payload && typeof payload === 'object' && 'data' in payload) {
-    return (payload as { data: T }).data;
-  }
-  return payload as T;
-};
+/**
+ * Writes that failed due to no network response are transparently queued for
+ * offline sync by the api-client. Surface those as a warning, not an error.
+ */
+const isOfflineQueuedError = (error: unknown): boolean =>
+  Boolean(
+    error &&
+      typeof error === 'object' &&
+      (error as { isOfflineQueued?: boolean }).isOfflineQueued
+  );
 
 /**
  * Generic CRUD mutation hook factory
@@ -49,14 +54,25 @@ export const useCRUDMutations = <T extends { _id?: string; id?: string }>(
   }
 ) => {
   const queryClient = useQueryClient();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showWarning } = useToast();
   const resourceLabel = options?.resourceLabel || resource;
+
+  const handleError = (error: unknown, action: string) => {
+    if (isOfflineQueuedError(error)) {
+      showWarning(
+        `${resourceLabel} saved offline`,
+        'It will sync automatically when the connection returns.'
+      );
+      return;
+    }
+    showError(getErrorMessage(error, `Failed to ${action} ${resourceLabel}`));
+  };
 
   // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: Omit<T, '_id' | 'id'>) => {
       const response = await apiClient.post(`/${resource}`, data);
-      return unwrapResponseData<T>(response.data);
+      return unwrapResponse<T>(response.data, {} as T);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey, exact: false });
@@ -64,7 +80,7 @@ export const useCRUDMutations = <T extends { _id?: string; id?: string }>(
       options?.onCreateSuccess?.(data);
     },
     onError: (error) => {
-      showError(getErrorMessage(error, `Failed to create ${resourceLabel}`));
+      handleError(error, 'create');
     },
   });
 
@@ -72,7 +88,7 @@ export const useCRUDMutations = <T extends { _id?: string; id?: string }>(
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<T> }) => {
       const response = await apiClient.patch(`/${resource}/${id}`, data);
-      return unwrapResponseData<T>(response.data);
+      return unwrapResponse<T>(response.data, {} as T);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey, exact: false });
@@ -80,7 +96,7 @@ export const useCRUDMutations = <T extends { _id?: string; id?: string }>(
       options?.onUpdateSuccess?.(data);
     },
     onError: (error) => {
-      showError(getErrorMessage(error, `Failed to update ${resourceLabel}`));
+      handleError(error, 'update');
     },
   });
 
@@ -95,7 +111,7 @@ export const useCRUDMutations = <T extends { _id?: string; id?: string }>(
       options?.onDeleteSuccess?.();
     },
     onError: (error) => {
-      showError(getErrorMessage(error, `Failed to delete ${resourceLabel}`));
+      handleError(error, 'delete');
     },
   });
 
@@ -128,15 +144,28 @@ export const useBranchAwareCRUDMutations = <T extends { _id?: string; id?: strin
   }
 ) => {
   const queryClient = useQueryClient();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showWarning } = useToast();
   const resourceLabel = options?.resourceLabel || resource;
 
-  // Create mutation with branchId
+  const handleError = (error: unknown, action: string) => {
+    if (isOfflineQueuedError(error)) {
+      showWarning(
+        `${resourceLabel} saved offline`,
+        'It will sync automatically when the connection returns.'
+      );
+      return;
+    }
+    showError(getErrorMessage(error, `Failed to ${action} ${resourceLabel}`));
+  };
+
+  // Create mutation with branchId (an explicit branchId in the payload wins,
+  // so forms that offer a branch selector are respected)
   const createMutation = useMutation({
     mutationFn: async (data: Omit<T, '_id' | 'id'>) => {
-      const payload = { ...data, branchId };
+      const explicitBranchId = (data as { branchId?: string }).branchId;
+      const payload = explicitBranchId ? data : { ...data, branchId };
       const response = await apiClient.post(`/${resource}`, payload);
-      return unwrapResponseData<T>(response.data);
+      return unwrapResponse<T>(response.data, {} as T);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey, exact: false });
@@ -144,7 +173,7 @@ export const useBranchAwareCRUDMutations = <T extends { _id?: string; id?: strin
       options?.onCreateSuccess?.(data);
     },
     onError: (error) => {
-      showError(getErrorMessage(error, `Failed to create ${resourceLabel}`));
+      handleError(error, 'create');
     },
   });
 
@@ -152,7 +181,7 @@ export const useBranchAwareCRUDMutations = <T extends { _id?: string; id?: strin
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<T> }) => {
       const response = await apiClient.patch(`/${resource}/${id}`, data);
-      return unwrapResponseData<T>(response.data);
+      return unwrapResponse<T>(response.data, {} as T);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey, exact: false });
@@ -160,7 +189,7 @@ export const useBranchAwareCRUDMutations = <T extends { _id?: string; id?: strin
       options?.onUpdateSuccess?.(data);
     },
     onError: (error) => {
-      showError(getErrorMessage(error, `Failed to update ${resourceLabel}`));
+      handleError(error, 'update');
     },
   });
 
@@ -175,7 +204,7 @@ export const useBranchAwareCRUDMutations = <T extends { _id?: string; id?: strin
       options?.onDeleteSuccess?.();
     },
     onError: (error) => {
-      showError(getErrorMessage(error, `Failed to delete ${resourceLabel}`));
+      handleError(error, 'delete');
     },
   });
 

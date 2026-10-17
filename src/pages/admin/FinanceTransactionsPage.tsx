@@ -13,6 +13,7 @@ import { Error } from '../../components/ui/Error';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDate } from '../../lib/date-format';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useBranchAwareCRUDMutations } from '../../hooks/useCRUDMutations';
 
@@ -144,23 +145,23 @@ export function FinanceTransactionsPage() {
         {summary && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <div className="rounded-xl border border-green-500/20 bg-white/5 p-4">
-              <p className="text-xs text-gray-400 uppercase font-semibold mb-1">Cash In</p>
+              <p className="text-xs text-slate-400 uppercase font-semibold mb-1">Cash In</p>
               <p className="text-xl font-bold text-green-600">{format(summary.cashInTotal)}</p>
             </div>
             <div className="rounded-xl border border-red-500/20 bg-white/5 p-4">
-              <p className="text-xs text-gray-400 uppercase font-semibold mb-1">Cash Out</p>
+              <p className="text-xs text-slate-400 uppercase font-semibold mb-1">Cash Out</p>
               <p className="text-xl font-bold text-red-600">{format(summary.cashOutTotal)}</p>
             </div>
             <div className="rounded-xl border border-orange-500/20 bg-white/5 p-4">
-              <p className="text-xs text-gray-400 uppercase font-semibold mb-1">Expenses</p>
+              <p className="text-xs text-slate-400 uppercase font-semibold mb-1">Expenses</p>
               <p className="text-xl font-bold text-orange-600">{format(summary.expenseTotal)}</p>
             </div>
             <div className="rounded-xl border border-purple-500/20 bg-white/5 p-4">
-              <p className="text-xs text-gray-400 uppercase font-semibold mb-1">Remittance</p>
+              <p className="text-xs text-slate-400 uppercase font-semibold mb-1">Remittance</p>
               <p className="text-xl font-bold text-purple-600">{format(summary.remittanceTotal)}</p>
             </div>
             <div className={`rounded-xl border bg-white/5 p-4 ${summary.netCashFlow >= 0 ? 'border-green-500/30' : 'border-red-500/30'}`}>
-              <p className="text-xs text-gray-400 uppercase font-semibold mb-1">Net</p>
+              <p className="text-xs text-slate-400 uppercase font-semibold mb-1">Net</p>
               <p className={`text-xl font-bold ${summary.netCashFlow >= 0 ? 'text-green-300' : 'text-red-300'}`}>{format(summary.netCashFlow)}</p>
             </div>
           </div>
@@ -170,7 +171,7 @@ export function FinanceTransactionsPage() {
         {error && <Error message="Failed to load transactions" />}
 
         {transactions && transactions.length === 0 && (
-          <div className="text-gray-400 text-sm text-center py-12">
+          <div className="text-slate-400 text-sm text-center py-12">
             No transactions recorded for this branch.
           </div>
         )}
@@ -182,13 +183,13 @@ export function FinanceTransactionsPage() {
                 {
                   key: 'transactionDate',
                   header: 'Date',
-                  render: (row: FinanceTransaction) => new Date(row.transactionDate).toLocaleDateString(),
+                  render: (row: FinanceTransaction) => formatDate(row.transactionDate),
                 },
                 {
                   key: 'type',
                   header: 'Type',
                   render: (row: FinanceTransaction) => (
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${TYPE_BADGE[row.type] ?? 'bg-white/10 text-gray-300 border border-white/10'}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${TYPE_BADGE[row.type] ?? 'bg-white/10 text-slate-300 border border-white/10'}`}>
                       {TYPE_LABEL[row.type] ?? row.type}
                     </span>
                   ),
@@ -198,9 +199,9 @@ export function FinanceTransactionsPage() {
                   header: 'Description',
                   render: (row: FinanceTransaction) => (
                     <div>
-                      <p className="text-gray-200">{row.description ?? '-'}</p>
-                      {row.reference && <p className="text-xs text-gray-400">Ref: {row.reference}</p>}
-                      {row.category && <p className="text-xs text-gray-400">{row.category}</p>}
+                      <p className="text-slate-200">{row.description ?? '-'}</p>
+                      {row.reference && <p className="text-xs text-slate-400">Ref: {row.reference}</p>}
+                      {row.category && <p className="text-xs text-slate-400">{row.category}</p>}
                     </div>
                   ),
                 },
@@ -234,7 +235,7 @@ export function FinanceTransactionsPage() {
         >
           <form onSubmit={handleSubmit((d) => createMutation.mutate(d))} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Type</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Type</label>
               <select
                 {...register('type', { required: 'Type is required' })}
                 className="w-full rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-accent-green/50 focus:outline-none focus:ring-2 focus:ring-accent-green/20"

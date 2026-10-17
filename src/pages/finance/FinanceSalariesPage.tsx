@@ -37,12 +37,12 @@ interface Employee { _id: string; firstName: string; lastName: string; username:
 
 const statusBadge = (status: string) => {
   const s: Record<string, string> = {
-    draft: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
+    draft: 'bg-gray-500/10 text-slate-400 border-gray-500/20',
     pending_approval: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     approved: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     paid: 'bg-green-500/10 text-green-400 border-green-500/20',
   };
-  return s[status] || 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+  return s[status] || 'bg-gray-500/10 text-slate-400 border-gray-500/20';
 };
 
 export function FinanceSalariesPage() {
@@ -173,10 +173,10 @@ export function FinanceSalariesPage() {
             className="px-3 py-2 rounded-xl bg-white/5 text-white border border-white/10 text-sm" />
           {stats ? (
             <div className="flex gap-4 text-sm">
-              <span className="text-gray-400">Employees: <span className="text-white font-medium">{stats.totalEmployees}</span></span>
-              <span className="text-gray-400">Total Net: <span className="text-white font-medium">{formatMoney(stats.totalNet)}</span></span>
-              <span className="text-gray-400">Pending: <span className="text-amber-400 font-medium">{stats.pendingCount}</span></span>
-              <span className="text-gray-400">Paid: <span className="text-green-400 font-medium">{stats.paidCount}</span></span>
+              <span className="text-slate-400">Employees: <span className="text-white font-medium">{stats.totalEmployees}</span></span>
+              <span className="text-slate-400">Total Net: <span className="text-white font-medium">{formatMoney(stats.totalNet)}</span></span>
+              <span className="text-slate-400">Pending: <span className="text-amber-400 font-medium">{stats.pendingCount}</span></span>
+              <span className="text-slate-400">Paid: <span className="text-green-400 font-medium">{stats.paidCount}</span></span>
             </div>
           ) : null}
         </div>

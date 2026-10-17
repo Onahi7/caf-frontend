@@ -455,26 +455,26 @@ export const ShiftManagementPage = () => {
                   <div
                     key={shift._id}
                     onClick={() => navigate(`/pos/shift-report/${shift._id}`)}
-                    className="bg-primary-dark rounded-xl p-5 border border-gray-700 hover:border-accent-green/50 cursor-pointer transition-all group"
+                    className="bg-slate-900 rounded-xl p-5 border border-white/10 hover:border-emerald-500/50 cursor-pointer transition-all group"
                   >
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-white font-semibold text-lg mb-1">{formatDate(shift.openedAt)}</p>
-                        <p className="text-gray-400 text-sm">
+                        <p className="text-slate-400 text-sm">
                           {formatTime(shift.openedAt)} - {shift.closedAt ? formatTime(shift.closedAt) : 'N/A'}
                         </p>
                         <div className="flex items-center space-x-4 mt-3">
                           <div>
-                            <p className="text-xs text-gray-500">Sales</p>
+                            <p className="text-xs text-slate-500">Sales</p>
                             <p className="text-white font-medium">{format(shift.totalSales || 0)}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-500">Transactions</p>
+                            <p className="text-xs text-slate-500">Transactions</p>
                             <p className="text-white font-medium">{shift.salesCount || 0}</p>
                           </div>
                           {shift.variance !== undefined && (
                             <div>
-                              <p className="text-xs text-gray-500">Variance</p>
+                              <p className="text-xs text-slate-500">Variance</p>
                               <p className={`font-medium ${getVarianceColor(shift.variance)}`}>
                                 {shift.variance > 0 ? '+' : ''}{format(shift.variance)}
                               </p>
@@ -482,7 +482,7 @@ export const ShiftManagementPage = () => {
                           )}
                         </div>
                       </div>
-                      <svg className="w-5 h-5 text-gray-500 group-hover:text-accent-green transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-slate-500 group-hover:text-emerald-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </div>

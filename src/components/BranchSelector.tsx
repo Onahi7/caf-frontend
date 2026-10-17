@@ -38,6 +38,9 @@ export const BranchSelector = ({ hideLabel = false }: BranchSelectorProps = {}) 
       const selectedBranchIsAvailable = availableBranchData.some(
         (branch) => branch._id === selectedBranch?._id
       );
+      if (selectedBranch && availableBranchData.length === 0) {
+        setSelectedBranch(null);
+      }
 
       // Auto-select branch based on user role
       if ((!selectedBranch || !selectedBranchIsAvailable) && availableBranchData.length > 0) {
@@ -91,7 +94,7 @@ export const BranchSelector = ({ hideLabel = false }: BranchSelectorProps = {}) 
     const branch = availableBranches[0];
     return (
       <div className="w-full sm:w-64 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Outlet</p>
+        <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Outlet</p>
         <p className="truncate text-sm font-semibold text-white">{branch.name}</p>
       </div>
     );

@@ -270,7 +270,7 @@ export const queryKeys = {
   auditLogs: {
     all: () => [...queryKeys.all(), 'audit-logs'] as const,
     lists: () => [...queryKeys.auditLogs.all(), 'list'] as const,
-    list: (filters?: BaseFilters & { action?: string; entity?: string; dateFrom?: string; dateTo?: string }) => 
+    list: (filters?: BaseFilters & PaginationParams & { action?: string; entity?: string; dateFrom?: string; dateTo?: string }) =>
       [...queryKeys.auditLogs.lists(), filters] as const,
   },
   
@@ -380,5 +380,11 @@ export const queryKeys = {
       summary: (branchId?: string, startDate?: string, endDate?: string) =>
         [...queryKeys.financeManager.cashEntries.all(), 'summary', branchId, startDate, endDate] as const,
     },
+  },
+
+  // Sync / Offline Queue
+  sync: {
+    all: () => [...queryKeys.all(), 'sync'] as const,
+    queueLength: () => [...queryKeys.sync.all(), 'queue-length'] as const,
   },
 };

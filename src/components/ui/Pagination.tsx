@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { type PaginationMeta } from '../../hooks/usePagination';
 
 interface PaginationProps {
@@ -15,6 +16,8 @@ export const Pagination = ({
   showLimitSelector = true,
   limitOptions = [10, 20, 50, 100],
 }: PaginationProps) => {
+  const limitSelectId = useId();
+
   if (!meta || meta.pages === 0) {
     return null;
   }
@@ -46,10 +49,10 @@ export const Pagination = ({
   const endItem = Math.min(page * limit, total);
 
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-700">
+    <div className="flex items-center justify-between px-6 py-4 border-t border-white/[0.08]">
       {/* Left: Items info and limit selector */}
       <div className="flex items-center space-x-4">
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-slate-400">
           Showing <span className="font-medium text-white">{startItem}</span> to{' '}
           <span className="font-medium text-white">{endItem}</span> of{' '}
           <span className="font-medium text-white">{total}</span> results
@@ -57,14 +60,14 @@ export const Pagination = ({
 
         {showLimitSelector && onLimitChange && (
           <div className="flex items-center space-x-2">
-            <label htmlFor="limit" className="text-sm text-gray-400">
+            <label htmlFor={limitSelectId} className="text-sm text-slate-400">
               Per page:
             </label>
             <select
-              id="limit"
+              id={limitSelectId}
               value={limit}
               onChange={(e) => onLimitChange(Number(e.target.value))}
-              className="px-3 py-1.5 bg-primary-dark border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
+              className="px-3 py-1.5 bg-slate-900/70 border border-white/[0.12] rounded-lg text-white text-sm focus:outline-none focus:border-emerald-400/60 focus:ring-1 focus:ring-emerald-400/40"
             >
               {limitOptions.map((option) => (
                 <option key={option} value={option}>
@@ -82,7 +85,7 @@ export const Pagination = ({
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={!hasPrev}
-          className="px-3 py-2 bg-primary-dark border border-gray-600 rounded-lg text-white text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-3 py-2 bg-slate-900/70 border border-white/[0.12] rounded-lg text-slate-200 text-sm hover:bg-white/[0.06] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Previous page"
         >
           <svg
@@ -107,7 +110,7 @@ export const Pagination = ({
               return (
                 <span
                   key={`ellipsis-${index}`}
-                  className="px-3 py-2 text-gray-400"
+                  className="px-3 py-2 text-slate-400"
                 >
                   ...
                 </span>
@@ -122,8 +125,8 @@ export const Pagination = ({
                 onClick={() => onPageChange(pageNum as number)}
                 className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                   isActive
-                    ? 'bg-accent-green text-primary-dark'
-                    : 'bg-primary-dark border border-gray-600 text-white hover:bg-gray-800'
+                    ? 'bg-emerald-500 text-slate-950 font-bold'
+                    : 'bg-slate-900/70 border border-white/[0.12] text-slate-200 hover:bg-white/[0.06]'
                 }`}
                 aria-label={`Page ${pageNum}`}
                 aria-current={isActive ? 'page' : undefined}
@@ -138,7 +141,7 @@ export const Pagination = ({
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={!hasNext}
-          className="px-3 py-2 bg-primary-dark border border-gray-600 rounded-lg text-white text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-3 py-2 bg-slate-900/70 border border-white/[0.12] rounded-lg text-slate-200 text-sm hover:bg-white/[0.06] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           aria-label="Next page"
         >
           <svg
@@ -174,16 +177,16 @@ export const CompactPagination = ({
   const { page, pages, hasNext, hasPrev } = meta;
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-700">
+    <div className="flex items-center justify-between px-4 py-3 border-t border-white/[0.08]">
       <button
         onClick={() => onPageChange(page - 1)}
         disabled={!hasPrev}
-        className="px-4 py-2 bg-primary-dark border border-gray-600 rounded-lg text-white text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="px-4 py-2 bg-slate-900/70 border border-white/[0.12] rounded-lg text-slate-200 text-sm hover:bg-white/[0.06] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         Previous
       </button>
 
-      <span className="text-sm text-gray-400">
+      <span className="text-sm text-slate-400">
         Page <span className="font-medium text-white">{page}</span> of{' '}
         <span className="font-medium text-white">{pages}</span>
       </span>
@@ -191,7 +194,7 @@ export const CompactPagination = ({
       <button
         onClick={() => onPageChange(page + 1)}
         disabled={!hasNext}
-        className="px-4 py-2 bg-primary-dark border border-gray-600 rounded-lg text-white text-sm hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="px-4 py-2 bg-slate-900/70 border border-white/[0.12] rounded-lg text-slate-200 text-sm hover:bg-white/[0.06] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         Next
       </button>

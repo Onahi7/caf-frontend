@@ -6,6 +6,7 @@ import apiClient from "../../lib/api-client";
 import { unwrapResponse } from "../../lib/unwrap-response";
 import { useCurrency } from "../../hooks/useCurrency";
 import { queryKeys } from "../../lib/query-keys";
+import { formatDate, formatTime } from "../../lib/date-format";
 import {
   TrendingUp,
   Package,
@@ -172,7 +173,7 @@ export const MarketerDashboardPage = () => {
                   card.value
                 )}
               </p>
-              <p className="text-xs text-gray-400">{card.subtitle}</p>
+              <p className="text-xs text-slate-400">{card.subtitle}</p>
             </div>
           ))}
         </div>
@@ -188,7 +189,7 @@ export const MarketerDashboardPage = () => {
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between mb-2">
-                  <span className="text-sm text-gray-300">Units Sold</span>
+                  <span className="text-sm text-slate-300">Units Sold</span>
                   <span className="text-sm font-semibold text-green-400">
                     {summary?.unitsSold || 0} / {summary?.unitsAssigned || 0}
                   </span>
@@ -199,21 +200,21 @@ export const MarketerDashboardPage = () => {
                     style={{ width: `${salesPercentage}%` }}
                   />
                 </div>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   {salesPercentage}% of assigned stock sold
                 </p>
               </div>
 
               <div className="grid grid-cols-2 gap-3 mt-4">
                 <div className="bg-white/5 rounded-lg p-3">
-                  <p className="text-xs text-gray-400 mb-1">Total Sales</p>
+                  <p className="text-xs text-slate-400 mb-1">Total Sales</p>
                   <p className="text-lg font-bold text-white">
                     {summary?.saleCount || 0}
                   </p>
                 </div>
                 <div className="bg-white/5 rounded-lg p-3">
-                  <p className="text-xs text-gray-400 mb-1">Avg Sale Value</p>
-                  <p className="text-lg font-bold text-accent-green">
+                  <p className="text-xs text-slate-400 mb-1">Avg Sale Value</p>
+                  <p className="text-lg font-bold text-emerald-500">
                     {(summary?.saleCount ?? 0) > 0
                       ? format(
                           (summary?.soldValue || 0) / (summary?.saleCount ?? 1),
@@ -242,7 +243,7 @@ export const MarketerDashboardPage = () => {
                   </div>
                   <div>
                     <p className="font-semibold text-white">Record Sale</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-slate-400">
                       Log a new sale transaction
                     </p>
                   </div>
@@ -264,7 +265,7 @@ export const MarketerDashboardPage = () => {
                       <p className="font-semibold text-white">
                         Review Assignments
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-slate-400">
                         {summary?.pendingUnits ?? 0} units pending acceptance
                       </p>
                     </div>
@@ -279,16 +280,16 @@ export const MarketerDashboardPage = () => {
               >
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-white/10">
-                    <CheckCircle className="w-5 h-5 text-gray-400" />
+                    <CheckCircle className="w-5 h-5 text-slate-400" />
                   </div>
                   <div>
                     <p className="font-semibold text-white">View History</p>
-                    <p className="text-xs text-gray-400">
+                    <p className="text-xs text-slate-400">
                       Review past sales and assignments
                     </p>
                   </div>
                 </div>
-                <ArrowRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-5 h-5 text-slate-400 group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
           </div>
@@ -298,7 +299,7 @@ export const MarketerDashboardPage = () => {
         <div className="card-compact">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <ShoppingBag className="w-5 h-5 text-accent-green" />
+              <ShoppingBag className="w-5 h-5 text-emerald-500" />
               <h3 className="heading-4">Recent Sales</h3>
             </div>
             <Link
@@ -324,14 +325,14 @@ export const MarketerDashboardPage = () => {
             </div>
           ) : (recentSales?.data || []).length === 0 ? (
             <div className="text-center py-12 bg-white/5 rounded-lg border border-dashed border-white/10">
-              <ShoppingBag className="w-12 h-12 text-gray-600 mx-auto mb-3" />
-              <p className="text-gray-400 mb-2">No sales yet</p>
-              <p className="text-sm text-gray-500">
+              <ShoppingBag className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+              <p className="text-slate-400 mb-2">No sales yet</p>
+              <p className="text-sm text-slate-500">
                 Start by creating a sale from your assigned products
               </p>
               <Link
                 to="/marketer/sales"
-                className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg bg-accent-green/20 text-accent-green hover:bg-accent-green/30 transition-colors"
+                className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-500 hover:bg-emerald-500/30 transition-colors"
               >
                 <ShoppingBag className="w-4 h-4" />
                 Record First Sale
@@ -349,29 +350,26 @@ export const MarketerDashboardPage = () => {
                       <p className="font-medium text-white mb-1">
                         {sale.productId?.name || "Assigned Product"}
                       </p>
-                      <div className="flex items-center gap-3 text-xs text-gray-400">
+                      <div className="flex items-center gap-3 text-xs text-slate-400">
                         <span className="flex items-center gap-1">
                           <Package className="w-3 h-3" />
                           Qty {sale.quantity}
                         </span>
                         <span>•</span>
                         <span>
-                          {new Date(sale.soldAt).toLocaleDateString()}
+                          {formatDate(sale.soldAt)}
                         </span>
                         <span className="hidden sm:inline">•</span>
                         <span className="hidden sm:inline">
-                          {new Date(sale.soldAt).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {formatTime(sale.soldAt)}
                         </span>
                       </div>
                     </div>
                     <div className="text-right sm:pl-4">
-                      <p className="text-lg font-bold text-accent-green">
+                      <p className="text-lg font-bold text-emerald-500">
                         {format(sale.totalAmount)}
                       </p>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-slate-400">
                         {format(sale.unitPrice)} per unit
                       </p>
                     </div>

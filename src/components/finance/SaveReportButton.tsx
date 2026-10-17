@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
 import {
   savedReportsApi,
   type SavedReport,
@@ -22,6 +25,9 @@ const SCHEDULE_LABELS: Record<ReportSchedule, string> = {
   monthly: 'Monthly',
 };
 
+const fieldClass =
+  'w-full mt-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20';
+
 export const SaveReportButton = ({
   reportKey,
   route,
@@ -35,12 +41,14 @@ export const SaveReportButton = ({
   const [recipients, setRecipients] = useState('');
   const [manageOpen, setManageOpen] = useState(false);
   const { showSuccess, showError } = useToast();
+  const requestConfirmation = useConfirm();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (open && !name && defaultName) setName(defaultName);
-  }, [open, name, defaultName]);
+  const handleOpenSave = () => {
+    if (!name) setName(defaultName ?? '');
+    setOpen(true);
+  };
 
   const { data: savedReports } = useQuery({
     queryKey: ['saved-reports', reportKey],
@@ -83,7 +91,20 @@ export const SaveReportButton = ({
       queryClient.invalidateQueries({ queryKey: ['saved-reports'] });
       showSuccess('Removed');
     },
+    onError: (err: unknown) => {
+      showError(err instanceof Error ? err.message : 'Failed to remove report');
+    },
   });
+
+  const handleRemove = async (r: SavedReport) => {
+    const confirmed = await requestConfirmation({
+      title: 'Remove saved report?',
+      message: `"${r.name}" will be removed permanently.`,
+      confirmLabel: 'Remove',
+      variant: 'danger',
+    });
+    if (confirmed) removeMutation.mutate(r._id);
+  };
 
   const handleOpen = (r: SavedReport) => {
     setOpen(false);
@@ -102,8 +123,8 @@ export const SaveReportButton = ({
     <>
       <div className="flex items-center gap-2">
         <button
-          onClick={() => setOpen(true)}
-          className="px-3 py-1.5 text-xs font-medium bg-primary-dark border border-gray-700 text-gray-300 rounded-lg hover:border-accent-green/50 hover:text-accent-green flex items-center gap-1.5"
+          onClick={handleOpenSave}
+          className="px-3 py-1.5 text-xs font-medium bg-slate-900 border border-white/10 text-slate-300 rounded-lg hover:border-emerald-500/50 hover:text-emerald-400 flex items-center gap-1.5"
           title="Save this report configuration"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor">
@@ -114,7 +135,7 @@ export const SaveReportButton = ({
         {matchingReports.length > 0 && (
           <button
             onClick={() => setManageOpen(true)}
-            className="px-3 py-1.5 text-xs font-medium bg-primary-dark border border-accent-green/30 text-accent-green rounded-lg hover:bg-accent-green/10"
+            className="px-3 py-1.5 text-xs font-medium bg-slate-900 border border-emerald-500/30 text-emerald-400 rounded-lg hover:bg-emerald-500/10"
             title="Load a saved report"
           >
             Saved ({matchingReports.length})
@@ -122,140 +143,113 @@ export const SaveReportButton = ({
         )}
       </div>
 
-      {open && (
-        <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
-          onClick={() => setOpen(false)}
-        >
-          <div
-            className="bg-primary-dark border border-gray-700 rounded-2xl w-full max-w-md p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-bold text-white mb-1">Save report</h3>
-            <p className="text-xs text-gray-400 mb-4">
-              Save this configuration to reload later, or schedule email delivery.
-            </p>
+      <Modal isOpen={open} onClose={() => setOpen(false)} title="Save report" size="md">
+        <p className="text-xs text-slate-400 mb-4">
+          Save this configuration to reload later, or schedule email delivery.
+        </p>
 
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs text-gray-400">Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Weekly revenue report"
-                  className="w-full mt-1 px-3 py-2 bg-primary-darker border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400">Description (optional)</label>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="What's this report for?"
-                  className="w-full mt-1 px-3 py-2 bg-primary-darker border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400">Schedule</label>
-                <select
-                  value={schedule}
-                  onChange={(e) => setSchedule(e.target.value as ReportSchedule)}
-                  className="w-full mt-1 px-3 py-2 bg-primary-darker border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-slate-400">Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Weekly revenue report"
+              className={fieldClass}
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="text-xs text-slate-400">Description (optional)</label>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="What's this report for?"
+              className={fieldClass}
+            />
+          </div>
+          <div>
+            <label className="text-xs text-slate-400">Schedule</label>
+            <select
+              value={schedule}
+              onChange={(e) => setSchedule(e.target.value as ReportSchedule)}
+              className={fieldClass}
+            >
+              {(Object.keys(SCHEDULE_LABELS) as ReportSchedule[]).map((s) => (
+                <option key={s} value={s}>
+                  {SCHEDULE_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          </div>
+          {schedule !== 'none' && (
+            <div>
+              <label className="text-xs text-slate-400">Recipients (comma-separated emails)</label>
+              <input
+                type="text"
+                value={recipients}
+                onChange={(e) => setRecipients(e.target.value)}
+                placeholder="alice@example.com, bob@example.com"
+                className={fieldClass}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => createMutation.mutate()}
+            disabled={!name.trim()}
+            isLoading={createMutation.isPending}
+          >
+            Save
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal isOpen={manageOpen} onClose={() => setManageOpen(false)} title="Saved reports" size="md">
+        <p className="text-xs text-slate-400 mb-4">Click to load, or remove with the x button</p>
+
+        <div className="space-y-2 max-h-80 overflow-y-auto">
+          {matchingReports.length === 0 ? (
+            <p className="text-sm text-slate-500 text-center py-6">No saved reports yet</p>
+          ) : (
+            matchingReports.map((r) => (
+              <div
+                key={r._id}
+                className="flex items-center justify-between gap-3 p-3 bg-slate-950 border border-white/10 rounded-lg hover:border-emerald-500/40 transition-colors"
+              >
+                <button onClick={() => handleOpen(r)} className="flex-1 text-left">
+                  <p className="text-sm font-semibold text-white">{r.name}</p>
+                  <p className="text-xs text-slate-400 truncate">
+                    {SCHEDULE_LABELS[r.schedule]}
+                    {r.description ? ` - ${r.description}` : ''}
+                  </p>
+                </button>
+                <button
+                  onClick={() => handleRemove(r)}
+                  disabled={removeMutation.isPending && removeMutation.variables === r._id}
+                  className="text-rose-400 hover:text-rose-300 text-sm disabled:opacity-50"
+                  title="Remove"
                 >
-                  {(Object.keys(SCHEDULE_LABELS) as ReportSchedule[]).map((s) => (
-                    <option key={s} value={s}>
-                      {SCHEDULE_LABELS[s]}
-                    </option>
-                  ))}
-                </select>
+                  x
+                </button>
               </div>
-              {schedule !== 'none' && (
-                <div>
-                  <label className="text-xs text-gray-400">Recipients (comma-separated emails)</label>
-                  <input
-                    type="text"
-                    value={recipients}
-                    onChange={(e) => setRecipients(e.target.value)}
-                    placeholder="alice@example.com, bob@example.com"
-                    className="w-full mt-1 px-3 py-2 bg-primary-darker border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                onClick={() => setOpen(false)}
-                className="px-4 py-2 text-sm text-gray-400 hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => createMutation.mutate()}
-                disabled={!name.trim() || createMutation.isPending}
-                className="px-4 py-2 text-sm bg-accent-green text-primary-dark font-semibold rounded-lg hover:bg-accent-light disabled:opacity-50"
-              >
-                {createMutation.isPending ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
+            ))
+          )}
         </div>
-      )}
 
-      {manageOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
-          onClick={() => setManageOpen(false)}
-        >
-          <div
-            className="bg-primary-dark border border-gray-700 rounded-2xl w-full max-w-md p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-bold text-white mb-1">Saved reports</h3>
-            <p className="text-xs text-gray-400 mb-4">Click to load, or remove with x</p>
-
-            <div className="space-y-2 max-h-80 overflow-y-auto">
-              {matchingReports.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-6">No saved reports yet</p>
-              ) : (
-                matchingReports.map((r) => (
-                  <div
-                    key={r._id}
-                    className="flex items-center justify-between gap-3 p-3 bg-primary-darker border border-gray-800 rounded-lg hover:border-accent-green/40 transition-colors"
-                  >
-                    <button onClick={() => handleOpen(r)} className="flex-1 text-left">
-                      <p className="text-sm font-semibold text-white">{r.name}</p>
-                      <p className="text-xs text-gray-400 truncate">
-                        {SCHEDULE_LABELS[r.schedule]}
-                        {r.description ? ` - ${r.description}` : ''}
-                      </p>
-                    </button>
-                    <button
-                      onClick={() => removeMutation.mutate(r._id)}
-                      className="text-red-400 hover:text-red-300 text-sm"
-                      title="Remove"
-                    >
-                      x
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => setManageOpen(false)}
-                className="px-4 py-2 text-sm text-gray-400 hover:text-white"
-              >
-                Close
-              </button>
-            </div>
-          </div>
+        <div className="mt-4 flex justify-end">
+          <Button variant="secondary" onClick={() => setManageOpen(false)}>
+            Close
+          </Button>
         </div>
-      )}
+      </Modal>
     </>
   );
 };

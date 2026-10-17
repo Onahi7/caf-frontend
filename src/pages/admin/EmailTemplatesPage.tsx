@@ -9,9 +9,12 @@ import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Loading } from '../../components/ui/Loading';
+import { Textarea } from '../../components/ui/Textarea';
 import { Error } from '../../components/ui/Error';
 import { queryKeys } from '../../lib/query-keys';
+import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
+import { getErrorMessage } from '../../lib/error-utils';
 
 interface EmailTemplate {
   _id: string;
@@ -36,11 +39,13 @@ export const EmailTemplatesPage = () => {
   const [editingTemplate, setEditingTemplate] = useState<EmailTemplate | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null);
   const queryClient = useQueryClient();
+  const { showSuccess, showError } = useToast();
+  const requestConfirmation = useConfirm();
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<EmailTemplateFormData>();
 
   // Fetch email templates
-  const { data: templates, isLoading, error } = useQuery({
+  const { data: templates, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.emailTemplates.list(),
     queryFn: async () => {
       const response = await apiClient.get('/email/templates');
@@ -57,7 +62,9 @@ export const EmailTemplatesPage = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.emailTemplates.all(), exact: false });
       setIsModalOpen(false);
       reset();
+      showSuccess('Template created');
     },
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to create template')),
   });
 
   // Update template mutation
@@ -71,7 +78,9 @@ export const EmailTemplatesPage = () => {
       setIsModalOpen(false);
       setEditingTemplate(null);
       reset();
+      showSuccess('Template updated');
     },
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to update template')),
   });
 
   // Toggle template status mutation
@@ -81,8 +90,23 @@ export const EmailTemplatesPage = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.emailTemplates.all(), exact: false });
+      showSuccess('Template status updated');
     },
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to update template status')),
   });
+
+  const handleToggleStatus = async (template: EmailTemplate) => {
+    if (template.isActive) {
+      const confirmed = await requestConfirmation({
+        title: 'Deactivate template?',
+        message: `"${template.name}" will stop being used for ${template.type} emails until it is reactivated.`,
+        confirmLabel: 'Deactivate',
+        variant: 'warning',
+      });
+      if (!confirmed) return;
+    }
+    toggleStatusMutation.mutate(template._id);
+  };
 
   const handleOpenModal = (template?: EmailTemplate) => {
     if (template) {
@@ -119,9 +143,6 @@ export const EmailTemplatesPage = () => {
     }
   };
 
-  if (isLoading) return <AdminLayout><Loading /></AdminLayout>;
-  if (error) return <AdminLayout><Error message="Failed to load email templates" /></AdminLayout>;
-
   const columns = [
     { key: 'name', header: 'Template Name' },
     { key: 'subject', header: 'Subject' },
@@ -139,11 +160,11 @@ export const EmailTemplatesPage = () => {
       header: 'Status',
       render: (template: EmailTemplate) => (
         template.isActive ? (
-          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-500/20 text-green-300">
+          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-emerald-500/20 text-emerald-300">
             Active
           </span>
         ) : (
-          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-500/20 text-red-300">
+          <span className="px-2 py-1 text-xs font-semibold rounded-full bg-rose-500/20 text-rose-300">
             Inactive
           </span>
         )
@@ -171,7 +192,8 @@ export const EmailTemplatesPage = () => {
           <Button
             variant={template.isActive ? 'danger' : 'primary'}
             size="sm"
-            onClick={() => toggleStatusMutation.mutate(template._id)}
+            onClick={() => void handleToggleStatus(template)}
+            isLoading={toggleStatusMutation.isPending && toggleStatusMutation.variables === template._id}
           >
             {template.isActive ? 'Deactivate' : 'Activate'}
           </Button>
@@ -194,11 +216,16 @@ export const EmailTemplatesPage = () => {
         </div>
 
         {/* Templates Table */}
-        <Table
-          data={templates || []}
-          columns={columns}
-          emptyMessage="No email templates found"
-        />
+        {error ? (
+          <Error message="Failed to load email templates" onRetry={() => { void refetch(); }} />
+        ) : (
+          <Table
+            data={templates || []}
+            columns={columns}
+            isLoading={isLoading}
+            emptyMessage="No email templates found"
+          />
+        )}
 
         {/* Template Form Modal */}
         <Modal
@@ -231,23 +258,15 @@ export const EmailTemplatesPage = () => {
               error={errors.subject?.message}
             />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Email Body
-              </label>
-              <textarea
-                {...register('body', { required: 'Body is required' })}
-                rows={10}
-                className="w-full px-3 py-2 border border-gray-700 rounded-md bg-primary-darker text-white shadow-sm focus:outline-none focus:ring-accent-green/50 focus:border-accent-green"
-                placeholder="Use {{variableName}} for dynamic content"
-              />
-              {errors.body && (
-                <p className="mt-1 text-sm text-red-600">{errors.body.message}</p>
-              )}
-              <p className="mt-1 text-xs text-gray-500">
-                Available variables: {'{'}{'{'} customerName {'}'}{'}'}, {'{'}{'{'} amount {'}'}{'}'}, {'{'}{'{'} date {'}'}{'}'}, {'{'}{'{'} branchName {'}'}{'}'}
-              </p>
-            </div>
+            <Textarea
+              label="Email Body"
+              required
+              rows={10}
+              placeholder="Use {{variableName}} for dynamic content"
+              helperText="Available variables: {{customerName}}, {{amount}}, {{date}}, {{branchName}}"
+              error={errors.body?.message}
+              {...register('body', { required: 'Body is required' })}
+            />
 
             <div className="flex justify-end space-x-3 pt-4">
               <Button
@@ -264,10 +283,6 @@ export const EmailTemplatesPage = () => {
                 {editingTemplate ? 'Update Template' : 'Create Template'}
               </Button>
             </div>
-
-            {(createMutation.isError || updateMutation.isError) && (
-              <Error message="Failed to save template. Please try again." />
-            )}
           </form>
         </Modal>
 
@@ -280,8 +295,8 @@ export const EmailTemplatesPage = () => {
           >
             <div className="space-y-4">
               <div>
-                <h3 className="text-sm font-medium text-gray-500">Subject:</h3>
-                <p className="text-lg font-semibold text-gray-900">{previewTemplate.subject}</p>
+                <h3 className="text-sm font-medium text-slate-400">Subject:</h3>
+                <p className="text-lg font-semibold text-slate-100">{previewTemplate.subject}</p>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-white/50">Body:</h3>

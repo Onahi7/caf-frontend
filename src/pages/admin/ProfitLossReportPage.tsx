@@ -7,6 +7,8 @@ import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { Select } from '../../components/ui/Select';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useToast } from '../../hooks/useToast';
+import { getErrorMessage } from '../../lib/error-utils';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
@@ -58,6 +60,8 @@ export function ProfitLossReportPage() {
     return d.toISOString().split('T')[0];
   });
   const [to, setTo] = useState(() => new Date().toISOString().split('T')[0]);
+  const [exporting, setExporting] = useState(false);
+  const { showSuccess, showError } = useToast();
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.reports.profitLoss({ branchId: effectiveBranchId, from, to }),
@@ -84,6 +88,7 @@ export function ProfitLossReportPage() {
   });
 
   const handleExport = async () => {
+    setExporting(true);
     try {
       const response = await apiClient.get(
         buildApiUrl('/reports/profit-loss/export', {
@@ -100,8 +105,12 @@ export function ProfitLossReportPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
+      showSuccess('Export ready', 'Your report download has started.');
     } catch (err) {
-      console.error('Export failed:', err);
+      showError(getErrorMessage(err, 'Export failed'));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -131,13 +140,13 @@ export function ProfitLossReportPage() {
               params={{ branchId: filterBranchId || undefined, from, to }}
               defaultName="Profit & Loss Report"
             />
-            <Button variant="secondary" onClick={handleExport} disabled={!data}>
+            <Button variant="secondary" onClick={handleExport} disabled={!data || exporting} isLoading={exporting}>
               Export CSV
             </Button>
           </div>
         </div>
 
-        <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6 mb-6">
+        <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-end gap-4">
             {isSuperAdmin && (
               <div className="flex-1">
@@ -150,21 +159,21 @@ export function ProfitLossReportPage() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">From</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">From</label>
               <input
                 type="date"
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
-                className="bg-white/5 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">To</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">To</label>
               <input
                 type="date"
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
-                className="bg-white/5 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm"
               />
             </div>
             <Button variant="primary" onClick={() => refetch()}>Apply</Button>
@@ -186,7 +195,7 @@ export function ProfitLossReportPage() {
                 >
                   {format(data.revenue.totalSales)}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">{data.revenue.transactionCount} transactions</p>
+                <p className="text-xs text-slate-400 mt-1">{data.revenue.transactionCount} transactions</p>
               </div>
               <div className="bg-orange-500/10 p-4 rounded-xl border border-orange-500/20">
                 <p className="text-sm text-orange-200">COGS</p>
@@ -196,7 +205,7 @@ export function ProfitLossReportPage() {
                 >
                   {format(data.cogs.totalCOGS)}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">{data.cogs.itemsSold} items sold</p>
+                <p className="text-xs text-slate-400 mt-1">{data.cogs.itemsSold} items sold</p>
               </div>
               <div className="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20">
                 <p className="text-sm text-blue-200">Gross Profit</p>
@@ -206,7 +215,7 @@ export function ProfitLossReportPage() {
                 >
                   {format(data.grossProfit)}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">{data.grossProfitMargin.toFixed(1)}% margin</p>
+                <p className="text-xs text-slate-400 mt-1">{data.grossProfitMargin.toFixed(1)}% margin</p>
               </div>
               <div className="bg-purple-500/10 p-4 rounded-xl border border-purple-500/20">
                 <p className="text-sm text-purple-200">Operating Profit</p>
@@ -216,28 +225,28 @@ export function ProfitLossReportPage() {
                 >
                   {format(data.operatingProfit)}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">{data.operatingProfitMargin.toFixed(1)}% margin</p>
+                <p className="text-xs text-slate-400 mt-1">{data.operatingProfitMargin.toFixed(1)}% margin</p>
               </div>
             </div>
 
             {/* P&L Table */}
-            <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+            <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
               <h2 className="text-lg font-semibold text-white mb-4">Profit & Loss Statement</h2>
               <div className="space-y-2">
                 <div className="flex justify-between py-2 border-b border-white/10">
-                  <span className="text-gray-300 font-medium">Revenue</span>
+                  <span className="text-slate-300 font-medium">Revenue</span>
                   <span className="text-green-400 font-semibold">{format(data.revenue.totalSales)}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-white/10 pl-4">
-                  <span className="text-gray-400">Collected</span>
-                  <span className="text-gray-300">{format(data.revenue.totalCollected)}</span>
+                  <span className="text-slate-400">Collected</span>
+                  <span className="text-slate-300">{format(data.revenue.totalCollected)}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-white/10 pl-4">
-                  <span className="text-gray-400">Discounts</span>
+                  <span className="text-slate-400">Discounts</span>
                   <span className="text-red-400">-{format(data.revenue.totalDiscount)}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-white/10">
-                  <span className="text-gray-300 font-medium">Cost of Goods Sold</span>
+                  <span className="text-slate-300 font-medium">Cost of Goods Sold</span>
                   <span className="text-orange-400 font-semibold">{format(data.cogs.totalCOGS)}</span>
                 </div>
                 <div className="flex justify-between py-3 border-b border-white/20 bg-blue-500/5 px-2 rounded">
@@ -245,13 +254,13 @@ export function ProfitLossReportPage() {
                   <span className="text-blue-400 font-bold">{format(data.grossProfit)} ({data.grossProfitMargin.toFixed(1)}%)</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-white/10">
-                  <span className="text-gray-300 font-medium">Operating Expenses</span>
+                  <span className="text-slate-300 font-medium">Operating Expenses</span>
                   <span className="text-red-400 font-semibold">{format(data.expenses.totalExpenses)}</span>
                 </div>
                 {expenseChartData.map((cat) => (
                   <div key={cat.name} className="flex justify-between py-1 border-b border-white/5 pl-4">
-                    <span className="text-gray-400 text-sm capitalize">{cat.name.replace(/_/g, ' ').toLowerCase()}</span>
-                    <span className="text-gray-400 text-sm">{format(cat.value)}</span>
+                    <span className="text-slate-400 text-sm capitalize">{cat.name.replace(/_/g, ' ').toLowerCase()}</span>
+                    <span className="text-slate-400 text-sm">{format(cat.value)}</span>
                   </div>
                 ))}
                 <div className="flex justify-between py-3 bg-purple-500/5 px-2 rounded mt-2">
@@ -263,7 +272,7 @@ export function ProfitLossReportPage() {
 
             {/* Charts */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+              <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
                 <h2 className="text-lg font-semibold text-white mb-4">Revenue vs Costs</h2>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={marginChartData}>
@@ -285,7 +294,7 @@ export function ProfitLossReportPage() {
               </div>
 
               {expenseChartData.length > 0 && (
-                <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+                <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
                   <h2 className="text-lg font-semibold text-white mb-4">Expenses by Category</h2>
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>

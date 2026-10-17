@@ -11,6 +11,7 @@ import { useCurrency } from '../../hooks/useCurrency';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDateTime } from '../../lib/date-format';
 import { buildApiUrl } from '../../lib/api-utils';
 import { SaveReportButton } from '../../components/finance/SaveReportButton';
 import {
@@ -111,7 +112,7 @@ export function StockMovementReportPage() {
     if (!data?.length) return;
     const headers = ['Date', 'Type', 'Product', 'Quantity', 'Reason'];
     const rows = data.map((m) => [
-      new Date(m.createdAt).toLocaleString(),
+      formatDateTime(m.createdAt),
       m.movementType,
       m.productName || m.productId,
       m.quantity,
@@ -142,7 +143,7 @@ export function StockMovementReportPage() {
     {
       key: 'createdAt',
       header: 'Date',
-      render: (item: StockMovement) => new Date(item.createdAt).toLocaleString(),
+      render: (item: StockMovement) => formatDateTime(item.createdAt),
     },
     {
       key: 'movementType',
@@ -179,7 +180,7 @@ export function StockMovementReportPage() {
     {
       key: 'reason',
       header: 'Reason',
-      render: (item: StockMovement) => <span className="text-gray-400 text-sm">{item.reason || '-'}</span>,
+      render: (item: StockMovement) => <span className="text-slate-400 text-sm">{item.reason || '-'}</span>,
     },
   ];
 
@@ -201,7 +202,7 @@ export function StockMovementReportPage() {
           </div>
         </div>
 
-        <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6 mb-6">
+        <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-end gap-4">
             {isSuperAdmin && (
               <div className="flex-1">
@@ -214,11 +215,11 @@ export function StockMovementReportPage() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Movement Type</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">Movement Type</label>
               <select
                 value={movementType}
                 onChange={(e) => setMovementType(e.target.value)}
-                className="bg-white/5 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm"
               >
                 {MOVEMENT_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -226,21 +227,21 @@ export function StockMovementReportPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">From</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">From</label>
               <input
                 type="date"
                 value={from}
                 onChange={(e) => setFrom(e.target.value)}
-                className="bg-white/5 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">To</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1">To</label>
               <input
                 type="date"
                 value={to}
                 onChange={(e) => setTo(e.target.value)}
-                className="bg-white/5 border border-gray-600 rounded-lg px-3 py-2 text-white text-sm"
+                className="bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm"
               />
             </div>
             <Button variant="primary" onClick={() => refetch()}>Apply</Button>
@@ -252,12 +253,12 @@ export function StockMovementReportPage() {
 
         {data && data.length > 0 && (
           <div className="space-y-6">
-            <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-4">
-              <p className="text-sm text-gray-400 mb-2">{data.length} movements found</p>
+            <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-4">
+              <p className="text-sm text-slate-400 mb-2">{data.length} movements found</p>
             </div>
 
             {chartData.length > 0 && (
-              <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+              <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
                 <h2 className="text-lg font-semibold text-white mb-4">Movement Summary</h2>
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={chartData}>
@@ -277,16 +278,16 @@ export function StockMovementReportPage() {
               </div>
             )}
 
-            <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
+            <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
               <Table data={data} columns={columns} />
             </div>
           </div>
         )}
 
         {data && data.length === 0 && (
-          <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-12 text-center">
-            <p className="text-gray-400 text-lg">No stock movements found.</p>
-            <p className="text-gray-500 text-sm mt-1">Try adjusting the filters or date range.</p>
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-12 text-center">
+            <p className="text-slate-400 text-lg">No stock movements found.</p>
+            <p className="text-slate-500 text-sm mt-1">Try adjusting the filters or date range.</p>
           </div>
         )}
       </div>

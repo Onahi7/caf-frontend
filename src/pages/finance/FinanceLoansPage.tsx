@@ -45,9 +45,9 @@ const statusBadge = (status: string) => {
     active: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     fully_repaid: 'bg-green-500/10 text-green-400 border-green-500/20',
     written_off: 'bg-red-500/10 text-red-400 border-red-500/20',
-    cancelled: 'bg-gray-500/10 text-gray-400 border-gray-500/20',
+    cancelled: 'bg-gray-500/10 text-slate-400 border-gray-500/20',
   };
-  return s[status] || 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+  return s[status] || 'bg-gray-500/10 text-slate-400 border-gray-500/20';
 };
 
 export function FinanceLoansPage() {
@@ -250,8 +250,8 @@ export function FinanceLoansPage() {
               {format(stats.totalOutstanding)}
             </p>
           </div>
-          <div className="rounded-xl border border-white/10 bg-primary-dark/70 p-4">
-            <p className="text-xs text-gray-400">Accrued Interest</p>
+          <div className="rounded-xl border border-white/10 bg-slate-900/70 p-4">
+            <p className="text-xs text-slate-400">Accrued Interest</p>
             <p
               className="text-lg sm:text-2xl font-bold text-white tabular-nums break-words leading-tight"
               title={format(stats.totalAccruedInterest)}
@@ -347,7 +347,7 @@ export function FinanceLoansPage() {
           <div className="space-y-4">
             <div className="bg-white/5 rounded-xl p-4">
               <p className="text-white font-medium">{repayModal.referenceNumber} - {repayModal.counterpartyName}</p>
-              <p className="text-sm text-gray-400">Outstanding: {format(repayModal.outstandingPrincipal)} | Rate: {repayModal.interestRatePercent}%</p>
+              <p className="text-sm text-slate-400">Outstanding: {format(repayModal.outstandingPrincipal)} | Rate: {repayModal.interestRatePercent}%</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-white mb-1">Amount</label>
@@ -369,7 +369,7 @@ export function FinanceLoansPage() {
           <div className="space-y-4">
             <div className="bg-white/5 rounded-xl p-4">
               <p className="text-white font-medium">{accrueModal.referenceNumber} - {accrueModal.counterpartyName}</p>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-slate-400">
                 Outstanding: {format(accrueModal.outstandingPrincipal)} | Rate: {accrueModal.interestRatePercent}%
               </p>
             </div>
@@ -377,7 +377,7 @@ export function FinanceLoansPage() {
               <label className="block text-sm font-medium text-white mb-1">Months to accrue</label>
               <input type="number" min="1" value={accrueMonths} onChange={(e) => setAccrueMonths(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10" />
-              <p className="mt-2 text-xs text-gray-400">
+              <p className="mt-2 text-xs text-slate-400">
                 Estimated interest: {format((accrueModal.outstandingPrincipal * (accrueModal.interestRatePercent / 100) / 12) * (Number(accrueMonths) || 0))}
               </p>
             </div>
@@ -400,7 +400,7 @@ export function FinanceLoansPage() {
             </div>
             <div className="bg-white/5 rounded-xl p-4">
               <p className="text-white font-medium">{cancelModal.referenceNumber} - {cancelModal.counterpartyName}</p>
-              <p className="text-sm text-gray-400">Principal: {format(cancelModal.principalAmount)}</p>
+              <p className="text-sm text-slate-400">Principal: {format(cancelModal.principalAmount)}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-white mb-1">Reason</label>

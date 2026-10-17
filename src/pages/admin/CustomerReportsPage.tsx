@@ -12,7 +12,10 @@ import { Input } from '../../components/ui/Input';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useToast } from '../../hooks/useToast';
+import { getErrorMessage } from '../../lib/error-utils';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDate } from '../../lib/date-format';
 import { buildApiUrl } from '../../lib/api-utils';
 import { SaveReportButton } from '../../components/finance/SaveReportButton';
 import { useAuthStore } from '../../stores/auth-store';
@@ -51,6 +54,8 @@ export const CustomerReportsPage = () => {
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [groupBy, setGroupBy] = useState<'day' | 'week' | 'month'>('day');
+  const [exporting, setExporting] = useState(false);
+  const { showSuccess, showError } = useToast();
   const { format } = useCurrency();
   const location = useLocation();
   const user = useAuthStore((state) => state.user);
@@ -80,6 +85,7 @@ export const CustomerReportsPage = () => {
   });
 
   const handleExport = async () => {
+    setExporting(true);
     try {
       const response = await apiClient.get(buildApiUrl('/reports/customers/export', {
         from: dateFrom,
@@ -98,8 +104,12 @@ export const CustomerReportsPage = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
+      showSuccess('Export ready', 'Your report download has started.');
     } catch (err) {
-      console.error('Export failed:', err);
+      showError(getErrorMessage(err, 'Export failed'));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -117,14 +127,14 @@ export const CustomerReportsPage = () => {
               params={{ branchId: effectiveBranchId, dateFrom, dateTo }}
               defaultName="Customer Report"
             />
-            <Button onClick={handleExport}>
+            <Button onClick={handleExport} isLoading={exporting} disabled={exporting}>
               Export to CSV
             </Button>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+        <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input
               label="From Date"
@@ -143,9 +153,9 @@ export const CustomerReportsPage = () => {
               value={groupBy}
               onChange={(e) => setGroupBy(e.target.value as 'day' | 'week' | 'month')}
             >
-              <option value="day" className="bg-primary-dark text-white">Daily</option>
-              <option value="week" className="bg-primary-dark text-white">Weekly</option>
-              <option value="month" className="bg-primary-dark text-white">Monthly</option>
+              <option value="day" className="bg-slate-900 text-white">Daily</option>
+              <option value="week" className="bg-slate-900 text-white">Weekly</option>
+              <option value="month" className="bg-slate-900 text-white">Monthly</option>
             </Select>
           </div>
         </div>
@@ -154,47 +164,47 @@ export const CustomerReportsPage = () => {
         {reportData && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-                <p className="text-sm text-gray-500">Total Customers</p>
+              <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+                <p className="text-sm text-slate-500">Total Customers</p>
                 <p className="text-3xl font-bold text-white">{reportData.totalCustomers}</p>
               </div>
-              <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-                <p className="text-sm text-gray-500">Active Customers</p>
+              <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+                <p className="text-sm text-slate-500">Active Customers</p>
                 <p className="text-3xl font-bold text-green-600">{reportData.activeCustomers}</p>
               </div>
-              <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-                <p className="text-sm text-gray-500">New Customers</p>
+              <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+                <p className="text-sm text-slate-500">New Customers</p>
                 <p className="text-3xl font-bold text-blue-600">{reportData.newCustomers}</p>
               </div>
-              <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-                <p className="text-sm text-gray-500">Total Loyalty Points</p>
+              <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+                <p className="text-sm text-slate-500">Total Loyalty Points</p>
                 <p className="text-3xl font-bold text-purple-600">{reportData.totalLoyaltyPoints}</p>
               </div>
             </div>
 
             {/* Customer Segmentation */}
-            <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+            <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
               <h2 className="text-xl font-bold text-white mb-4">Customer Segmentation</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="text-center p-4 bg-green-500/10 rounded-lg border border-green-500/20">
                   <p className="text-sm text-green-100">High Value</p>
                   <p className="text-2xl font-bold text-green-600">{reportData.segmentation.highValue}</p>
-                  <p className="text-xs text-gray-400">{'>'} 10 purchases</p>
+                  <p className="text-xs text-slate-400">{'>'} 10 purchases</p>
                 </div>
                 <div className="text-center p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
                   <p className="text-sm text-blue-100">Medium</p>
                   <p className="text-2xl font-bold text-blue-600">{reportData.segmentation.medium}</p>
-                  <p className="text-xs text-gray-400">5-10 purchases</p>
+                  <p className="text-xs text-slate-400">5-10 purchases</p>
                 </div>
                 <div className="text-center p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
                   <p className="text-sm text-yellow-100">Low</p>
                   <p className="text-2xl font-bold text-yellow-600">{reportData.segmentation.low}</p>
-                  <p className="text-xs text-gray-400">1-4 purchases</p>
+                  <p className="text-xs text-slate-400">1-4 purchases</p>
                 </div>
                 <div className="text-center p-4 bg-white/5 rounded-lg border border-white/10">
-                  <p className="text-sm text-gray-300">Inactive</p>
+                  <p className="text-sm text-slate-300">Inactive</p>
                   <p className="text-2xl font-bold text-gray-600">{reportData.segmentation.inactive}</p>
-                  <p className="text-xs text-gray-400">No recent activity</p>
+                  <p className="text-xs text-slate-400">No recent activity</p>
                 </div>
               </div>
             </div>
@@ -220,7 +230,7 @@ export const CustomerReportsPage = () => {
               <Table
                 data={reportData.byPeriod}
                 columns={[
-                  { key: 'date', header: 'Date', mobilePrimary: true, render: (p) => <span className="text-slate-200">{new Date(p.date).toLocaleDateString()}</span> },
+                  { key: 'date', header: 'Date', mobilePrimary: true, render: (p) => <span className="text-slate-200">{formatDate(p.date)}</span> },
                   { key: 'newCustomers', header: 'New Customers', align: 'center', render: (p) => <span className="text-slate-300 font-mono">{p.newCustomers}</span> },
                   { key: 'totalPurchases', header: 'Total Purchases', align: 'right', render: (p) => <span className="font-mono text-emerald-400 font-medium">{format(p.totalPurchases)}</span> },
                 ]}

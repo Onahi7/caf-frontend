@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
@@ -7,11 +7,12 @@ import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Input } from '../../components/ui/Input';
-import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
+import { formatDateTime } from '../../lib/date-format';
 import { useSearchWithDebounce } from '../../hooks/useSearchWithDebounce';
+import { usePagination, calculatePaginationMeta } from '../../hooks/usePagination';
 
 interface AuditLog {
   _id: string;
@@ -47,24 +48,34 @@ export const AuditTrailPage = () => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const pagination = usePagination({ initialLimit: 25 });
+
+  useEffect(() => {
+    pagination.setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchQuery, actionFilter, entityFilter, dateFrom, dateTo]);
 
   // Fetch audit logs
-  const { data: logs, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.auditLogs.list({
       search: debouncedSearchQuery,
       action: actionFilter,
       entity: entityFilter,
       dateFrom,
       dateTo,
+      page: pagination.state.page,
+      limit: pagination.state.limit,
     }),
     queryFn: async () => {
       const response = await apiClient.get(
         buildApiUrl('/audit/logs', {
+          search: debouncedSearchQuery || undefined,
           action: actionFilter !== 'all' ? actionFilter : undefined,
           resource: entityFilter !== 'all' ? entityFilter : undefined,
           startDate: dateFrom,
           endDate: dateTo,
-          limit: 200,
+          page: pagination.state.page,
+          limit: pagination.state.limit,
         }),
       );
 
@@ -86,23 +97,15 @@ export const AuditTrailPage = () => {
         timestamp: String(log.createdAt || new Date().toISOString()),
       })) as AuditLog[];
 
-      if (!debouncedSearchQuery) {
-        return mapped;
-      }
-
-      const needle = debouncedSearchQuery.toLowerCase();
-      return mapped.filter(
-        (log) =>
-          log.userName.toLowerCase().includes(needle) ||
-          log.entity.toLowerCase().includes(needle) ||
-          log.entityId.toLowerCase().includes(needle) ||
-          log.action.toLowerCase().includes(needle) ||
-          getAuditEventLabel(log).toLowerCase().includes(needle),
-      );
+      return {
+        logs: mapped,
+        total: Number(response.data?.total ?? mapped.length),
+      };
     },
   });
 
-  const exportedLogs = useMemo(() => logs || [], [logs]);
+  const logs = data?.logs ?? [];
+  const exportedLogs = useMemo(() => logs, [logs]);
 
   const handleExport = () => {
     const escapeCsv = (value: unknown) => {
@@ -153,14 +156,11 @@ export const AuditTrailPage = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  if (isLoading) return <AdminLayout><Loading /></AdminLayout>;
-  if (error) return <AdminLayout><Error message="Failed to load audit logs" /></AdminLayout>;
-
   const columns = [
     {
       key: 'timestamp',
       header: 'Timestamp',
-      render: (log: AuditLog) => new Date(log.timestamp).toLocaleString(),
+      render: (log: AuditLog) => formatDateTime(log.timestamp),
     },
     { key: 'userName', header: 'User' },
     {
@@ -168,9 +168,9 @@ export const AuditTrailPage = () => {
       header: 'Action',
       render: (log: AuditLog) => {
         const actionColors: Record<string, string> = {
-          create: 'bg-green-500/20 text-green-300',
+          create: 'bg-emerald-500/20 text-emerald-300',
           update: 'bg-blue-500/20 text-blue-300',
-          delete: 'bg-red-500/20 text-red-300',
+          delete: 'bg-rose-500/20 text-rose-300',
           login: 'bg-purple-500/20 text-purple-300',
           logout: 'bg-white/10 text-white/60',
         };
@@ -192,7 +192,7 @@ export const AuditTrailPage = () => {
       key: 'entityId',
       header: 'Entity ID',
       render: (log: AuditLog) => (
-        <span className="text-xs text-gray-500">{log.entityId}</span>
+        <span className="text-xs text-slate-500">{log.entityId}</span>
       ),
     },
     {
@@ -235,7 +235,7 @@ export const AuditTrailPage = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-primary-dark/50 border border-white/10 p-4 rounded-2xl shadow-xl">
+        <div className="bg-slate-900/60 border border-white/10 p-4 rounded-2xl shadow-xl">
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
             <Input
               placeholder="Search..."
@@ -247,25 +247,25 @@ export const AuditTrailPage = () => {
               value={actionFilter}
               onChange={(e) => setActionFilter(e.target.value)}
             >
-              <option value="all" className="bg-primary-dark text-white">All Actions</option>
-              <option value="create" className="bg-primary-dark text-white">Create</option>
-              <option value="update" className="bg-primary-dark text-white">Update</option>
-              <option value="delete" className="bg-primary-dark text-white">Delete</option>
-              <option value="login" className="bg-primary-dark text-white">Login</option>
-              <option value="logout" className="bg-primary-dark text-white">Logout</option>
+              <option value="all" className="bg-slate-900 text-white">All Actions</option>
+              <option value="create" className="bg-slate-900 text-white">Create</option>
+              <option value="update" className="bg-slate-900 text-white">Update</option>
+              <option value="delete" className="bg-slate-900 text-white">Delete</option>
+              <option value="login" className="bg-slate-900 text-white">Login</option>
+              <option value="logout" className="bg-slate-900 text-white">Logout</option>
             </Select>
 
             <Select
               value={entityFilter}
               onChange={(e) => setEntityFilter(e.target.value)}
             >
-              <option value="all" className="bg-primary-dark text-white">All Entities</option>
-              <option value="product" className="bg-primary-dark text-white">Product</option>
-              <option value="sale" className="bg-primary-dark text-white">Sale</option>
-              <option value="user" className="bg-primary-dark text-white">User</option>
-              <option value="customer" className="bg-primary-dark text-white">Customer</option>
-              <option value="batch" className="bg-primary-dark text-white">Batch</option>
-              <option value="transfer" className="bg-primary-dark text-white">Transfer</option>
+              <option value="all" className="bg-slate-900 text-white">All Entities</option>
+              <option value="product" className="bg-slate-900 text-white">Product</option>
+              <option value="sale" className="bg-slate-900 text-white">Sale</option>
+              <option value="user" className="bg-slate-900 text-white">User</option>
+              <option value="customer" className="bg-slate-900 text-white">Customer</option>
+              <option value="batch" className="bg-slate-900 text-white">Batch</option>
+              <option value="transfer" className="bg-slate-900 text-white">Transfer</option>
             </Select>
 
             <Input
@@ -285,11 +285,23 @@ export const AuditTrailPage = () => {
         </div>
 
         {/* Audit Logs Table */}
-        <Table
-          data={logs || []}
-          columns={columns}
-          emptyMessage="No audit logs match current filters"
-        />
+        {error ? (
+          <Error message="Failed to load audit logs" onRetry={() => { void refetch(); }} />
+        ) : (
+          <Table
+            data={logs}
+            columns={columns}
+            isLoading={isLoading}
+            emptyMessage="No audit logs match current filters"
+            pagination={calculatePaginationMeta(
+              pagination.state.page,
+              pagination.state.limit,
+              data?.total ?? 0,
+            )}
+            onPageChange={pagination.setPage}
+            onLimitChange={pagination.setLimit}
+          />
+        )}
 
         {/* Details Modal */}
         <Modal
@@ -303,7 +315,7 @@ export const AuditTrailPage = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium text-white/50">Timestamp</p>
-                  <p className="text-sm text-white">{new Date(selectedLog.timestamp).toLocaleString()}</p>
+                  <p className="text-sm text-white">{formatDateTime(selectedLog.timestamp)}</p>
                 </div>
                 <div>
                   <p className="text-sm font-medium text-white/50">User</p>

@@ -10,6 +10,7 @@ import apiClient from '../../lib/api-client';
 import { buildApiUrl } from '../../lib/api-utils';
 import { UserCheck, AlertCircle, CheckCircle2, Calendar, FileText, ListChecks } from 'lucide-react';
 import { useCurrency } from '../../hooks/useCurrency';
+import { formatDate } from '../../lib/date-format';
 
 interface SettlementAdvance {
   id: string;
@@ -43,8 +44,9 @@ interface Employee {
   role: string;
 }
 
-function fmtDate(s: string) {
-  return new Date(s).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+interface EmployeesWithAdvancesResult {
+  rows: { employee: Employee; outstanding: OutstandingByEmployee }[];
+  failed: Employee[];
 }
 
 export function FinanceFinalSettlementPage() {
@@ -62,9 +64,10 @@ export function FinanceFinalSettlementPage() {
 
   const employeesWithAdvances = useQuery({
     queryKey: ['employees-with-advances', branchId, employeesQuery.data?.map((e) => e._id).join(',')],
-    queryFn: async () => {
-      if (!employeesQuery.data || employeesQuery.data.length === 0) return [];
-      const results: { employee: Employee; outstanding: OutstandingByEmployee }[] = [];
+    queryFn: async (): Promise<EmployeesWithAdvancesResult> => {
+      if (!employeesQuery.data || employeesQuery.data.length === 0) return { rows: [], failed: [] };
+      const rows: { employee: Employee; outstanding: OutstandingByEmployee }[] = [];
+      const failed: Employee[] = [];
       await Promise.all(
         employeesQuery.data.map(async (emp) => {
           try {
@@ -73,14 +76,14 @@ export function FinanceFinalSettlementPage() {
             );
             const data = (res.data?.data || res.data) as OutstandingByEmployee;
             if (data.total > 0) {
-              results.push({ employee: emp, outstanding: data });
+              rows.push({ employee: emp, outstanding: data });
             }
           } catch {
-            // ignore
+            failed.push(emp);
           }
         }),
       );
-      return results.sort((a, b) => b.outstanding.total - a.outstanding.total);
+      return { rows: rows.sort((a, b) => b.outstanding.total - a.outstanding.total), failed };
     },
     enabled: !!employeesQuery.data && employeesQuery.data.length > 0,
   });
@@ -98,6 +101,8 @@ export function FinanceFinalSettlementPage() {
   });
 
   const selectedEmployee = employeesQuery.data?.find((e) => e._id === selectedEmployeeId);
+  const outstandingRows = employeesWithAdvances.data?.rows ?? [];
+  const failedEmployees = employeesWithAdvances.data?.failed ?? [];
 
   return (
     <FinanceLayout>
@@ -115,7 +120,7 @@ export function FinanceFinalSettlementPage() {
           {employeesQuery.isLoading ? (
             <Loading />
           ) : employeesQuery.isError ? (
-            <Error message="Failed to load employees" />
+            <Error message="Failed to load employees" onRetry={() => { void employeesQuery.refetch(); }} />
           ) : (
             <select
               value={selectedEmployeeId}
@@ -132,19 +137,28 @@ export function FinanceFinalSettlementPage() {
           )}
         </div>
 
-        {employeesWithAdvances.data && employeesWithAdvances.data.length > 0 && (
+        {failedEmployees.length > 0 && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-200">
+            <AlertCircle className="inline h-4 w-4 mr-2" />
+            Could not check advances for {failedEmployees.length} employee(s):{' '}
+            {failedEmployees.map((e) => `${e.firstName} ${e.lastName}`).join(', ')}. Their outstanding
+            balances are not included in the list below.
+          </div>
+        )}
+
+        {outstandingRows.length > 0 && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-6">
             <div className="mb-3 flex items-center gap-2">
               <ListChecks className="h-4 w-4 text-amber-300" />
               <h3 className="text-sm font-semibold text-amber-200">
-                Employees with Outstanding Advances ({employeesWithAdvances.data.length})
+                Employees with Outstanding Advances ({outstandingRows.length})
               </h3>
               <span className="ml-auto text-xs text-amber-300/80">
-                Total: {fmt(employeesWithAdvances.data.reduce((s, x) => s + x.outstanding.total, 0))}
+                Total: {fmt(outstandingRows.reduce((s, x) => s + x.outstanding.total, 0))}
               </span>
             </div>
             <Table
-              data={employeesWithAdvances.data}
+              data={outstandingRows}
               columns={[
                 {
                   key: 'employee',
@@ -187,7 +201,9 @@ export function FinanceFinalSettlementPage() {
         )}
 
         {selectedEmployeeId && settlementQuery.isLoading && <Loading />}
-        {settlementQuery.isError && <Error message="Failed to load settlement" />}
+        {settlementQuery.isError && (
+          <Error message="Failed to load settlement" onRetry={() => { void settlementQuery.refetch(); }} />
+        )}
 
         {settlementQuery.data && (
           <div className="space-y-4">
@@ -275,7 +291,7 @@ export function FinanceFinalSettlementPage() {
                       render: (a) => (
                         <span className="flex items-center gap-1 text-slate-300">
                           <Calendar className="h-3 w-3" />
-                          {fmtDate(a.advanceDate)}
+                          {formatDate(a.advanceDate)}
                         </span>
                       ),
                     },

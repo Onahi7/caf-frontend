@@ -12,10 +12,10 @@ export const EmptyState = ({ icon, title, message, action }: EmptyStateProps) =>
   return (
     <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
       {icon ? (
-        <div className="mb-4 text-gray-500">{icon}</div>
+        <div className="mb-4 text-slate-400">{icon}</div>
       ) : (
         <svg
-          className="mx-auto h-12 w-12 text-gray-600 mb-4"
+          className="mx-auto h-12 w-12 text-slate-500 mb-4"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -31,12 +31,12 @@ export const EmptyState = ({ icon, title, message, action }: EmptyStateProps) =>
       )}
       <h3 className="text-lg font-medium text-white mb-1">{title}</h3>
       {message && (
-        <p className="text-sm text-gray-400 max-w-sm">{message}</p>
+        <p className="text-sm text-slate-400 max-w-sm">{message}</p>
       )}
       {action && (
         <button
           onClick={action.onClick}
-          className="mt-4 px-4 py-2 bg-accent-green text-primary-dark rounded-xl font-medium hover:bg-accent-light transition-colors focus:outline-none focus:ring-2 focus:ring-accent-green/50 focus:ring-offset-2 focus:ring-offset-primary-dark"
+          className="mt-4 px-4 py-2 bg-emerald-500 text-slate-950 rounded-xl font-semibold hover:bg-emerald-400 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:ring-offset-2 focus:ring-offset-slate-900"
         >
           {action.label}
         </button>

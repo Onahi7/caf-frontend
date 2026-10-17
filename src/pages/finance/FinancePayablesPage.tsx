@@ -6,6 +6,7 @@ import { Error } from '../../components/ui/Error';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import apiClient from '../../lib/api-client';
+import { formatDate } from '../../lib/date-format';
 import { buildApiUrl } from '../../lib/api-utils';
 import { Package, Clock, CheckCircle } from 'lucide-react';
 import { useCurrency } from '../../hooks/useCurrency';
@@ -60,14 +61,14 @@ export function FinancePayablesPage() {
             {format(totalPayable)}
           </p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-primary-dark/70 p-4">
-          <div className="flex items-center gap-2 text-gray-400 text-xs uppercase mb-1">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+          <div className="flex items-center gap-2 text-slate-400 text-xs uppercase mb-1">
             <Package className="w-4 h-4" /> PO Count
           </div>
           <p className="text-2xl font-bold text-white">{(orders || []).length}</p>
         </div>
-        <div className="rounded-2xl border border-white/10 bg-primary-dark/70 p-4">
-          <div className="flex items-center gap-2 text-gray-400 text-xs uppercase mb-1">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-4">
+          <div className="flex items-center gap-2 text-slate-400 text-xs uppercase mb-1">
             <CheckCircle className="w-4 h-4" /> Avg. Value
           </div>
           <p
@@ -91,8 +92,8 @@ export function FinancePayablesPage() {
             onClick={() => setStatusFilter(opt.key as typeof statusFilter)}
             className={`rounded-xl border px-4 py-2 text-sm transition-colors ${
               statusFilter === opt.key
-                ? 'border-accent-green bg-accent-green/15 text-accent-green'
-                : 'border-white/10 bg-primary-dark/60 text-gray-300 hover:border-white/20 hover:text-white'
+                ? 'border-emerald-500 bg-emerald-500/15 text-emerald-500'
+                : 'border-white/10 bg-slate-900/60 text-slate-300 hover:border-white/20 hover:text-white'
             }`}
           >
             {opt.label}
@@ -105,22 +106,22 @@ export function FinancePayablesPage() {
       ) : error ? (
         <Error message="Failed to load payables" />
       ) : (
-        <div className="rounded-2xl border border-white/10 bg-primary-dark/70 overflow-hidden">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/70 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5">
-                  <th className="text-left text-gray-400 px-4 py-3 font-medium">PO #</th>
-                  <th className="text-left text-gray-400 px-4 py-3 font-medium">Supplier</th>
-                  <th className="text-right text-gray-400 px-4 py-3 font-medium">Total</th>
-                  <th className="text-left text-gray-400 px-4 py-3 font-medium">Status</th>
-                  <th className="text-left text-gray-400 px-4 py-3 font-medium">Created</th>
+                  <th className="text-left text-slate-400 px-4 py-3 font-medium">PO #</th>
+                  <th className="text-left text-slate-400 px-4 py-3 font-medium">Supplier</th>
+                  <th className="text-right text-slate-400 px-4 py-3 font-medium">Total</th>
+                  <th className="text-left text-slate-400 px-4 py-3 font-medium">Status</th>
+                  <th className="text-left text-slate-400 px-4 py-3 font-medium">Created</th>
                 </tr>
               </thead>
               <tbody>
                 {(orders || []).length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-gray-400">
+                    <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
                       No purchase orders found.
                     </td>
                   </tr>
@@ -128,7 +129,7 @@ export function FinancePayablesPage() {
                   (orders || []).map((o) => (
                     <tr key={o._id} className="border-b border-white/5 hover:bg-white/5">
                       <td className="px-4 py-3 text-white font-medium">{o.poNumber}</td>
-                      <td className="px-4 py-3 text-gray-300">{o.supplierId?.name || o.supplierName || '-'}</td>
+                      <td className="px-4 py-3 text-slate-300">{o.supplierId?.name || o.supplierName || '-'}</td>
                       <td className="px-4 py-3 text-right text-white font-semibold">{format(o.total)}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium border ${
@@ -138,7 +139,7 @@ export function FinancePayablesPage() {
                           'bg-blue-500/10 text-blue-400 border-blue-500/20'
                         }`}>{o.status}</span>
                       </td>
-                      <td className="px-4 py-3 text-gray-400">{new Date(o.createdAt).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-slate-400">{formatDate(o.createdAt)}</td>
                     </tr>
                   ))
                 )}

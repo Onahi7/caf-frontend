@@ -4,11 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import apiClient from '../../lib/api-client';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useDebounce } from '../../hooks/useDebounce';
 import { QRScannerModal } from '../../components/pos/QRScannerModal';
 import { Button } from '../../components/ui/Button';
 import { queryKeys } from '../../lib/query-keys';
+import { getErrorMessage } from '../../lib/error-utils';
 import { formatDate } from '../../lib/date-format';
 import { POSLayout } from '../../components/pos/POSLayout';
 import { 
@@ -65,6 +67,7 @@ export const ProcessReturnPage = () => {
   const navigate = useNavigate();
   const selectedBranch = useBranchStore((state) => state.selectedBranch);
   const { showSuccess, showError, showWarning } = useToast();
+  const requestConfirmation = useConfirm();
   const { format } = useCurrency();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,13 +114,15 @@ export const ProcessReturnPage = () => {
     onSuccess: (data) => {
       showSuccess(`Return processed successfully. Refund amount: ${format(data.data?.returnedAmount || 0)}`);
       queryClient.invalidateQueries({ queryKey: queryKeys.sales.all(), exact: false });
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all(), exact: false });
+      queryClient.invalidateQueries({ queryKey: queryKeys.shifts.all(), exact: false });
       setSelectedSale(null);
       setReturnItems([]);
       setReturnReason('');
       setShowReturnForm(false);
     },
     onError: (error: unknown) => {
-      showError(error instanceof Error ? error.message : 'Failed to process return');
+      showError(getErrorMessage(error, 'Failed to process return'));
     },
   });
 
@@ -173,7 +178,7 @@ export const ProcessReturnPage = () => {
     );
   };
 
-  const handleProcessReturn = () => {
+  const handleProcessReturn = async () => {
     if (!selectedSale) return;
 
     const itemsToReturn = returnItems
@@ -189,6 +194,14 @@ export const ProcessReturnPage = () => {
       showWarning('Please select at least one item to return.');
       return;
     }
+
+    const confirmed = await requestConfirmation({
+      title: 'Process refund?',
+      message: `Refund ${format(returnTotal)} for ${itemsToReturn.length} item${itemsToReturn.length === 1 ? '' : 's'} on receipt #${selectedSale.receiptNumber}. This cannot be undone.`,
+      confirmLabel: 'Process refund',
+      variant: 'warning',
+    });
+    if (!confirmed) return;
 
     // Build descriptive reason including quarantine details if applicable
     const quarantineCount = returnItems.filter((i) => i.selected && i.condition === 'quarantine').length;

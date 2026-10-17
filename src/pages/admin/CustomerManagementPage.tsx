@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import apiClient from '../../lib/api-client';
@@ -7,15 +7,14 @@ import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
-import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
-import { Pagination } from '../../components/ui/Pagination';
 import { useToast } from '../../hooks/useToast';
 import { useCurrency } from '../../hooks/useCurrency';
 import { usePagination } from '../../hooks/usePagination';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
 import { useSearchWithDebounce } from '../../hooks/useSearchWithDebounce';
+import { getErrorMessage } from '../../lib/error-utils';
 
 interface Customer {
   _id: string;
@@ -51,10 +50,15 @@ export const CustomerManagementPage = () => {
   const { showSuccess, showError } = useToast();
   const pagination = usePagination({ initialLimit: 20 });
 
+  useEffect(() => {
+    pagination.setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchQuery]);
+
   const { register, handleSubmit, reset, formState: { errors } } = useForm<CustomerFormData>();
 
   // Fetch customers
-  const { data: customersData, isLoading, error } = useQuery({
+  const { data: customersData, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.customers.list({ search: debouncedSearchQuery, page: pagination.state.page, limit: pagination.state.limit }),
     queryFn: async () => {
       const response = await apiClient.get(buildApiUrl('/customers', {
@@ -80,7 +84,7 @@ export const CustomerManagementPage = () => {
       reset();
       showSuccess('Customer created');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to create customer'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to create customer')),
   });
 
   // Update customer mutation
@@ -96,7 +100,7 @@ export const CustomerManagementPage = () => {
       reset();
       showSuccess('Customer updated');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update customer'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to update customer')),
   });
 
   // Toggle customer status mutation
@@ -108,7 +112,7 @@ export const CustomerManagementPage = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.customers.all(), exact: false });
       showSuccess('Customer status updated');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update status'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to update status')),
   });
 
   const handleOpenModal = (customer?: Customer) => {
@@ -145,9 +149,6 @@ export const CustomerManagementPage = () => {
       createMutation.mutate(data);
     }
   };
-
-  if (isLoading) return <AdminLayout title="Customers"><Loading /></AdminLayout>;
-  if (error) return <AdminLayout title="Customers"><Error message="Failed to load customers" /></AdminLayout>;
 
   const columns = [
     { key: 'name', header: 'Customer Name' },
@@ -211,6 +212,7 @@ export const CustomerManagementPage = () => {
             variant={customer.isActive ? 'danger' : 'primary'}
             size="sm"
             onClick={() => toggleStatusMutation.mutate(customer._id)}
+            isLoading={toggleStatusMutation.isPending && toggleStatusMutation.variables === customer._id}
             className="py-1!"
           >
             {customer.isActive ? 'Deactivate' : 'Activate'}
@@ -227,15 +229,15 @@ export const CustomerManagementPage = () => {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Customers</h2>
-            <p className="text-xs sm:text-sm text-gray-400 mt-1">Manage customer database and loyalty program</p>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1">Manage customer database and loyalty program</p>
           </div>
-          <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-accent-green/20 w-full sm:w-auto shrink-0">
+          <Button onClick={() => handleOpenModal()} className="shadow-lg shadow-emerald-500/20 w-full sm:w-auto shrink-0">
             Add Customer
           </Button>
         </div>
 
         {/* Search Bar */}
-        <div className="bg-primary-dark/50 backdrop-blur-sm p-4 rounded-2xl border border-white/5">
+        <div className="bg-slate-900/60 backdrop-blur-sm p-4 rounded-2xl border border-white/5">
           <Input
             placeholder="Search by name, phone, or email..."
             value={searchQuery}
@@ -245,21 +247,26 @@ export const CustomerManagementPage = () => {
         </div>
 
         {/* Customers Table */}
-        <Table
-          data={customers || []}
-          columns={columns}
-          emptyMessage="No customers found"
-          pagination={totalCount > 0 ? {
-            page: pagination.state.page,
-            limit: pagination.state.limit,
-            total: totalCount,
-            pages: Math.ceil(totalCount / pagination.state.limit),
-            hasNext: pagination.state.page < Math.ceil(totalCount / pagination.state.limit),
-            hasPrev: pagination.state.page > 1,
-          } : undefined}
-          onPageChange={pagination.setPage}
-          onLimitChange={pagination.setLimit}
-        />
+        {error ? (
+          <Error message="Failed to load customers" onRetry={() => { void refetch(); }} />
+        ) : (
+          <Table
+            data={customers || []}
+            columns={columns}
+            isLoading={isLoading}
+              emptyMessage="No customers found"
+            pagination={totalCount > 0 ? {
+              page: pagination.state.page,
+              limit: pagination.state.limit,
+              total: totalCount,
+              pages: Math.ceil(totalCount / pagination.state.limit),
+              hasNext: pagination.state.page < Math.ceil(totalCount / pagination.state.limit),
+              hasPrev: pagination.state.page > 1,
+            } : undefined}
+            onPageChange={pagination.setPage}
+            onLimitChange={pagination.setLimit}
+          />
+        )}
 
         {/* Customer Form Modal */}
         <Modal
@@ -319,10 +326,6 @@ export const CustomerManagementPage = () => {
                 {editingCustomer ? 'Update Customer' : 'Add Customer'}
               </Button>
             </div>
-
-            {(createMutation.isError || updateMutation.isError) && (
-              <Error message="Failed to save customer. Please try again." />
-            )}
           </form>
         </Modal>
 
@@ -336,43 +339,43 @@ export const CustomerManagementPage = () => {
             <div className="space-y-6">
               <div className="bg-white/5 p-4 rounded-xl border border-white/5">
                 <h3 className="text-xl font-bold text-white">{selectedCustomer.name}</h3>
-                <p className="text-sm text-gray-400 mt-1">ID: <span className="font-mono text-xs">{selectedCustomer._id}</span></p>
+                <p className="text-sm text-slate-400 mt-1">ID: <span className="font-mono text-xs">{selectedCustomer._id}</span></p>
               </div>
 
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-400">Phone</p>
+                  <p className="text-sm font-medium text-slate-400">Phone</p>
                   <p className="text-base text-white">{selectedCustomer.phone}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-400">Email</p>
+                  <p className="text-sm font-medium text-slate-400">Email</p>
                   <p className="text-base text-white">{selectedCustomer.email || 'N/A'}</p>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <p className="text-sm font-medium text-gray-400">Address</p>
+                <p className="text-sm font-medium text-slate-400">Address</p>
                 <p className="text-base text-white">{selectedCustomer.address || 'N/A'}</p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 bg-primary-darker/50 p-4 rounded-xl border border-white/5">
+              <div className="grid grid-cols-2 gap-4 bg-slate-950/50 p-4 rounded-xl border border-white/5">
                 <div>
-                  <p className="text-sm font-medium text-gray-400">Loyalty Points</p>
+                  <p className="text-sm font-medium text-slate-400">Loyalty Points</p>
                   <p className="text-2xl font-bold text-blue-400">{selectedCustomer.loyaltyPoints}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-400">Total Purchases</p>
-                  <p className="text-2xl font-bold text-accent-green">{format(selectedCustomer.totalPurchases)}</p>
+                  <p className="text-sm font-medium text-slate-400">Total Purchases</p>
+                  <p className="text-2xl font-bold text-emerald-400">{format(selectedCustomer.totalPurchases)}</p>
                 </div>
               </div>
 
               <div className="flex items-center justify-between pt-2">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-gray-400">Status</p>
+                  <p className="text-sm font-medium text-slate-400">Status</p>
                   <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-full border ${
                     selectedCustomer.isActive
-                      ? 'bg-green-500/10 text-green-500 border-green-500/20'
-                      : 'bg-red-500/10 text-red-500 border-red-500/20'
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                      : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
                   }`}>
                     {selectedCustomer.isActive ? 'Active' : 'Inactive'}
                   </span>

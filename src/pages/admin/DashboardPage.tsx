@@ -128,7 +128,7 @@ export const DashboardPage = () => {
             title="Dashboard"
             subtitle="Branch dashboards need an active branch so sales, stock, and alerts stay scoped."
           />
-          <div className="rounded-xl border border-white/10 bg-primary-dark/60">
+          <div className="rounded-xl border border-white/10 bg-slate-900/60">
             <EmptyState
               icon={<Boxes className="h-12 w-12" aria-hidden="true" />}
               title="Select a branch to continue"

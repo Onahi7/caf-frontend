@@ -24,6 +24,7 @@ import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { useCurrency } from '../../hooks/useCurrency';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDate } from '../../lib/date-format';
 
 interface BranchInventory {
   branchId: string;
@@ -254,7 +255,7 @@ export default function HQDashboardPage() {
       key: 'createdAt',
       header: 'Date',
       mobileVisible: false,
-      render: (item: PendingTransfer) => new Date(item.createdAt).toLocaleDateString(),
+      render: (item: PendingTransfer) => formatDate(item.createdAt),
     },
     { key: 'sourceBranchName', header: 'From', mobilePrimary: true },
     { key: 'destinationBranchName', header: 'To', mobileVisible: true },
@@ -283,7 +284,7 @@ export default function HQDashboardPage() {
       key: 'expiryDate',
       header: 'Expires',
       mobileVisible: true,
-      render: (item: ExpiryAlert) => new Date(item.expiryDate).toLocaleDateString(),
+      render: (item: ExpiryAlert) => formatDate(item.expiryDate),
     },
     {
       key: 'daysUntilExpiry',
@@ -304,7 +305,7 @@ export default function HQDashboardPage() {
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">Company Overview</h1>
-            <p className="mt-1 text-sm text-gray-400">Multi-branch performance at a glance</p>
+            <p className="mt-1 text-sm text-slate-400">Multi-branch performance at a glance</p>
           </div>
           <div className="flex min-h-10 items-center gap-2 rounded-xl border border-white/[0.08] bg-slate-900/60 px-3.5 py-1.5 text-xs font-medium text-slate-300 shadow-sm">
             <CalendarDays className="h-4 w-4 text-emerald-400" aria-hidden="true" />

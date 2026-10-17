@@ -7,11 +7,22 @@ import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
+import { Textarea } from '../../components/ui/Textarea';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { useToast } from '../../hooks/useToast';
+import { getErrorMessage } from '../../lib/error-utils';
 import { queryKeys } from '../../lib/query-keys';
 import { BiometricSettingsPanel } from '../../components/account';
+
+type SettingsTab = 'general' | 'loyalty' | 'notifications' | 'security';
+
+const TAB_FIELDS: Record<SettingsTab, string[]> = {
+  general: ['companyName', 'companyAddress', 'companyPhone', 'companyEmail', 'currency', 'timezone', 'dateFormat', 'lowStockThreshold', 'receiptFooter'],
+  loyalty: ['enableLoyalty', 'loyaltyPointsRate'],
+  notifications: ['enableEmailNotifications', 'enableSMSNotifications'],
+  security: [],
+};
 
 interface SystemSettings {
   companyName: string;
@@ -31,13 +42,13 @@ interface SystemSettings {
 
 export const SystemSettingsPage = () => {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'general' | 'loyalty' | 'notifications' | 'security'>('general');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const { showSuccess, showError } = useToast();
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<SystemSettings>();
 
   // Fetch system settings
-  const { data: settings, isLoading, error } = useQuery({
+  const { data: settings, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.systemSettings.detail(),
     queryFn: async () => {
       const response = await apiClient.get('/settings');
@@ -61,7 +72,7 @@ export const SystemSettingsPage = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.systemSettings.all(), exact: false });
       showSuccess('Settings saved');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to save settings'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to save settings')),
   });
 
   const onSubmit = (data: SystemSettings) => {
@@ -72,8 +83,17 @@ export const SystemSettingsPage = () => {
     });
   };
 
+  const onInvalid = (formErrors: Record<string, { message?: string }>) => {
+    const firstErrorField = Object.keys(formErrors)[0];
+    const tab = (Object.entries(TAB_FIELDS) as [SettingsTab, string[]][]).find(([, fields]) =>
+      fields.includes(firstErrorField)
+    )?.[0];
+    if (tab && tab !== activeTab) setActiveTab(tab);
+    showError('Check the highlighted fields', formErrors[firstErrorField]?.message ?? 'Some settings need attention before saving.');
+  };
+
   if (isLoading) return <AdminLayout title="System Settings"><Loading /></AdminLayout>;
-  if (error) return <AdminLayout title="System Settings"><Error message="Failed to load system settings" /></AdminLayout>;
+  if (error) return <AdminLayout title="System Settings"><Error message="Failed to load system settings" onRetry={() => { void refetch(); }} /></AdminLayout>;
 
   return (
     <AdminLayout title="System Settings">
@@ -132,10 +152,9 @@ export const SystemSettingsPage = () => {
         </div>
 
         {/* Settings Form */}
-        <form onSubmit={handleSubmit(onSubmit)} className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl space-y-6">
+        <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="bg-slate-900/60 border border-slate-800 p-6 rounded-2xl space-y-6">
           {/* General Settings */}
-          {activeTab === 'general' && (
-            <div className="space-y-4">
+          <div className={activeTab === 'general' ? 'space-y-4' : 'hidden'}>
               <h2 className="text-lg font-semibold text-white">General Settings</h2>
               
               <Input
@@ -171,11 +190,7 @@ export const SystemSettingsPage = () => {
                   error={errors.currency?.message}
                 >
                   <option value="USD" className="bg-slate-900 text-white">USD - US Dollar</option>
-                  <option value="EUR" className="bg-slate-900 text-white">EUR - Euro</option>
-                  <option value="GBP" className="bg-slate-900 text-white">GBP - British Pound</option>
                   <option value="SLE" className="bg-slate-900 text-white">SLE - Sierra Leonean Leone</option>
-                  <option value="GHS" className="bg-slate-900 text-white">GHS - Ghanaian Cedi</option>
-                  <option value="KES" className="bg-slate-900 text-white">KES - Kenyan Shilling</option>
                 </Select>
 
                 <Select
@@ -217,23 +232,16 @@ export const SystemSettingsPage = () => {
                 error={errors.lowStockThreshold?.message}
               />
 
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Receipt Footer
-                </label>
-                <textarea
-                  {...register('receiptFooter')}
-                  rows={3}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 text-white rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 placeholder-slate-500 resize-none"
-                  placeholder="Thank you for your business!"
-                />
-              </div>
-            </div>
-          )}
+              <Textarea
+                label="Receipt Footer"
+                rows={3}
+                placeholder="Thank you for your business!"
+                {...register('receiptFooter')}
+              />
+          </div>
 
           {/* Loyalty Settings */}
-          {activeTab === 'loyalty' && (
-            <div className="space-y-4">
+          <div className={activeTab === 'loyalty' ? 'space-y-4' : 'hidden'}>
               <h2 className="text-lg font-semibold text-white">Loyalty Program Settings</h2>
               
               <div className="flex items-center">
@@ -267,12 +275,10 @@ export const SystemSettingsPage = () => {
                   The points rate determines how many points they earn per currency unit spent.
                 </p>
               </div>
-            </div>
-          )}
+          </div>
 
           {/* Notification Settings */}
-          {activeTab === 'notifications' && (
-            <div className="space-y-4">
+          <div className={activeTab === 'notifications' ? 'space-y-4' : 'hidden'}>
               <h2 className="text-lg font-semibold text-white">Notification Settings</h2>
               
               <div className="space-y-3">
@@ -307,15 +313,12 @@ export const SystemSettingsPage = () => {
                   expiry reminders, and order confirmations.
                 </p>
               </div>
-            </div>
-          )}
+          </div>
 
-          {activeTab === 'security' && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-white">Security</h2>
-              <BiometricSettingsPanel />
-            </div>
-          )}
+          <div className={activeTab === 'security' ? 'space-y-4' : 'hidden'}>
+            <h2 className="text-lg font-semibold text-white">Security</h2>
+            <BiometricSettingsPanel />
+          </div>
 
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 pt-4 border-t border-slate-800">
@@ -333,10 +336,6 @@ export const SystemSettingsPage = () => {
               Save Settings
             </Button>
           </div>
-
-          {updateMutation.isError && (
-            <Error message="Failed to save settings. Please try again." />
-          )}
         </form>
       </div>
     </AdminLayout>

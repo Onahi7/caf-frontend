@@ -157,17 +157,17 @@ export const ShiftLogsPage = () => {
 
   return (
     <POSLayout title="Shift Logs">
-    <div className="min-h-screen bg-primary-darker">
+    <div className="min-h-screen bg-slate-950">
       {/* Header */}
-      <div className="flex items-center px-4 py-3.5 border-b border-gray-800 min-w-0">
+      <div className="flex items-center px-4 py-3.5 border-b border-white/[0.08] min-w-0">
         <h1 className="text-lg sm:text-xl font-bold text-white truncate">Shift History</h1>
-        <span className="text-gray-400 ml-2 text-xs sm:text-sm truncate">- {selectedBranch?.name}</span>
+        <span className="text-slate-400 ml-2 text-xs sm:text-sm truncate">- {selectedBranch?.name}</span>
       </div>
 
       <div className="p-4 space-y-6">
         {/* Current Shift Card */}
         {currentShift && currentShift.status === 'open' && (
-          <div className="bg-primary-dark rounded-2xl p-5 border border-gray-700">
+          <div className="bg-slate-900 rounded-2xl p-5 border border-white/10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-white">Current Shift</h2>
               <span className="flex items-center px-3 py-1 bg-green-500/20 rounded-full">
@@ -178,15 +178,15 @@ export const ShiftLogsPage = () => {
 
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-gray-400">Start Time</span>
+                <span className="text-slate-400">Start Time</span>
                 <span className="text-white font-medium">{formatTime(currentShift.openedAt)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Total Sales</span>
+                <span className="text-slate-400">Total Sales</span>
                 <span className="text-white font-medium">{format(shiftReport?.totalSales ?? currentShift.totalSales ?? 0)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-400">Expected Cash</span>
+                <span className="text-slate-400">Expected Cash</span>
                 <span className="text-white font-medium">{format(shiftReport?.expectedCash ?? currentShift.expectedCash ?? currentShift.openingCash)}</span>
               </div>
             </div>
@@ -198,7 +198,7 @@ export const ShiftLogsPage = () => {
                 value={closingCash}
                 onChange={(e) => setClosingCash(e.target.value)}
                 placeholder={`${symbol} 0.00`}
-                className="w-full px-4 py-3 bg-primary-darker border border-gray-600 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-accent-green"
+                className="w-full px-4 py-3 bg-slate-950 border border-white/15 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
               />
             </div>
 
@@ -219,25 +219,25 @@ export const ShiftLogsPage = () => {
           <h2 className="text-lg font-semibold text-white mb-4">Shift History</h2>
           <div className="space-y-3">
             {loadingHistory ? (
-              <div className="text-center py-8 text-gray-400">Loading...</div>
+              <div className="text-center py-8 text-slate-400">Loading...</div>
             ) : shiftHistory && shiftHistory.length > 0 ? (
               shiftHistory.filter((s: Shift) => s.status === 'closed').map((shift: Shift) => {
                 const status = getVarianceStatus(shift);
                 return (
                   <div
                     key={shift._id}
-                    className="bg-primary-dark rounded-xl p-4 border border-gray-700 cursor-pointer hover:border-gray-600 transition-colors"
+                    className="bg-slate-900 rounded-xl p-4 border border-white/10 cursor-pointer hover:border-white/15 transition-colors"
                     onClick={() => navigate(`/pos/shift-report/${shift._id}`)}
                   >
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="text-white font-semibold">{formatDate(shift.openedAt)}</p>
-                        <p className="text-gray-400 text-sm mt-1">
+                        <p className="text-slate-400 text-sm mt-1">
                           Total Sales: <span className="text-white">{format(shift.totalSales || 0)}</span>
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-gray-400 text-sm">
+                        <p className="text-slate-400 text-sm">
                           {formatTime(shift.openedAt)} - {shift.closedAt ? formatTime(shift.closedAt) : 'N/A'}
                         </p>
                         <p className={`text-sm font-medium mt-1 ${status.color}`}>{status.label}</p>
@@ -247,7 +247,7 @@ export const ShiftLogsPage = () => {
                 );
               })
             ) : (
-              <div className="text-center py-8 text-gray-400">No shift history</div>
+              <div className="text-center py-8 text-slate-400">No shift history</div>
             )}
           </div>
         </div>

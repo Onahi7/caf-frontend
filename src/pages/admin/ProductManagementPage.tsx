@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { ChevronDown, ChevronRight, FileSpreadsheet, Trash2, Plus, Download, Upload, Camera, Image as ImageIcon, X } from 'lucide-react';
@@ -15,7 +15,6 @@ import { Modal } from '../../components/ui/Modal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Loading } from '../../components/ui/Loading';
 import { Error as ErrorDisplay } from '../../components/ui/Error';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useCurrency } from '../../hooks/useCurrency';
@@ -137,7 +136,6 @@ export const ProductManagementPage = () => {
   const [isExportingProducts, setIsExportingProducts] = useState(false);
   const [isImportingProducts, setIsImportingProducts] = useState(false);
   const [importSummary, setImportSummary] = useState<ProductImportSummary | null>(null);
-  const fileInputRef = useState<HTMLInputElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const {
     value: searchQuery,
@@ -146,6 +144,12 @@ export const ProductManagementPage = () => {
   } = useSearchWithDebounce('');
 
   const pagination = usePagination({ initialLimit: 20 });
+
+  useEffect(() => {
+    pagination.setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchQuery]);
+
   const queryClient = useQueryClient();
   const { format } = useCurrency();
   const { showSuccess, showError } = useToast();
@@ -225,17 +229,25 @@ export const ProductManagementPage = () => {
   const toIsoDate = (value?: string) =>
     value ? new Date(`${value}T00:00:00.000Z`).toISOString() : undefined;
 
-  const getEffectiveSellingPrice = (data: ProductFormData) =>
-    Number(data.initialSellingPrice || data.suggestedRetailPrice || data.basePrice || 0);
+  const prefilledSellingPriceRef = useRef(0);
 
-  const { data: productsData, isLoading, error } = useQuery({
-    queryKey: [
-      'products',
+  const getEffectiveSellingPrice = (data: ProductFormData) => {
+    const stepOnePrice = Number(data.basePrice || 0);
+    const openingPrice = Number(data.initialSellingPrice || 0);
+    const hasExplicitOpeningOverride =
+      openingPrice > 0 && openingPrice !== prefilledSellingPriceRef.current;
+    if (hasExplicitOpeningOverride) return openingPrice;
+    if (stepOnePrice > 0) return stepOnePrice;
+    return Number(data.suggestedRetailPrice || 0);
+  };
+
+  const { data: productsData, isLoading, error, refetch } = useQuery({
+    queryKey: queryKeys.products.list({
       branchId,
-      debouncedSearchQuery,
-      pagination.state.page,
-      pagination.state.limit,
-    ],
+      search: debouncedSearchQuery,
+      page: pagination.state.page,
+      limit: pagination.state.limit,
+    }),
     queryFn: async () => {
       const response = await apiClient.get(buildApiUrl('products', undefined), {
         params: {
@@ -306,7 +318,11 @@ export const ProductManagementPage = () => {
       onSuccess: async (response: any) => {
         const productId = response?.data?._id || response?._id;
         if (productId && productImage) {
-          await saveProductImage(productId, productImage);
+          try {
+            await saveProductImage(productId, productImage);
+          } catch (error) {
+            showError(getErrorMessage(error, 'Product saved, but the photo could not be stored'));
+          }
         }
         setProductImage(null);
         setImagePreview(null);
@@ -334,7 +350,6 @@ export const ProductManagementPage = () => {
       markupPercentage: data.markupPercentage,
       requiresPrescription: data.requiresPrescription,
       isControlled: data.isControlled,
-      quantityAvailable: data.initialStock,
       supplierId: data.initialSupplierId || undefined,
       supplyDate: toIsoDate(data.initialSupplyDate),
       expiryDate: toIsoDate(data.initialExpiryDate),
@@ -387,6 +402,9 @@ export const ProductManagementPage = () => {
           ? product.branchId
           : product.branchId?._id || getBranchId(selectedBranch) || '';
 
+      prefilledSellingPriceRef.current = Number(
+        product.suggestedRetailPrice || product.basePrice || 0,
+      );
       setEditingProduct(product);
       reset({
         name: product.name,
@@ -420,6 +438,7 @@ export const ProductManagementPage = () => {
       });
     } else {
       setEditingProduct(null);
+      prefilledSellingPriceRef.current = 0;
       const defaultBranchId = getBranchId(selectedBranch) || '';
       reset({
         name: '',
@@ -574,9 +593,9 @@ export const ProductManagementPage = () => {
   if (!branchId) {
     return (
       <AdminLayout>
-        <div className="rounded-2xl border border-white/10 bg-primary-dark/60 p-8 text-center">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-8 text-center">
           <h2 className="text-xl font-semibold text-white">Select a Branch First</h2>
-          <p className="mt-2 text-gray-400">
+          <p className="mt-2 text-slate-400">
             Products are branch-scoped. Choose a branch before viewing or managing products.
           </p>
           <div className="mx-auto mt-6 max-w-xs">
@@ -586,9 +605,6 @@ export const ProductManagementPage = () => {
       </AdminLayout>
     );
   }
-
-  if (isLoading) return <AdminLayout><Loading /></AdminLayout>;
-  if (error) return <AdminLayout><ErrorDisplay message="Failed to load products" /></AdminLayout>;
 
   const columns = [
     { key: 'name', header: 'Product Name' },
@@ -789,7 +805,7 @@ export const ProductManagementPage = () => {
                   </div>
                 ))}
                 {importSummary.errors.length > 5 ? (
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-slate-400">
                     Showing 5 of {importSummary.errors.length} import issues.
                   </p>
                 ) : null}
@@ -807,16 +823,26 @@ export const ProductManagementPage = () => {
           />
         </div>
 
-        <Table
-          columns={columns}
-          data={products}
-          onRowClick={handleOpenModal}
-          pagination={paginationMeta}
-          onPageChange={pagination.setPage}
-          onLimitChange={pagination.setLimit}
-          exportFilename="products"
-          title="Product Inventory"
-        />
+        {error ? (
+          <ErrorDisplay
+            message="Failed to load products"
+            onRetry={() => {
+              void refetch();
+            }}
+          />
+        ) : (
+          <Table
+            columns={columns}
+            data={products}
+            isLoading={isLoading}
+            onRowClick={handleOpenModal}
+            pagination={paginationMeta}
+            onPageChange={pagination.setPage}
+            onLimitChange={pagination.setLimit}
+            exportFilename="products"
+            title="Product Inventory"
+          />
+        )}
 
         <Modal isOpen={isModalOpen} onClose={handleCloseModal} size="xl">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -885,7 +911,7 @@ export const ProductManagementPage = () => {
                   <>
                     <input type="hidden" {...register('branchId', { required: 'Branch is required' })} />
                     <div className="rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-gray-500">Outlet</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">Outlet</p>
                       <p className="truncate text-sm font-semibold text-white">{selectedBranch?.name}</p>
                     </div>
                   </>
@@ -1117,7 +1143,12 @@ export const ProductManagementPage = () => {
                     {...register('initialStock', { min: 0 })}
                     error={errors.initialStock?.message}
                     placeholder="e.g. 50"
-                    helperText={`Total count of single ${watch('unit') || 'units'}s on shelf`}
+                    disabled={!!editingProduct}
+                    helperText={
+                      editingProduct
+                        ? 'Read-only after creation. Use Stock Adjustments to change stock with an audit trail.'
+                        : `Total count of single ${watch('unit') || 'units'}s on shelf`
+                    }
                   />
 
                   <Input

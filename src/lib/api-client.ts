@@ -66,6 +66,7 @@ export async function performTokenRefresh(): Promise<string> {
         refreshToken: newRefreshToken,
         expiresIn,
         refreshExpiresIn,
+        user: updatedUser,
       } = response.data;
       const authStore = useAuthStore.getState();
 
@@ -86,9 +87,10 @@ export async function performTokenRefresh(): Promise<string> {
         accessTtl,
         refreshTtl,
       );
+      if (updatedUser) {
+        authStore.updateUser({ ...updatedUser, branchId: updatedUser.branchId ?? undefined });
+      }
       return accessToken;
-    } catch (refreshError) {
-      throw refreshError;
     } finally {
       refreshPromise = null;
     }
@@ -200,6 +202,16 @@ apiClient.interceptors.response.use(
         }
         return apiClient(originalRequest);
       } catch (refreshError) {
+        // If the refresh endpoint actively rejected the refresh token (as opposed to
+        // a network failure), the session is dead: clear it and redirect to login.
+        const refreshWasRejected =
+          axios.isAxiosError(refreshError) && !!refreshError.response;
+        if (refreshWasRejected) {
+          useAuthStore.getState().clearAuth();
+          if (!window.location.pathname.startsWith('/login')) {
+            window.location.assign('/login');
+          }
+        }
         return Promise.reject(refreshError);
       }
     }

@@ -53,7 +53,7 @@ export function CrossCheckPage() {
       <div className="mb-6 flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-3">
           <ShieldCheck className="w-5 h-5 text-amber-400" />
-          <span className="text-gray-300 text-sm">Compare revenue across CAF, EMR, and LAB systems</span>
+          <span className="text-slate-300 text-sm">Compare revenue across CAF, EMR, and LAB systems</span>
         </div>
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
           className="px-3 py-1.5 rounded-lg bg-white/5 text-white border border-white/10 text-sm" />
@@ -65,15 +65,15 @@ export function CrossCheckPage() {
             <h3 className="text-lg font-semibold text-white mb-4">{s.label}</h3>
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-sm text-gray-400">Revenue</span>
+                <span className="text-sm text-slate-400">Revenue</span>
                 <span className="text-sm font-semibold text-green-400">{format(s.data.revenue)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-gray-400">Expenses</span>
+                <span className="text-sm text-slate-400">Expenses</span>
                 <span className="text-sm font-semibold text-red-400">{format(s.data.expenses)}</span>
               </div>
               <div className="flex justify-between border-t border-white/10 pt-2">
-                <span className="text-sm text-gray-400">Net Income</span>
+                <span className="text-sm text-slate-400">Net Income</span>
                 <span className={`text-sm font-bold ${s.data.netIncome >= 0 ? 'text-green-400' : 'text-red-400'}`}>{format(s.data.netIncome)}</span>
               </div>
             </div>
@@ -87,19 +87,19 @@ export function CrossCheckPage() {
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white/5 rounded-lg p-4">
-            <span className="text-xs text-gray-400">CAF vs EMR</span>
+            <span className="text-xs text-slate-400">CAF vs EMR</span>
             <p className={`text-xl font-bold mt-1 ${data.variance.cafVsEmr === 0 ? 'text-green-400' : 'text-red-400'}`}>
               {format(data.variance.cafVsEmr)}
             </p>
           </div>
           <div className="bg-white/5 rounded-lg p-4">
-            <span className="text-xs text-gray-400">CAF vs LAB</span>
+            <span className="text-xs text-slate-400">CAF vs LAB</span>
             <p className={`text-xl font-bold mt-1 ${data.variance.cafVsLab === 0 ? 'text-green-400' : 'text-red-400'}`}>
               {format(data.variance.cafVsLab)}
             </p>
           </div>
           <div className="bg-white/5 rounded-lg p-4">
-            <span className="text-xs text-gray-400">Total Variance</span>
+            <span className="text-xs text-slate-400">Total Variance</span>
             <p className={`text-xl font-bold mt-1 ${data.variance.totalVariance === 0 ? 'text-green-400' : 'text-red-400'}`}>
               {format(data.variance.totalVariance)}
             </p>

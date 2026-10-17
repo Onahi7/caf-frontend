@@ -138,7 +138,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (accessToken && isAuthenticated) {
         try {
-          await apiClient.get('/auth/me');
+          const response = await apiClient.get<User>('/auth/me');
+          const next = response.data;
+          const current = useAuthStore.getState().user;
+          if (current && ((Object.keys(next) as (keyof User)[]).some((key) => current[key] !== next[key]) || current.branchId !== next.branchId)) {
+            useAuthStore.getState().updateUser({ ...next, branchId: next.branchId ?? undefined });
+          }
         } catch (error) {
           if (isNetworkError(error)) {
             return;

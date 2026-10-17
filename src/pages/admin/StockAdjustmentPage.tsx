@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { SlidersHorizontal } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
+import { AdminPageHeader } from '../../components/admin';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
@@ -16,6 +17,8 @@ import { useToast } from '../../hooks/useToast';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
 import { getErrorMessage } from '../../lib/error-utils';
+import { formatDate, formatDateTime } from '../../lib/date-format';
+import { Textarea } from '../../components/ui/Textarea';
 import { CompactPagination } from '../../components/ui/Pagination';
 import { AdminMobileBottomNav } from '../../components/admin/AdminMobileBottomNav';
 
@@ -56,7 +59,7 @@ interface Batch {
   quantityAvailable: number;
 }
 
-const formatDate = (value?: string) => value ? new Date(value).toLocaleDateString() : '-';
+const formatDateCell = (value?: string) => (value ? formatDate(value) : '-');
 const formatSupplier = (supplier?: Product['supplierId']) => {
   if (!supplier) return '-';
   return typeof supplier === 'string' ? supplier : supplier.name;
@@ -93,7 +96,7 @@ export default function StockAdjustmentPage() {
   });
 
   // Products with pagination
-  const { data: productsData, isLoading, error } = useQuery({
+  const { data: productsData, isLoading, error, refetch: refetchProducts } = useQuery({
     queryKey: queryKeys.products.list({ branchId, page: productPage, limit: productLimit }),
     queryFn: async () => {
       const response = await apiClient.get(buildApiUrl('/products', { branchId, page: productPage, limit: productLimit }));
@@ -189,7 +192,7 @@ export default function StockAdjustmentPage() {
   }
 
   if (isLoading) return <AdminLayout title="Stock Adjustments"><Loading /></AdminLayout>;
-  if (error) return <AdminLayout title="Stock Adjustments"><Error message="Failed to load products" onRetry={() => queryClient.invalidateQueries({ queryKey: queryKeys.products.list({ branchId }) })} /></AdminLayout>;
+  if (error) return <AdminLayout title="Stock Adjustments"><Error message="Failed to load products" onRetry={() => { void refetchProducts(); }} /></AdminLayout>;
 
   const productColumns = [
     { key: 'name', header: 'Product' },
@@ -197,12 +200,12 @@ export default function StockAdjustmentPage() {
     { key: 'brand', header: 'Brand' },
     { key: 'quantityAvailable', header: 'Stock' },
     { key: 'supplierId', header: 'Supplier', render: (p: Product) => formatSupplier(p.supplierId) },
-    { key: 'expiryDate', header: 'Expiry', render: (p: Product) => formatDate(p.expiryDate) },
+    { key: 'expiryDate', header: 'Expiry', render: (p: Product) => formatDateCell(p.expiryDate) },
     { key: 'actions', header: '', render: (p: Product) => <Button variant="secondary" size="sm" onClick={() => handleOpenModal(p)}>Adjust</Button> },
   ];
 
   const adjustmentColumns = [
-    { key: 'timestamp', header: 'Date', render: (a: StockMovement) => new Date(a.timestamp).toLocaleString() },
+    { key: 'timestamp', header: 'Date', render: (a: StockMovement) => formatDateTime(a.timestamp) },
     { key: 'productId.name', header: 'Product', render: (a: StockMovement) => a.productId?.name || '-' },
     { key: 'quantity', header: 'Qty', render: (a: StockMovement) => <span className={a.quantity > 0 ? 'text-emerald-400' : 'text-red-400'}>{a.quantity > 0 ? '+' : ''}{a.quantity}</span> },
     { key: 'reason', header: 'Reason' },
@@ -216,7 +219,7 @@ export default function StockAdjustmentPage() {
           <header className="mb-5 flex flex-col gap-3">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-white">Stock Action Ledger</h1>
-              <p className="mt-1 text-sm leading-5 text-gray-400">
+              <p className="mt-1 text-sm leading-5 text-slate-400">
                 Review current stock and keep every manual change traceable.
               </p>
             </div>
@@ -229,7 +232,7 @@ export default function StockAdjustmentPage() {
               role="tab"
               aria-selected={mobileTab === 'products'}
               onClick={() => setMobileTab('products')}
-              className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500/60 ${mobileTab === 'products' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-gray-400 hover:text-white'}`}
+              className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500/60 ${mobileTab === 'products' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'}`}
             >
               Product Stock
             </button>
@@ -238,7 +241,7 @@ export default function StockAdjustmentPage() {
               role="tab"
               aria-selected={mobileTab === 'history'}
               onClick={() => setMobileTab('history')}
-              className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500/60 ${mobileTab === 'history' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-gray-400 hover:text-white'}`}
+              className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500/60 ${mobileTab === 'history' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'}`}
             >
               Adjustment History
             </button>
@@ -256,12 +259,12 @@ export default function StockAdjustmentPage() {
                   <article key={product._id} className="grid grid-cols-[minmax(0,1fr)_64px_74px] items-center gap-2 px-4 py-4">
                     <div className="min-w-0">
                       <h3 className="truncate text-sm font-bold text-white">{product.name}</h3>
-                      <p className="mt-1 truncate text-xs text-gray-400">{product.sku} · {product.brand || 'No brand'}</p>
-                      <p className="mt-1 truncate text-[11px] text-gray-500">{formatSupplier(product.supplierId)} · Exp {formatDate(product.expiryDate)}</p>
+                      <p className="mt-1 truncate text-xs text-slate-400">{product.sku} · {product.brand || 'No brand'}</p>
+                      <p className="mt-1 truncate text-[11px] text-slate-500">{formatSupplier(product.supplierId)} · Exp {formatDateCell(product.expiryDate)}</p>
                     </div>
                     <div className="text-center">
                       <span className="block text-xl font-bold text-white">{product.quantityAvailable}</span>
-                      <span className="text-[10px] uppercase tracking-wide text-gray-500">{product.unit || 'units'}</span>
+                      <span className="text-[10px] uppercase tracking-wide text-slate-500">{product.unit || 'units'}</span>
                     </div>
                     <Button variant="secondary" size="sm" onClick={() => handleOpenModal(product)} className="!border-amber-400/70 !bg-amber-400/5 !px-2 !text-amber-300 hover:!bg-amber-400/15">
                       Adjust
@@ -269,7 +272,7 @@ export default function StockAdjustmentPage() {
                   </article>
                 ))}
               </div>
-              {products.length === 0 ? <p className="px-4 py-10 text-center text-sm text-gray-400">No products found for this branch.</p> : null}
+              {products.length === 0 ? <p className="px-4 py-10 text-center text-sm text-slate-400">No products found for this branch.</p> : null}
               <CompactPagination meta={productPaginationMeta} onPageChange={setProductPage} />
             </section>
           ) : (
@@ -287,18 +290,18 @@ export default function StockAdjustmentPage() {
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0">
                             <h3 className="truncate text-sm font-bold text-white">{adjustment.productId?.name || 'Unknown product'}</h3>
-                            <p className="mt-1 text-xs text-gray-400">{new Date(adjustment.timestamp).toLocaleString()}</p>
+                            <p className="mt-1 text-xs text-slate-400">{formatDateTime(adjustment.timestamp)}</p>
                           </div>
                           <span className={`shrink-0 text-lg font-bold ${adjustment.quantity > 0 ? 'text-emerald-300' : 'text-red-400'}`}>
                             {adjustment.quantity > 0 ? '+' : ''}{adjustment.quantity}
                           </span>
                         </div>
-                        <p className="mt-3 text-sm leading-5 text-gray-300">{adjustment.reason || 'No reason supplied'}</p>
-                        <p className="mt-2 text-xs text-gray-500">By {adjustment.userId ? `${adjustment.userId.firstName || ''} ${adjustment.userId.lastName || ''}`.trim() || 'Unknown user' : 'Unknown user'}</p>
+                        <p className="mt-3 text-sm leading-5 text-slate-300">{adjustment.reason || 'No reason supplied'}</p>
+                        <p className="mt-2 text-xs text-slate-500">By {adjustment.userId ? `${adjustment.userId.firstName || ''} ${adjustment.userId.lastName || ''}`.trim() || 'Unknown user' : 'Unknown user'}</p>
                       </article>
                     ))}
                   </div>
-                  {paginatedAdjustments.length === 0 ? <p className="px-4 py-10 text-center text-sm text-gray-400">No stock adjustments have been recorded.</p> : null}
+                  {paginatedAdjustments.length === 0 ? <p className="px-4 py-10 text-center text-sm text-slate-400">No stock adjustments have been recorded.</p> : null}
                   <CompactPagination meta={adjustmentPaginationMeta} onPageChange={setAdjPage} />
                 </>
               )}
@@ -307,43 +310,30 @@ export default function StockAdjustmentPage() {
         </div>
 
         <div className="hidden space-y-6 lg:block">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-white">Stock Adjustments</h1>
-              <p className="text-sm text-slate-400 mt-1">Review current inventory stock and record manual stock adjustments</p>
-            </div>
-            <BranchSelector />
-          </div>
+          <AdminPageHeader
+            title="Stock Adjustments"
+            subtitle="Review current inventory stock and record manual stock adjustments"
+            actions={<BranchSelector />}
+          />
 
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 shadow-lg">
-            <div className="border-b border-slate-800 px-6 py-4">
-              <h2 className="text-lg font-semibold text-white">Product Stock</h2>
-            </div>
-            <Table
-              data={products}
-              columns={productColumns}
-              pagination={productPaginationMeta}
-              onPageChange={setProductPage}
-              onLimitChange={handleProductLimitChange}
-            />
-          </div>
+          <Table
+            data={products}
+            columns={productColumns}
+            title="Product Stock"
+            pagination={productPaginationMeta}
+            onPageChange={setProductPage}
+            onLimitChange={handleProductLimitChange}
+          />
 
-          <div className="rounded-xl border border-slate-800 bg-slate-900/60 shadow-lg">
-            <div className="border-b border-slate-800 px-6 py-4">
-              <h2 className="text-lg font-semibold text-white">Adjustment History</h2>
-            </div>
-            {adjustmentsLoading ? (
-              <div className="p-6"><Loading /></div>
-            ) : (
-              <Table
-                data={paginatedAdjustments}
-                columns={adjustmentColumns}
-                pagination={adjustmentPaginationMeta}
-                onPageChange={setAdjPage}
-                onLimitChange={handleAdjLimitChange}
-              />
-            )}
-          </div>
+          <Table
+            data={paginatedAdjustments}
+            columns={adjustmentColumns}
+            title="Adjustment History"
+            isLoading={adjustmentsLoading}
+            pagination={adjustmentPaginationMeta}
+            onPageChange={setAdjPage}
+            onLimitChange={handleAdjLimitChange}
+          />
         </div>
 
         <Modal isOpen={isModalOpen} onClose={handleCloseModal} title="Adjust Product Stock">
@@ -373,7 +363,7 @@ export default function StockAdjustmentPage() {
                   <option value="">{batchesLoading ? 'Loading batches…' : 'Select a batch'}</option>
                   {batches.map((batch) => (
                     <option key={batch._id} value={batch._id}>
-                      {batch.lotNumber} · {batch.quantityAvailable} units · expires {formatDate(batch.expiryDate)}
+                      {batch.lotNumber} · {batch.quantityAvailable} units · expires {formatDateCell(batch.expiryDate)}
                     </option>
                   ))}
                 </select>
@@ -393,18 +383,14 @@ export default function StockAdjustmentPage() {
                 })}
                 error={errors.quantityChange?.message}
               />
-              <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
-                  Reason for Adjustment <span className="text-rose-400">*</span>
-                </label>
-                <textarea
-                  {...register('reason', { required: 'Reason is required' })}
-                  className="w-full rounded-xl border border-white/10 bg-slate-900/90 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50 resize-none"
-                  rows={3}
-                  placeholder="Explain reason for discrepancy (e.g. damaged during unpacking, expired batch writeoff, audit count correction)"
-                />
-                {errors.reason && <p className="mt-1 text-xs text-rose-400 font-medium">{errors.reason.message}</p>}
-              </div>
+              <Textarea
+                label="Reason for Adjustment"
+                required
+                rows={3}
+                placeholder="Explain reason for discrepancy (e.g. damaged during unpacking, expired batch writeoff, audit count correction)"
+                error={errors.reason?.message}
+                {...register('reason', { required: 'Reason is required' })}
+              />
               <div className="flex justify-end space-x-3 pt-4 border-t border-white/[0.08]">
                 <Button type="button" variant="secondary" onClick={handleCloseModal}>Cancel</Button>
                 <Button 

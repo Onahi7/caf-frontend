@@ -8,6 +8,8 @@ import { Modal } from '../../components/ui/Modal';
 import { Select } from '../../components/ui/Select';
 import { Table } from '../../components/ui/Table';
 import { queryKeys } from '../../lib/query-keys';
+import { getErrorMessage } from '../../lib/error-utils';
+import { useToast } from '../../hooks/useToast';
 import { useAuthStore } from '../../stores/auth-store';
 import { useBranchStore } from '../../stores/branch-store';
 import { useCurrency } from '../../hooks/useCurrency';
@@ -98,6 +100,7 @@ export const MarketerAssignmentsPage = () => {
   const user = useAuthStore((s) => s.user);
   const selectedBranch = useBranchStore((s) => s.selectedBranch);
   const { format } = useCurrency();
+  const { showSuccess, showError } = useToast();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [marketerId, setMarketerId] = useState('');
@@ -150,11 +153,15 @@ export const MarketerAssignmentsPage = () => {
       });
     },
     onSuccess: () => {
+      showSuccess('Assignment created', 'Products have been assigned to the marketer.');
       queryClient.invalidateQueries({ queryKey: queryKeys.marketer.all(), exact: false });
       setIsModalOpen(false);
       setMarketerId('');
       setAssignmentItems([{ productId: '', assignedQuantity: '', assignedUnitPrice: '' }]);
       setNotes('');
+    },
+    onError: (error: unknown) => {
+      showError(getErrorMessage(error, 'Failed to create assignment'));
     },
   });
 
@@ -224,10 +231,10 @@ export const MarketerAssignmentsPage = () => {
         <span
           className={
             item.status === 'accepted'
-              ? 'text-green-400'
+              ? 'text-emerald-400'
               : item.status === 'pending'
-                ? 'text-yellow-400'
-                : 'text-red-400'
+                ? 'text-amber-400'
+                : 'text-rose-400'
           }
         >
           {item.status}
@@ -242,7 +249,7 @@ export const MarketerAssignmentsPage = () => {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-white">Marketer Assignments</h1>
-            <p className="text-gray-400 mt-1">Assign products and selling prices to marketers.</p>
+            <p className="text-slate-400 mt-1">Assign products and selling prices to marketers.</p>
           </div>
           <Button onClick={() => setIsModalOpen(true)} disabled={!branchId}>New Assignment</Button>
         </div>

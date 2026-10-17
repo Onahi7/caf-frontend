@@ -6,10 +6,10 @@ import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Select } from '../../components/ui/Select';
-import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { queryKeys } from '../../lib/query-keys';
 import { buildApiUrl } from '../../lib/api-utils';
+import { formatDateTime } from '../../lib/date-format';
 
 interface Job {
   _id: string;
@@ -54,7 +54,7 @@ export const JobsMonitoringPage = () => {
   });
 
   // Fetch queue stats
-  const { data: stats } = useQuery({
+  const { data: stats, error: statsError, refetch: refetchStats } = useQuery({
     queryKey: queryKeys.jobs.stats(),
     queryFn: async () => {
       const response = await apiClient.get('/jobs/stats');
@@ -63,16 +63,13 @@ export const JobsMonitoringPage = () => {
     refetchInterval: autoRefresh ? 5000 : false,
   });
 
-  if (isLoading) return <AdminLayout><Loading /></AdminLayout>;
-  if (error) return <AdminLayout><Error message="Failed to load jobs" /></AdminLayout>;
-
   const columns = [
     { key: 'name', header: 'Job Name' },
     {
       key: 'type',
       header: 'Type',
       render: (job: Job) => (
-        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-500/20 text-purple-300">
           {job.type}
         </span>
       ),
@@ -84,9 +81,9 @@ export const JobsMonitoringPage = () => {
         const statusColors = {
           pending: 'bg-white/10 text-white/60',
           active: 'bg-blue-500/20 text-blue-300',
-          completed: 'bg-green-500/20 text-green-300',
-          failed: 'bg-red-500/20 text-red-300',
-          delayed: 'bg-yellow-500/20 text-yellow-300',
+          completed: 'bg-emerald-500/20 text-emerald-300',
+          failed: 'bg-rose-500/20 text-rose-300',
+          delayed: 'bg-amber-500/20 text-amber-300',
         };
         return (
           <span className={`px-2 py-1 text-xs font-semibold rounded-full ${statusColors[job.status]}`}>
@@ -119,19 +116,19 @@ export const JobsMonitoringPage = () => {
     {
       key: 'createdAt',
       header: 'Created',
-      render: (job: Job) => new Date(job.createdAt).toLocaleString(),
+      render: (job: Job) => formatDateTime(job.createdAt),
     },
     {
       key: 'completedAt',
       header: 'Completed',
-      render: (job: Job) => job.completedAt ? new Date(job.completedAt).toLocaleString() : 'N/A',
+      render: (job: Job) => job.completedAt ? formatDateTime(job.completedAt) : 'N/A',
     },
     {
       key: 'error',
       header: 'Error',
       render: (job: Job) => (
         job.error ? (
-          <span className="text-red-600 text-xs truncate max-w-xs block" title={job.error}>
+          <span className="text-rose-400 text-xs truncate max-w-xs block" title={job.error}>
             {job.error}
           </span>
         ) : (
@@ -152,38 +149,42 @@ export const JobsMonitoringPage = () => {
                 type="checkbox"
                 checked={autoRefresh}
                 onChange={(e) => setAutoRefresh(e.target.checked)}
-                className="h-4 w-4 text-accent-green focus:ring-accent-green/50 border-gray-600 rounded"
+                className="h-4 w-4 text-emerald-500 focus:ring-emerald-400/60 border-white/20 bg-slate-900 rounded"
               />
-              <span className="ml-2 text-sm text-gray-300">Auto-refresh (5s)</span>
+              <span className="ml-2 text-sm text-slate-300">Auto-refresh (5s)</span>
             </label>
-            <Button onClick={() => refetch()}>
+            <Button onClick={() => { void refetch(); void refetchStats(); }}>
               Refresh
             </Button>
           </div>
         </div>
 
+        {statsError && (
+          <Error message="Failed to load queue statistics" onRetry={() => { void refetchStats(); }} />
+        )}
+
         {/* Queue Statistics */}
         {stats && (
-          <div className="grid grid-cols-5 gap-4">
-            <div className="bg-primary-dark/50 p-4 rounded-lg shadow border border-white/10">
-              <p className="text-sm text-gray-500">Waiting</p>
-              <p className="text-2xl font-bold text-white">{stats.waiting}</p>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="bg-slate-900/60 p-4 rounded-lg shadow border border-white/10">
+              <p className="text-sm text-slate-500">Waiting</p>
+              <p className="text-2xl font-bold text-white">{stats.waiting ?? 0}</p>
             </div>
-            <div className="bg-primary-dark/50 p-4 rounded-lg shadow border border-white/10">
-              <p className="text-sm text-gray-500">Active</p>
-              <p className="text-2xl font-bold text-accent-green">{stats.active}</p>
+            <div className="bg-slate-900/60 p-4 rounded-lg shadow border border-white/10">
+              <p className="text-sm text-slate-500">Active</p>
+              <p className="text-2xl font-bold text-emerald-400">{stats.active ?? 0}</p>
             </div>
-            <div className="bg-primary-dark/50 p-4 rounded-lg shadow border border-white/10">
-              <p className="text-sm text-gray-500">Completed</p>
-              <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
+            <div className="bg-slate-900/60 p-4 rounded-lg shadow border border-white/10">
+              <p className="text-sm text-slate-500">Completed</p>
+              <p className="text-2xl font-bold text-emerald-400">{stats.completed ?? 0}</p>
             </div>
-            <div className="bg-primary-dark/50 p-4 rounded-lg shadow border border-white/10">
-              <p className="text-sm text-gray-500">Failed</p>
-              <p className="text-2xl font-bold text-red-600">{stats.failed}</p>
+            <div className="bg-slate-900/60 p-4 rounded-lg shadow border border-white/10">
+              <p className="text-sm text-slate-500">Failed</p>
+              <p className="text-2xl font-bold text-rose-400">{stats.failed ?? 0}</p>
             </div>
-            <div className="bg-primary-dark/50 p-4 rounded-lg shadow border border-white/10">
-              <p className="text-sm text-gray-500">Delayed</p>
-              <p className="text-2xl font-bold text-yellow-600">{stats.delayed}</p>
+            <div className="bg-slate-900/60 p-4 rounded-lg shadow border border-white/10">
+              <p className="text-sm text-slate-500">Delayed</p>
+              <p className="text-2xl font-bold text-amber-400">{stats.delayed ?? 0}</p>
             </div>
           </div>
         )}
@@ -215,12 +216,16 @@ export const JobsMonitoringPage = () => {
         </div>
 
         {/* Jobs Table */}
-        <div className="bg-primary-dark/50 rounded-lg shadow border border-white/10">
+        {error ? (
+          <Error message="Failed to load jobs" onRetry={() => { void refetch(); }} />
+        ) : (
           <Table
             data={jobs || []}
             columns={columns}
+            isLoading={isLoading}
+            emptyMessage="No jobs found"
           />
-        </div>
+        )}
       </div>
     </AdminLayout>
   );

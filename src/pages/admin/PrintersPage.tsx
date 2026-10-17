@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, Edit2, Plus, Printer, TestTube, Trash2, XCircle } from 'lucide-react';
 import apiClient from '../../lib/api-client';
+import { formatDate } from '../../lib/date-format';
 import { unwrapArray } from '../../lib/unwrap-response';
+import { queryKeys } from '../../lib/query-keys';
 import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
 import { BranchSelector } from '../../components/BranchSelector';
@@ -35,37 +38,51 @@ interface PrinterConfig {
 }
 
 export const PrintersPage: React.FC = () => {
-  const [printers, setPrinters] = useState<PrinterConfig[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [testing, setTesting] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState<PrinterConfig | null>(null);
   const { showSuccess, showError } = useToast();
   const requestConfirmation = useConfirm();
+  const queryClient = useQueryClient();
   const selectedBranch = useBranchStore((state) => state.selectedBranch);
   const branches = useBranchStore((state) => state.branches);
   const branchId = getBranchId(selectedBranch);
   const effectiveBranchId = branchId || branches[0]?._id || (branches[0] as any)?.id || '';
   const terminalId = 'TERMINAL-01';
 
-  useEffect(() => {
-    void loadPrinters();
-  }, [branchId]);
-
-  const loadPrinters = async () => {
-    setLoading(true);
-    try {
+  const printersQuery = useQuery({
+    queryKey: queryKeys.printers.list(branchId),
+    queryFn: async () => {
       const endpoint = branchId ? `/printers/branch/${branchId}` : '/printers';
       const response = await apiClient.get(endpoint);
-      setPrinters(unwrapArray(response.data));
-    } catch (error) {
-      console.error('Failed to load printers:', error);
-      showError('Failed to load printers');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return unwrapArray(response.data) as PrinterConfig[];
+    },
+  });
+  const printers = printersQuery.data ?? [];
+
+  const invalidatePrinters = () =>
+    queryClient.invalidateQueries({ queryKey: queryKeys.printers.all() });
+
+  const testMutation = useMutation({
+    mutationFn: (id: string) => apiClient.post(`/printers/${id}/test`),
+    onSuccess: (response) => {
+      showSuccess(response.data?.message ?? 'Printer test successful');
+      void invalidatePrinters();
+    },
+    onError: () => {
+      showError('Failed to test printer connection');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => apiClient.delete(`/printers/${id}`),
+    onSuccess: () => {
+      showSuccess('Printer deleted');
+      void invalidatePrinters();
+    },
+    onError: () => {
+      showError('Failed to delete printer');
+    },
+  });
 
   const handleOpenAdd = () => {
     setEditingPrinter(null);
@@ -77,17 +94,8 @@ export const PrintersPage: React.FC = () => {
     setIsSettingsOpen(true);
   };
 
-  const testConnection = async (id: string) => {
-    setTesting(id);
-    try {
-      const response = await apiClient.post(`/printers/${id}/test`);
-      showSuccess(response.data.message ?? 'Printer test successful');
-      await loadPrinters();
-    } catch {
-      showError('Failed to test printer connection');
-    } finally {
-      setTesting(null);
-    }
+  const testConnection = (id: string) => {
+    testMutation.mutate(id);
   };
 
   const deletePrinter = async (printer: PrinterConfig) => {
@@ -98,17 +106,7 @@ export const PrintersPage: React.FC = () => {
       variant: 'danger',
     });
     if (!confirmed) return;
-
-    setDeleting(printer._id);
-    try {
-      await apiClient.delete(`/printers/${printer._id}`);
-      showSuccess('Printer deleted');
-      await loadPrinters();
-    } catch {
-      showError('Failed to delete printer');
-    } finally {
-      setDeleting(null);
-    }
+    deleteMutation.mutate(printer._id);
   };
 
   const getConnectionIcon = (type: string) => {
@@ -126,7 +124,7 @@ export const PrintersPage: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (printersQuery.isLoading) {
     return (
       <AdminLayout title="Thermal Printers">
         <Loading variant="centered" text="Loading printers…" />
@@ -139,10 +137,10 @@ export const PrintersPage: React.FC = () => {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <Printer className="mt-1 h-8 w-8 text-accent-green" />
+            <Printer className="mt-1 h-8 w-8 text-emerald-500" />
             <div>
               <h1 className="text-2xl font-bold text-white">Thermal Printers</h1>
-              <p className="mt-1 text-sm text-gray-400">
+              <p className="mt-1 text-sm text-slate-400">
                 Manage receipt printing for the selected branch and terminal.
               </p>
             </div>
@@ -156,7 +154,7 @@ export const PrintersPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="rounded-xl border border-accent-green/20 bg-white/5 p-4 text-sm text-gray-300">
+        <div className="rounded-xl border border-emerald-500/20 bg-white/5 p-4 text-sm text-slate-300">
           <h3 className="mb-2 font-semibold text-white">Mobile and web compatibility</h3>
           <div className="space-y-1">
             <p><strong className="text-white">Network printers:</strong> work on Windows, Mac, Android, and iOS.</p>
@@ -165,8 +163,21 @@ export const PrintersPage: React.FC = () => {
           </div>
         </div>
 
+        {printersQuery.isError ? (
+          <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+            Failed to load printers.{' '}
+            <button
+              type="button"
+              onClick={() => void printersQuery.refetch()}
+              className="font-medium underline underline-offset-2 hover:text-red-200"
+            >
+              Try again
+            </button>
+          </div>
+        ) : null}
+
         {printers.length === 0 ? (
-          <div className="rounded-xl border border-white/10 bg-primary-dark">
+          <div className="rounded-xl border border-white/10 bg-slate-900">
             <EmptyState
               icon={<Printer className="h-12 w-12" />}
               title="No printers configured"
@@ -179,19 +190,19 @@ export const PrintersPage: React.FC = () => {
             {printers.map((printer) => (
               <div
                 key={printer._id}
-                className="rounded-xl border border-white/10 bg-primary-dark p-4 shadow-sm"
+                className="rounded-xl border border-white/10 bg-slate-900 p-4 shadow-sm"
               >
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-xs uppercase tracking-wide text-gray-500">{getConnectionIcon(printer.connectionType)}</p>
+                    <p className="text-xs uppercase tracking-wide text-slate-500">{getConnectionIcon(printer.connectionType)}</p>
                     <h3 className="truncate text-lg font-semibold text-white">{printer.name}</h3>
-                    <p className="truncate text-xs text-gray-400">
+                    <p className="truncate text-xs text-slate-400">
                       {typeof printer.branchId === 'object' ? printer.branchId.name : 'Unknown Branch'} - {printer.terminalId}
                     </p>
                   </div>
                   <span
                     className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                      printer.isActive ? 'border border-accent-green/20 bg-accent-green/15 text-accent-green' : 'bg-white/10 text-gray-300'
+                      printer.isActive ? 'border border-emerald-500/20 bg-emerald-500/15 text-emerald-500' : 'bg-white/10 text-slate-300'
                     }`}
                   >
                     {printer.isActive ? 'Active' : 'Inactive'}
@@ -200,42 +211,42 @@ export const PrintersPage: React.FC = () => {
 
                 <div className="space-y-2 text-sm">
                   <div className="flex items-start justify-between gap-3">
-                    <span className="text-gray-400">Type</span>
+                    <span className="text-slate-400">Type</span>
                     <span className="text-right font-medium capitalize text-white">{printer.connectionType}</span>
                   </div>
                   {printer.connectionType === 'network' ? (
                     <div className="flex items-start justify-between gap-3">
-                      <span className="text-gray-400">Address</span>
+                      <span className="text-slate-400">Address</span>
                       <span className="text-right font-medium text-white">{printer.ipAddress}:{printer.port}</span>
                     </div>
                   ) : null}
                   {printer.connectionType === 'bluetooth' ? (
                     <div className="flex items-start justify-between gap-3">
-                      <span className="text-gray-400">Device</span>
+                      <span className="text-slate-400">Device</span>
                       <span className="text-right font-medium text-white">{printer.bluetoothName || '-'}</span>
                     </div>
                   ) : null}
                   <div className="flex items-start justify-between gap-3">
-                    <span className="text-gray-400">Paper</span>
+                    <span className="text-slate-400">Paper</span>
                     <span className="font-medium text-white">{printer.paperWidth}mm</span>
                   </div>
                   <div className="flex items-start justify-between gap-3">
-                    <span className="text-gray-400">Auto-print</span>
+                    <span className="text-slate-400">Auto-print</span>
                     <span className="text-right font-medium text-white">
                       {printer.autoPrintEnabled ? `Yes (${printer.defaultCopies}x)` : 'No'}
                     </span>
                   </div>
                   {printer.lastTestAt ? (
                     <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-3">
-                      <span className="text-gray-400">Last Test</span>
+                      <span className="text-slate-400">Last Test</span>
                       <div className="flex items-center gap-1">
                         {printer.lastTestStatus === 'success' ? (
-                          <CheckCircle className="h-4 w-4 text-accent-green" />
+                          <CheckCircle className="h-4 w-4 text-emerald-500" />
                         ) : (
                           <XCircle className="h-4 w-4 text-red-400" />
                         )}
-                        <span className={`text-xs ${printer.lastTestStatus === 'success' ? 'text-accent-green' : 'text-red-300'}`}>
-                          {new Date(printer.lastTestAt).toLocaleDateString()}
+                        <span className={`text-xs ${printer.lastTestStatus === 'success' ? 'text-emerald-500' : 'text-red-300'}`}>
+                          {formatDate(printer.lastTestAt)}
                         </span>
                       </div>
                     </div>
@@ -245,12 +256,16 @@ export const PrintersPage: React.FC = () => {
                 <div className="mt-4 flex gap-2">
                   <Button
                     onClick={() => testConnection(printer._id)}
-                    isLoading={testing === printer._id}
+                    isLoading={testMutation.isPending && testMutation.variables === printer._id}
                     className="flex-1 text-sm"
                   >
                     <span className="inline-flex items-center gap-2">
                       <TestTube className="h-4 w-4" />
-                      <span>{testing === printer._id ? 'Testing...' : 'Test'}</span>
+                      <span>
+                        {testMutation.isPending && testMutation.variables === printer._id
+                          ? 'Testing...'
+                          : 'Test'}
+                      </span>
                     </span>
                   </Button>
                   <Button
@@ -264,7 +279,7 @@ export const PrintersPage: React.FC = () => {
                   <Button
                     onClick={() => deletePrinter(printer)}
                     variant="danger"
-                    isLoading={deleting === printer._id}
+                    isLoading={deleteMutation.isPending && deleteMutation.variables === printer._id}
                     loadingLabel="Deleting"
                     className="px-3"
                     aria-label={`Delete ${printer.name}`}
@@ -289,7 +304,7 @@ export const PrintersPage: React.FC = () => {
             onClose={() => {
               setIsSettingsOpen(false);
               setEditingPrinter(null);
-              void loadPrinters();
+              void invalidatePrinters();
             }}
             branchId={effectiveBranchId}
             terminalId={terminalId}

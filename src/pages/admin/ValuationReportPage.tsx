@@ -89,25 +89,25 @@ export function ValuationReportPage() {
           <h1 className="text-2xl font-bold text-white">Inventory Valuation Report</h1>
           <div className="flex items-center gap-3">
             {isSuperAdmin && (
-              <label className="flex items-center gap-2 text-sm text-gray-300">
+              <label className="flex items-center gap-2 text-sm text-slate-300">
                 <input
                   type="checkbox"
                   checked={showAllBranches}
                   onChange={(e) => setShowAllBranches(e.target.checked)}
-                  className="rounded border-gray-600 text-accent-green focus:ring-accent-green/50"
+                  className="rounded border-white/15 text-emerald-500 focus:ring-emerald-500/50"
                 />
                 Company-wide
               </label>
             )}
-            <div className="flex border border-gray-700 rounded-md overflow-hidden">
+            <div className="flex border border-white/10 rounded-md overflow-hidden">
               {METHODS.map((m) => (
                 <button
                   key={m}
                   onClick={() => setMethod(m)}
                   className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                     method === m
-                      ? 'bg-accent-green text-primary-dark'
-                      : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
+                      ? 'bg-emerald-500 text-slate-950'
+                      : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
                   }`}
                 >
                   {m}
@@ -134,22 +134,22 @@ export function ValuationReportPage() {
 
         {/* Total value card */}
         {data && (
-          <div className="bg-primary-dark/50 border border-white/10 rounded-2xl p-6 mb-6 flex items-center justify-between">
+          <div className="bg-slate-900/50 border border-white/10 rounded-2xl p-6 mb-6 flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 uppercase font-semibold">Total Inventory Value</p>
+              <p className="text-sm text-slate-500 uppercase font-semibold">Total Inventory Value</p>
               <p
-                className="text-2xl sm:text-3xl lg:text-4xl font-bold text-accent-green mt-1 tabular-nums break-words leading-tight"
+                className="text-2xl sm:text-3xl lg:text-4xl font-bold text-emerald-500 mt-1 tabular-nums break-words leading-tight"
                 title={format(data.totalValue)}
               >
                 {format(data.totalValue)}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-slate-400 mt-1">
                 Method: <span className="font-semibold">{data.method}</span>
                 {data.products?.length != null && ` - ${data.products.length} products`}
               </p>
             </div>
-            <div className="w-16 h-16 bg-accent-green/10 rounded-full flex items-center justify-center">
-              <svg className="w-8 h-8 text-accent-green" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center">
+              <svg className="w-8 h-8 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
@@ -160,13 +160,13 @@ export function ValuationReportPage() {
         {error && <Error message="Failed to load valuation report" />}
 
         {data?.products && data.products.length === 0 && (
-          <div className="text-gray-400 text-sm text-center py-12">
+          <div className="text-slate-400 text-sm text-center py-12">
             No inventory data available.
           </div>
         )}
 
         {data?.products && data.products.length > 0 && (
-          <div className="bg-primary-dark/50 rounded-2xl border border-white/10 overflow-hidden">
+          <div className="bg-slate-900/50 rounded-2xl border border-white/10 overflow-hidden">
             <Table
               columns={[
                 {
@@ -175,7 +175,7 @@ export function ValuationReportPage() {
                   render: (row: ValuationProductEntry) => (
                     <div className="max-w-xs">
                       <p className="font-medium text-white whitespace-normal break-words">{row.productName}</p>
-                      <p className="text-xs text-gray-400">SKU: {row.sku}</p>
+                      <p className="text-xs text-slate-400">SKU: {row.sku}</p>
                     </div>
                   ),
                 },
@@ -183,7 +183,7 @@ export function ValuationReportPage() {
                   key: 'quantity',
                   header: 'Quantity',
                   render: (row: ValuationProductEntry) => (
-                    <span className="text-gray-300">{row.quantity.toLocaleString()}</span>
+                    <span className="text-slate-300">{row.quantity.toLocaleString()}</span>
                   ),
                 },
                 {

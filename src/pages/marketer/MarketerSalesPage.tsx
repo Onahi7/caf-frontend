@@ -9,6 +9,7 @@ import { Select } from '../../components/ui/Select';
 import { Table } from '../../components/ui/Table';
 import { Pagination } from '../../components/ui/Pagination';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDateTime } from '../../lib/date-format';
 import { useCurrency } from '../../hooks/useCurrency';
 import { usePagination } from '../../hooks/usePagination';
 import { useToast } from '../../hooks/useToast';
@@ -114,8 +115,8 @@ export const MarketerSalesPage = () => {
         const showBrand = brand && brand.toLowerCase() !== 'unknown';
         return (
           <div className="whitespace-normal break-words">
-            <div className="font-medium text-white">{item.productId?.name || '-'} <span className="text-gray-400 font-normal">({item.productId?.sku || '-'})</span></div>
-            {showBrand ? <div className="text-xs text-accent-green">Brand: {brand}</div> : null}
+            <div className="font-medium text-white">{item.productId?.name || '-'} <span className="text-slate-400 font-normal">({item.productId?.sku || '-'})</span></div>
+            {showBrand ? <div className="text-xs text-emerald-500">Brand: {brand}</div> : null}
           </div>
         );
       },
@@ -134,14 +135,14 @@ export const MarketerSalesPage = () => {
     {
       key: 'soldAt',
       header: 'Date',
-      render: (item: SalesResponse['data'][number]) => <span>{new Date(item.soldAt).toLocaleString()}</span>,
+      render: (item: SalesResponse['data'][number]) => <span>{formatDateTime(item.soldAt)}</span>,
     },
   ];
 
   return (
     <MarketerLayout title="Sell Assigned Products">
       <div className="space-y-5">
-        <div className="bg-primary-dark/50 rounded-2xl border border-white/10 p-5">
+        <div className="bg-slate-900/50 rounded-2xl border border-white/10 p-5">
           <h3 className="text-sm font-semibold text-white mb-4">Create Sale</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
@@ -203,7 +204,7 @@ export const MarketerSalesPage = () => {
           </div>
         </div>
 
-        <div className="bg-primary-dark/50 rounded-2xl border border-white/10 p-5">
+        <div className="bg-slate-900/50 rounded-2xl border border-white/10 p-5">
           <h3 className="text-sm font-semibold text-white mb-4">Recent Sales</h3>
           <Table
             data={salesData?.data || []}

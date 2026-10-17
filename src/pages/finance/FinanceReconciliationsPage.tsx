@@ -53,7 +53,7 @@ const statusBadge = (status: string) => {
     approved: 'bg-green-500/10 text-green-400 border-green-500/20',
     rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
   };
-  return s[status] || 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+  return s[status] || 'bg-gray-500/10 text-slate-400 border-gray-500/20';
 };
 
 const sourceBadge = (source: string) => {
@@ -62,7 +62,7 @@ const sourceBadge = (source: string) => {
     emr: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
     lab: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
   };
-  return s[source] || 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+  return s[source] || 'bg-gray-500/10 text-slate-400 border-gray-500/20';
 };
 
 function PaymentBreakdownDisplay({ label, data, format }: { label: string; data?: PaymentBreakdown; format: (amount: number) => string }) {
@@ -106,7 +106,7 @@ function PaymentBreakdownInput({ prefix, form, setForm }: { prefix: string; form
             value={form[`${prefix}${key}`] || ''}
             onChange={(e) => setForm({ ...form, [`${prefix}${key}`]: e.target.value })}
             placeholder="0"
-            className="w-full px-3 py-2 rounded-lg bg-white/5 text-white border border-white/10 text-sm focus:border-accent-green/50 focus:outline-none"
+            className="w-full px-3 py-2 rounded-lg bg-white/5 text-white border border-white/10 text-sm focus:border-emerald-500/50 focus:outline-none"
           />
         </div>
       ))}
@@ -195,7 +195,7 @@ export function FinanceReconciliationsPage() {
   return (
     <FinanceLayout title="Reconciliations">
       <div className="mb-6 flex items-center justify-between">
-        <p className="text-gray-400">Review and approve reconciliations from all branches</p>
+        <p className="text-slate-400">Review and approve reconciliations from all branches</p>
         <Button onClick={() => setIsCreateOpen(true)}>
           <Plus className="w-4 h-4 mr-2" />New Reconciliation
         </Button>
@@ -204,33 +204,33 @@ export function FinanceReconciliationsPage() {
       <div className="mb-4 flex gap-2">
         {['', 'pending', 'approved', 'rejected'].map((s) => (
           <button key={s} onClick={() => setFilterStatus(s)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${filterStatus === s ? 'bg-accent-green text-white' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'}`}>
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${filterStatus === s ? 'bg-emerald-500 text-white' : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'}`}>
             {s ? s.charAt(0).toUpperCase() + s.slice(1) : 'All'}
           </button>
         ))}
       </div>
 
       {isLoading ? <Loading variant="centered" text="Loading..." /> : error ? <Error message="Failed to load" onRetry={refetch} /> : (
-        <div className="rounded-2xl border border-white/10 bg-primary-dark/70 overflow-hidden">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/70 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10 bg-white/5">
-                  <th className="text-left text-gray-400 px-4 py-3 font-medium">Branch</th>
-                  <th className="text-left text-gray-400 px-4 py-3 font-medium">Source</th>
-                  <th className="text-left text-gray-400 px-4 py-3 font-medium">Period</th>
-                  <th className="text-right text-gray-400 px-4 py-3 font-medium">Sales</th>
-                  <th className="text-right text-gray-400 px-4 py-3 font-medium">Expenses</th>
-                  <th className="text-right text-gray-400 px-4 py-3 font-medium">Expected</th>
-                  <th className="text-right text-gray-400 px-4 py-3 font-medium">Actual</th>
-                  <th className="text-right text-gray-400 px-4 py-3 font-medium">Variance</th>
-                  <th className="text-left text-gray-400 px-4 py-3 font-medium">Status</th>
-                  <th className="text-left text-gray-400 px-4 py-3 font-medium">Actions</th>
+                  <th className="text-left text-slate-400 px-4 py-3 font-medium">Branch</th>
+                  <th className="text-left text-slate-400 px-4 py-3 font-medium">Source</th>
+                  <th className="text-left text-slate-400 px-4 py-3 font-medium">Period</th>
+                  <th className="text-right text-slate-400 px-4 py-3 font-medium">Sales</th>
+                  <th className="text-right text-slate-400 px-4 py-3 font-medium">Expenses</th>
+                  <th className="text-right text-slate-400 px-4 py-3 font-medium">Expected</th>
+                  <th className="text-right text-slate-400 px-4 py-3 font-medium">Actual</th>
+                  <th className="text-right text-slate-400 px-4 py-3 font-medium">Variance</th>
+                  <th className="text-left text-slate-400 px-4 py-3 font-medium">Status</th>
+                  <th className="text-left text-slate-400 px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {(recons || []).length === 0 ? (
-                  <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-400">No reconciliations found</td></tr>
+                  <tr><td colSpan={10} className="px-4 py-8 text-center text-slate-400">No reconciliations found</td></tr>
                 ) : (
                   (recons || []).map((r) => (
                     <tr key={r._id} className="border-b border-white/5 hover:bg-white/5 cursor-pointer" onClick={() => setSelected(r)}>
@@ -274,16 +274,16 @@ export function FinanceReconciliationsPage() {
         {selected ? (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div><span className="text-gray-400 text-sm">Branch</span><p className="text-white font-medium">{getBranchName(selected.branchId)}</p></div>
-              <div><span className="text-gray-400 text-sm">Source</span><p className="text-white font-medium">{selected.source.toUpperCase()}</p></div>
-              <div><span className="text-gray-400 text-sm">Period</span><p className="text-white font-medium">{selected.period}</p></div>
-              <div><span className="text-gray-400 text-sm">Status</span><p><span className={`px-2 py-1 rounded-full text-xs font-medium border ${statusBadge(selected.status)}`}>{selected.status}</span></p></div>
-              <div><span className="text-gray-400 text-sm">Total Sales</span><p className="text-white font-medium">{format(selected.totalSales)}</p></div>
-              <div><span className="text-gray-400 text-sm">Total Expenses</span><p className="text-white font-medium">{format(selected.totalExpenses)}</p></div>
-              <div><span className="text-gray-400 text-sm">Expected Cash</span><p className="text-white font-medium">{format(selected.expectedCash)}</p></div>
-              <div><span className="text-gray-400 text-sm">Actual Cash</span><p className="text-white font-medium">{format(selected.actualCash)}</p></div>
+              <div><span className="text-slate-400 text-sm">Branch</span><p className="text-white font-medium">{getBranchName(selected.branchId)}</p></div>
+              <div><span className="text-slate-400 text-sm">Source</span><p className="text-white font-medium">{selected.source.toUpperCase()}</p></div>
+              <div><span className="text-slate-400 text-sm">Period</span><p className="text-white font-medium">{selected.period}</p></div>
+              <div><span className="text-slate-400 text-sm">Status</span><p><span className={`px-2 py-1 rounded-full text-xs font-medium border ${statusBadge(selected.status)}`}>{selected.status}</span></p></div>
+              <div><span className="text-slate-400 text-sm">Total Sales</span><p className="text-white font-medium">{format(selected.totalSales)}</p></div>
+              <div><span className="text-slate-400 text-sm">Total Expenses</span><p className="text-white font-medium">{format(selected.totalExpenses)}</p></div>
+              <div><span className="text-slate-400 text-sm">Expected Cash</span><p className="text-white font-medium">{format(selected.expectedCash)}</p></div>
+              <div><span className="text-slate-400 text-sm">Actual Cash</span><p className="text-white font-medium">{format(selected.actualCash)}</p></div>
               <div className="sm:col-span-2">
-                <span className="text-gray-400 text-sm">Discrepancy</span>
+                <span className="text-slate-400 text-sm">Discrepancy</span>
                 <p className={`text-lg font-semibold ${selected.hasDiscrepancy ? 'text-red-400' : 'text-green-400'}`}>{format(selected.discrepancy)}</p>
               </div>
             </div>
@@ -310,7 +310,7 @@ export function FinanceReconciliationsPage() {
 
             {selected.items.length > 0 && (
               <div>
-                <h4 className="text-sm font-medium text-gray-400 mb-2">Line Items</h4>
+                <h4 className="text-sm font-medium text-slate-400 mb-2">Line Items</h4>
                 <div className="space-y-1">
                   {selected.items.map((item, i) => (
                     <div key={i} className="flex justify-between bg-white/5 rounded-lg p-2">
@@ -323,10 +323,10 @@ export function FinanceReconciliationsPage() {
             )}
 
             {selected.reviewedBy && (
-              <div><span className="text-gray-400 text-sm">Reviewed by</span><p className="text-white">{selected.reviewedBy.firstName} {selected.reviewedBy.lastName}</p></div>
+              <div><span className="text-slate-400 text-sm">Reviewed by</span><p className="text-white">{selected.reviewedBy.firstName} {selected.reviewedBy.lastName}</p></div>
             )}
             {selected.reviewNotes && (
-              <div><span className="text-gray-400 text-sm">Review Notes</span><p className="text-white">{selected.reviewNotes}</p></div>
+              <div><span className="text-slate-400 text-sm">Review Notes</span><p className="text-white">{selected.reviewNotes}</p></div>
             )}
           </div>
         ) : null}
@@ -338,10 +338,10 @@ export function FinanceReconciliationsPage() {
           <div className="space-y-4">
             <div className="bg-white/5 rounded-xl p-4">
               <div className="grid grid-cols-2 gap-2 text-sm">
-                <div><span className="text-gray-400">Branch:</span> <span className="text-white ml-1">{getBranchName(reviewModal.branchId)}</span></div>
-                <div><span className="text-gray-400">Source:</span> <span className="text-white ml-1">{reviewModal.source.toUpperCase()}</span></div>
-                <div><span className="text-gray-400">Period:</span> <span className="text-white ml-1">{reviewModal.period}</span></div>
-                <div><span className="text-gray-400">Expected:</span> <span className="text-white ml-1">{format(reviewModal.expectedCash)}</span></div>
+                <div><span className="text-slate-400">Branch:</span> <span className="text-white ml-1">{getBranchName(reviewModal.branchId)}</span></div>
+                <div><span className="text-slate-400">Source:</span> <span className="text-white ml-1">{reviewModal.source.toUpperCase()}</span></div>
+                <div><span className="text-slate-400">Period:</span> <span className="text-white ml-1">{reviewModal.period}</span></div>
+                <div><span className="text-slate-400">Expected:</span> <span className="text-white ml-1">{format(reviewModal.expectedCash)}</span></div>
               </div>
               {reviewModal.expectedPaymentBreakdown && (
                 <div className="mt-3 pt-3 border-t border-white/10">
@@ -359,7 +359,7 @@ export function FinanceReconciliationsPage() {
               <label className="block text-sm font-medium text-white mb-1">Actual Cash Counted (total)</label>
               <input type="number" step="0.01" min="0" value={reviewForm.reviewActualCash || reviewModal.actualCash}
                 onChange={(e) => setReviewForm({ ...reviewForm, reviewActualCash: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10 focus:border-accent-green/50 focus:outline-none" />
+                className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10 focus:border-emerald-500/50 focus:outline-none" />
             </div>
 
             <div>
@@ -371,7 +371,7 @@ export function FinanceReconciliationsPage() {
               <label className="block text-sm font-medium text-white mb-1">Review Notes</label>
               <textarea value={reviewForm.notes || ''} onChange={(e) => setReviewForm({ ...reviewForm, notes: e.target.value })} rows={3}
                 placeholder="Optional notes about the review..."
-                className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10 focus:border-accent-green/50 focus:outline-none" />
+                className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10 focus:border-emerald-500/50 focus:outline-none" />
             </div>
 
             <div className="flex gap-3 justify-end">

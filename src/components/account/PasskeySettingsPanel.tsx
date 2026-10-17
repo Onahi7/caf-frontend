@@ -4,6 +4,7 @@ import { Button } from '../ui/Button';
 import { useWebAuthn } from '../../hooks/useWebAuthn';
 import { useToast } from '../../hooks/useToast';
 import { webauthnApi, type CredentialSummary } from '../../lib/webauthn-api';
+import { formatDateTime } from '../../lib/date-format';
 
 const TRANSPORT_LABELS: Record<string, string> = {
   usb: 'USB Security Key',
@@ -13,11 +14,6 @@ const TRANSPORT_LABELS: Record<string, string> = {
   hybrid: 'Phone / Tablet',
   smart_card: 'Smart Card',
 };
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return 'never';
-  return new Date(iso).toLocaleString();
-}
 
 function transportLabel(t: string): string {
   return TRANSPORT_LABELS[t] ?? t;
@@ -147,7 +143,7 @@ export const PasskeySettingsPanel = () => {
                 <p className="text-xs text-slate-400">
                   {c.transports?.map(transportLabel).join(' • ') || 'Standard Authenticator'}
                   {' • Last used '}
-                  {formatDate(c.lastUsedAt)}
+                  {c.lastUsedAt ? formatDateTime(c.lastUsedAt) : 'never'}
                 </p>
               </div>
               <Button

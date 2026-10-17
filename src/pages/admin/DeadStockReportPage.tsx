@@ -8,9 +8,12 @@ import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { Select } from '../../components/ui/Select';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useToast } from '../../hooks/useToast';
+import { getErrorMessage } from '../../lib/error-utils';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDate } from '../../lib/date-format';
 import { buildApiUrl } from '../../lib/api-utils';
 import { SaveReportButton } from '../../components/finance/SaveReportButton';
 
@@ -54,6 +57,8 @@ export function DeadStockReportPage() {
   const [filterBranchId, setFilterBranchId] = useState('');
   const effectiveBranchId = isSuperAdmin ? filterBranchId : selectedBranchId;
   const [daysWithoutSale, setDaysWithoutSale] = useState(90);
+  const [exporting, setExporting] = useState(false);
+  const { showSuccess, showError } = useToast();
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.reports.deadStock({ branchId: effectiveBranchId, daysWithoutSale }),
@@ -79,6 +84,7 @@ export function DeadStockReportPage() {
   });
 
   const handleExport = async () => {
+    setExporting(true);
     try {
       const response = await apiClient.get(
         buildApiUrl('/reports/dead-stock/export', {
@@ -94,8 +100,12 @@ export function DeadStockReportPage() {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
+      showSuccess('Export ready', 'Your report download has started.');
     } catch (err) {
-      console.error('Export failed:', err);
+      showError(getErrorMessage(err, 'Export failed'));
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -106,7 +116,7 @@ export function DeadStockReportPage() {
       render: (item: DeadStockItem) => (
         <div>
           <p className="font-medium text-white">{item.productName}</p>
-          <p className="text-xs text-gray-400">SKU: {item.sku}</p>
+          <p className="text-xs text-slate-400">SKU: {item.sku}</p>
         </div>
       ),
     },
@@ -121,7 +131,7 @@ export function DeadStockReportPage() {
       key: 'lastSaleDate',
       header: 'Last Sale',
       render: (item: DeadStockItem) =>
-        item.lastSaleDate ? new Date(item.lastSaleDate).toLocaleDateString() : <span className="text-gray-500">Never</span>,
+        item.lastSaleDate ? formatDate(item.lastSaleDate) : <span className="text-slate-500">Never</span>,
     },
     {
       key: 'daysSinceLastSale',
@@ -145,13 +155,13 @@ export function DeadStockReportPage() {
               params={{ branchId: filterBranchId || undefined, daysWithoutSale }}
               defaultName="Dead Stock Report"
             />
-            <Button variant="secondary" onClick={handleExport} disabled={!data?.items?.length}>
+            <Button variant="secondary" onClick={handleExport} disabled={!data?.items?.length || exporting} isLoading={exporting}>
               Export CSV
             </Button>
           </div>
         </div>
 
-        <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6 mb-6">
+        <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-end gap-4">
             {isSuperAdmin && (
               <div className="flex-1">
@@ -164,16 +174,16 @@ export function DeadStockReportPage() {
               </div>
             )}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">No Sales In</label>
-              <div className="flex border border-gray-700 rounded-md overflow-hidden">
+              <label className="block text-sm font-medium text-slate-300 mb-1">No Sales In</label>
+              <div className="flex border border-white/10 rounded-md overflow-hidden">
                 {THRESHOLD_OPTIONS.map((opt) => (
                   <button
                     key={opt.value}
                     onClick={() => setDaysWithoutSale(opt.value)}
                     className={`px-3 py-1.5 text-sm font-medium transition-colors ${
                       daysWithoutSale === opt.value
-                        ? 'bg-accent-green text-primary-dark'
-                        : 'bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white'
+                        ? 'bg-emerald-500 text-slate-950'
+                        : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
                     }`}
                   >
                     {opt.label}
@@ -206,13 +216,13 @@ export function DeadStockReportPage() {
             </div>
 
             {data.items.length > 0 ? (
-              <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
+              <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
                 <Table data={data.items} columns={columns} />
               </div>
             ) : (
-              <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-12 text-center">
-                <p className="text-gray-400 text-lg">No dead stock items found.</p>
-                <p className="text-gray-500 text-sm mt-1">All products have had sales within {daysWithoutSale} days.</p>
+              <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-12 text-center">
+                <p className="text-slate-400 text-lg">No dead stock items found.</p>
+                <p className="text-slate-500 text-sm mt-1">All products have had sales within {daysWithoutSale} days.</p>
               </div>
             )}
           </div>

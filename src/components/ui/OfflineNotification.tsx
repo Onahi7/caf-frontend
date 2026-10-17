@@ -1,20 +1,8 @@
-import { useEffect, useState } from 'react';
 import { CloudOff, RefreshCw } from 'lucide-react';
-import { SyncService } from '../../services/sync-service';
+import { useSyncQueue } from '../../hooks/useSyncQueue';
 
 export const OfflineNotification = () => {
-  const [pendingCount, setPendingCount] = useState(0);
-
-  useEffect(() => {
-    const checkQueue = async () => {
-      const count = await SyncService.getQueueLength();
-      setPendingCount(count);
-    };
-
-    checkQueue();
-    const interval = setInterval(checkQueue, 10000);
-    return () => clearInterval(interval);
-  }, []);
+  const { pendingCount } = useSyncQueue();
 
   if (pendingCount === 0) return null;
 

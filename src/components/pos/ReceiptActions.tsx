@@ -55,7 +55,7 @@ export const ReceiptActions = ({ saleId, receiptNumber, compact = false }: Recei
         <button
           onClick={handlePrint}
           disabled={printing}
-          className="px-3 py-1.5 bg-primary text-white rounded hover:bg-primary-dark disabled:opacity-50 text-sm flex items-center gap-1"
+          className="px-3 py-1.5 bg-emerald-500 text-slate-950 font-medium rounded hover:bg-emerald-400 disabled:opacity-50 text-sm flex items-center gap-1"
           title="Print Receipt (PDF)"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +67,7 @@ export const ReceiptActions = ({ saleId, receiptNumber, compact = false }: Recei
         <button
           onClick={handleDownload}
           disabled={downloading}
-          className="px-3 py-1.5 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50 text-sm flex items-center gap-1"
+          className="px-3 py-1.5 bg-slate-800 text-slate-100 rounded hover:bg-slate-700 disabled:opacity-50 text-sm flex items-center gap-1"
           title="Download Receipt (PDF)"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,7 +83,7 @@ export const ReceiptActions = ({ saleId, receiptNumber, compact = false }: Recei
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-white">Receipt Actions</h3>
-        <span className="text-sm text-gray-400">#{receiptNumber}</span>
+        <span className="text-sm text-slate-400">#{receiptNumber}</span>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
@@ -91,7 +91,7 @@ export const ReceiptActions = ({ saleId, receiptNumber, compact = false }: Recei
         <button
           onClick={handlePrint}
           disabled={printing}
-          className="flex items-center justify-center gap-3 px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 transition-colors"
+          className="flex items-center justify-center gap-3 px-4 py-3 bg-emerald-500 text-slate-950 font-medium rounded-lg hover:bg-emerald-400 disabled:opacity-50 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -103,7 +103,7 @@ export const ReceiptActions = ({ saleId, receiptNumber, compact = false }: Recei
         <button
           onClick={handleDownload}
           disabled={downloading}
-          className="flex items-center justify-center gap-3 px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 transition-colors"
+          className="flex items-center justify-center gap-3 px-4 py-3 bg-slate-800 text-slate-100 rounded-lg hover:bg-slate-700 disabled:opacity-50 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -124,7 +124,7 @@ export const ReceiptActions = ({ saleId, receiptNumber, compact = false }: Recei
         </button>
       </div>
 
-      <div className="mt-2 text-xs text-gray-400">
+      <div className="mt-2 text-xs text-slate-400">
         <p>- PDF receipts can be printed on any standard printer</p>
         <p>- Thermal printer requires driver installation or USB connection</p>
       </div>

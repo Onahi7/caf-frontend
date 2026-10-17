@@ -4,10 +4,12 @@ import { AdminLayout } from '../../components/AdminLayout';
 import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
+import { Input } from '../../components/ui/Input';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { AdminStatusBadge } from '../../components/admin';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuth } from '../../contexts/AuthContext';
 import { queryKeys } from '../../lib/query-keys';
@@ -36,15 +38,20 @@ interface Salary {
 
 interface Employee { _id: string; firstName: string; lastName: string; username: string; role: string; branchId?: string }
 
+const INITIAL_FORM = { employeeId: '', baseSalary: '', allowances: '', deductions: '', paymentMethod: 'bank_transfer', notes: '' };
+
 export function SalaryManagementPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [form, setForm] = useState({ employeeId: '', baseSalary: '', allowances: '', deductions: '', paymentMethod: 'bank_transfer', notes: '' });
+  const [form, setForm] = useState(INITIAL_FORM);
   const [selectedPeriod, setSelectedPeriod] = useState('');
+  const [payTarget, setPayTarget] = useState<Salary | null>(null);
+  const [payDate, setPayDate] = useState('');
   const { selectedBranch } = useBranchStore();
   const { user } = useAuth();
   const branchId = getBranchId(selectedBranch);
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
+  const requestConfirmation = useConfirm();
   const { format: formatMoney } = useCurrency();
 
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -91,7 +98,7 @@ export function SalaryManagementPage() {
       showSuccess('Salary record created');
       queryClient.invalidateQueries({ queryKey: queryKeys.financeManager.salaries.all() });
       setIsCreateOpen(false);
-      setForm({ employeeId: '', baseSalary: '', allowances: '', deductions: '', paymentMethod: 'bank_transfer', notes: '' });
+      setForm(INITIAL_FORM);
     },
     onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to create salary record')),
   });
@@ -106,13 +113,44 @@ export function SalaryManagementPage() {
   });
 
   const payMutation = useMutation({
-    mutationFn: async (id: string) => { await apiClient.patch(`/finance-manager/salaries/${id}/pay`); },
+    mutationFn: async ({ id, paymentDate }: { id: string; paymentDate?: string }) => {
+      await apiClient.patch(`/finance-manager/salaries/${id}/pay`, { paymentDate });
+    },
     onSuccess: () => {
       showSuccess('Salary marked as paid');
+      setPayTarget(null);
       queryClient.invalidateQueries({ queryKey: queryKeys.financeManager.salaries.all() });
     },
     onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to mark salary as paid')),
   });
+
+  const handleOpenCreate = () => {
+    setForm(INITIAL_FORM);
+    setIsCreateOpen(true);
+  };
+
+  const handleCloseCreate = () => {
+    setIsCreateOpen(false);
+    setForm(INITIAL_FORM);
+  };
+
+  const employeeName = (s: Salary) => (s.employeeId ? `${s.employeeId.firstName} ${s.employeeId.lastName}` : 'this employee');
+
+  const handleApprove = async (s: Salary) => {
+    const confirmed = await requestConfirmation({
+      title: 'Approve salary?',
+      message: `Approve the net salary of ${formatMoney(s.netSalary)} for ${employeeName(s)} (${s.period}).`,
+      confirmLabel: 'Approve',
+      variant: 'warning',
+    });
+    if (!confirmed) return;
+    approveMutation.mutate(s._id);
+  };
+
+  const handleOpenPay = (s: Salary) => {
+    setPayDate(new Date().toISOString().slice(0, 10));
+    setPayTarget(s);
+  };
 
   const columns = [
     { key: 'employee', header: 'Employee', render: (s: Salary) => s.employeeId ? `${s.employeeId.firstName} ${s.employeeId.lastName}` : '-' },
@@ -129,12 +167,23 @@ export function SalaryManagementPage() {
     { key: 'actions', header: 'Actions', render: (s: Salary) => (
       <div className="flex gap-2">
         {(s.status === 'draft' || s.status === 'pending_approval') && user?.role === 'super_admin' && (
-          <Button size="sm" variant="ghost" onClick={(e: any) => { e?.stopPropagation(); approveMutation.mutate(s._id); }}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(e: any) => { e?.stopPropagation(); void handleApprove(s); }}
+            isLoading={approveMutation.isPending && approveMutation.variables === s._id}
+            disabled={payMutation.isPending}
+          >
             <CheckCircle className="w-3 h-3 mr-1" />Approve
           </Button>
         )}
         {s.status === 'approved' && (
-          <Button size="sm" variant="ghost" onClick={(e: any) => { e?.stopPropagation(); payMutation.mutate(s._id); }}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={(e: any) => { e?.stopPropagation(); handleOpenPay(s); }}
+            disabled={approveMutation.isPending}
+          >
             <Send className="w-3 h-3 mr-1" />Pay
           </Button>
         )}
@@ -150,14 +199,14 @@ export function SalaryManagementPage() {
             className="px-3 py-2 rounded-xl bg-white/5 text-white border border-white/10 text-sm" />
           {stats && (
             <div className="flex gap-4 text-sm">
-              <span className="text-gray-400">Employees: <span className="text-white font-medium">{stats.totalEmployees}</span></span>
-              <span className="text-gray-400">Total Net: <span className="text-white font-medium">{formatMoney(stats.totalNet)}</span></span>
-              <span className="text-gray-400">Pending: <span className="text-amber-400 font-medium">{stats.pendingCount}</span></span>
-              <span className="text-gray-400">Paid: <span className="text-green-400 font-medium">{stats.paidCount}</span></span>
+              <span className="text-slate-400">Employees: <span className="text-white font-medium">{stats.totalEmployees}</span></span>
+              <span className="text-slate-400">Total Net: <span className="text-white font-medium">{formatMoney(stats.totalNet)}</span></span>
+              <span className="text-slate-400">Pending: <span className="text-amber-400 font-medium">{stats.pendingCount}</span></span>
+              <span className="text-slate-400">Paid: <span className="text-emerald-400 font-medium">{stats.paidCount}</span></span>
             </div>
           )}
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}><DollarSign className="w-4 h-4 mr-2" />Add Salary</Button>
+        <Button onClick={handleOpenCreate}><DollarSign className="w-4 h-4 mr-2" />Add Salary</Button>
       </div>
 
       {isLoading ? <Loading variant="centered" text="Loading..." /> : error ? <Error message="Failed to load" onRetry={refetch} /> : (
@@ -168,7 +217,7 @@ export function SalaryManagementPage() {
         />
       )}
 
-      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} title="Add Salary Record">
+      <Modal isOpen={isCreateOpen} onClose={handleCloseCreate} title="Add Salary Record">
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-white mb-1">Employee</label>
@@ -217,10 +266,48 @@ export function SalaryManagementPage() {
               className="w-full px-4 py-2.5 rounded-xl bg-white/5 text-white border border-white/10" />
           </div>
           <div className="flex justify-end gap-3">
-            <Button variant="ghost" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={handleCloseCreate}>Cancel</Button>
             <Button onClick={() => createMutation.mutate()} isLoading={createMutation.isPending}>Create</Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!payTarget}
+        onClose={() => { if (!payMutation.isPending) setPayTarget(null); }}
+        title="Mark Salary as Paid"
+      >
+        {payTarget && (
+          <div className="space-y-4">
+            <div className="rounded-xl bg-white/5 p-4 space-y-1">
+              <p className="text-sm text-slate-400">Employee</p>
+              <p className="text-white font-medium">{employeeName(payTarget)}</p>
+              <p className="text-sm text-slate-400 pt-2">Period</p>
+              <p className="text-white">{payTarget.period}</p>
+              <p className="text-sm text-slate-400 pt-2">Net amount</p>
+              <p className="text-xl font-bold text-white">{formatMoney(payTarget.netSalary)}</p>
+            </div>
+            <Input
+              label="Payment Date"
+              type="date"
+              value={payDate}
+              onChange={(e) => setPayDate(e.target.value)}
+              required
+            />
+            <div className="flex justify-end gap-3">
+              <Button variant="ghost" onClick={() => setPayTarget(null)} disabled={payMutation.isPending}>
+                Cancel
+              </Button>
+              <Button
+                isLoading={payMutation.isPending}
+                disabled={!payDate}
+                onClick={() => payMutation.mutate({ id: payTarget._id, paymentDate: payDate || undefined })}
+              >
+                Mark as Paid
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </AdminLayout>
   );

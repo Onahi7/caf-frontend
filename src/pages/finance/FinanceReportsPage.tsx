@@ -28,7 +28,7 @@ function StatCard({ label, value, icon, color }: { label: string; value: string;
   return (
     <div className={`rounded-xl border p-4 ${color}`}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-gray-400">{label}</span>
+        <span className="text-xs text-slate-400">{label}</span>
         {icon}
       </div>
       <p
@@ -87,7 +87,7 @@ export function FinanceReportsPage() {
       <div className="mb-6 flex items-center justify-end gap-2">
         <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)}
           className="px-3 py-1.5 rounded-lg bg-white/5 text-white border border-white/10 text-sm" />
-        <span className="text-gray-500 text-sm">to</span>
+        <span className="text-slate-500 text-sm">to</span>
         <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
           className="px-3 py-1.5 rounded-lg bg-white/5 text-white border border-white/10 text-sm" />
       </div>
@@ -104,7 +104,7 @@ export function FinanceReportsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <div className="bg-white/5 rounded-xl border border-white/10 p-5">
           <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-accent-green" /> Revenue by Source
+            <BarChart3 className="w-5 h-5 text-emerald-500" /> Revenue by Source
           </h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
@@ -131,7 +131,7 @@ export function FinanceReportsPage() {
               { label: 'Operating Expenses', value: pl.operatingExpenses, color: 'text-orange-400' },
             ].map((item) => (
               <div key={item.label} className="flex justify-between items-center py-2 border-b border-white/5">
-                <span className="text-sm text-gray-400">{item.label}</span>
+                <span className="text-sm text-slate-400">{item.label}</span>
                 <span className={`text-sm font-semibold ${item.color}`}>{format(item.value)}</span>
               </div>
             ))}
@@ -140,7 +140,7 @@ export function FinanceReportsPage() {
               <span className={`text-xl font-bold ${pl.netProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>{format(pl.netProfit)}</span>
             </div>
             <div className="flex justify-between items-center py-2">
-              <span className="text-sm text-gray-400">Margin</span>
+              <span className="text-sm text-slate-400">Margin</span>
               <span className="text-sm font-semibold text-purple-400">{pl.margin}%</span>
             </div>
           </div>
@@ -151,7 +151,7 @@ export function FinanceReportsPage() {
         <div className="bg-white/5 rounded-xl border border-white/10 p-5">
           <h3 className="text-lg font-semibold text-white mb-3">Expenses by Category</h3>
           {expensePieData.length === 0 ? (
-            <p className="text-gray-400 text-sm">No expenses</p>
+            <p className="text-slate-400 text-sm">No expenses</p>
           ) : (
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
@@ -173,15 +173,15 @@ export function FinanceReportsPage() {
           </h3>
           <div className="space-y-3">
             <div className="bg-white/5 rounded-lg p-3">
-              <p className="text-xs text-gray-400">Assigned Value</p>
+              <p className="text-xs text-slate-400">Assigned Value</p>
               <p className="text-lg font-bold text-white">{format(d.marketer.totalAssignedValue)}</p>
             </div>
             <div className="bg-white/5 rounded-lg p-3">
-              <p className="text-xs text-gray-400">Sold Value</p>
+              <p className="text-xs text-slate-400">Sold Value</p>
               <p className="text-lg font-bold text-green-400">{format(d.marketer.totalSoldValue)}</p>
             </div>
             <div className="bg-white/5 rounded-lg p-3">
-              <p className="text-xs text-gray-400">Outstanding</p>
+              <p className="text-xs text-slate-400">Outstanding</p>
               <p className="text-lg font-bold text-amber-400">{format(d.marketer.totalOutstanding)}</p>
             </div>
           </div>
@@ -223,22 +223,22 @@ export function FinanceReportsPage() {
                 <span className={`text-xs px-2 py-1 rounded-full ${
                   source.data?.status === 'balanced' ? 'bg-green-500/20 text-green-400' :
                   source.data?.status === 'variance' ? 'bg-red-500/20 text-red-400' :
-                  'bg-gray-500/20 text-gray-400'
+                  'bg-gray-500/20 text-slate-400'
                 }`}>
                   {source.data?.status || 'Not Submitted'}
                 </span>
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Net Expected</span>
+                  <span className="text-slate-400">Net Expected</span>
                   <span className="text-white">{format(source.data?.netExpected?.total || 0)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Actual</span>
+                  <span className="text-slate-400">Actual</span>
                   <span className="text-white">{format(source.data?.actual?.total || 0)}</span>
                 </div>
                 <div className="flex justify-between border-t border-white/10 pt-2">
-                  <span className="text-gray-400">Variance</span>
+                  <span className="text-slate-400">Variance</span>
                   <span className={source.data?.variance?.total === 0 ? 'text-green-400' : 'text-red-400 font-semibold'}>
                     {format(source.data?.variance?.total || 0)}
                   </span>

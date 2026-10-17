@@ -4,6 +4,7 @@ import { FinanceLayout } from '../../components/FinanceLayout';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { SaveReportButton } from '../../components/finance/SaveReportButton';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
@@ -40,7 +41,7 @@ function StatCard({ label, value, icon, color, link, sublabel, delta }: StatCard
   const inner = (
     <div className={`rounded-xl border p-4 ${color} ${link ? 'hover:scale-[1.02] transition-transform cursor-pointer' : ''}`}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-gray-400">{label}</span>
+        <span className="text-xs text-slate-400">{label}</span>
         {icon}
       </div>
       <p
@@ -52,18 +53,18 @@ function StatCard({ label, value, icon, color, link, sublabel, delta }: StatCard
       {delta ? (
         <div className="flex items-center gap-1 mt-1">
           {delta.value === 0 ? (
-            <span className="text-[10px] text-gray-500">- no change</span>
+            <span className="text-[10px] text-slate-500">- no change</span>
           ) : (
             <>
-              <span className={`text-[10px] font-semibold ${delta.value > 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <span className={`text-[10px] font-semibold ${delta.value > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                 {delta.value > 0 ? 'up' : 'down'} {Math.abs(delta.pct).toFixed(1)}%
               </span>
-              <span className="text-[10px] text-gray-500">vs {delta.comparisonLabel}</span>
+              <span className="text-[10px] text-slate-500">vs {delta.comparisonLabel}</span>
             </>
           )}
         </div>
       ) : sublabel ? (
-        <p className="text-xs text-gray-500 mt-1">{sublabel}</p>
+        <p className="text-xs text-slate-500 mt-1">{sublabel}</p>
       ) : null}
     </div>
   );
@@ -128,7 +129,7 @@ export function FinanceHubPage() {
   const effectiveBranchId = user?.role === 'super_admin' ? undefined : branchId;
   const { format } = useCurrency();
 
-  const { data: dashboard, isLoading: cashLoading, error: cashError } = useQuery({
+  const { data: dashboard, isLoading: cashLoading, error: cashError, refetch: refetchDashboard } = useQuery({
     queryKey: ['finance', 'unified-dashboard', effectiveBranchId, startDate, endDate],
     queryFn: async () => {
       const res = await apiClient.get(
@@ -167,7 +168,6 @@ export function FinanceHubPage() {
   const purchases = dashboard?.purchases;
   const revenue = dashboard?.revenue;
   const compCash = comparisonDashboard?.cashPosition;
-  const compRevenue = comparisonDashboard?.revenue;
   const compProfit = comparisonDashboard?.profitLoss;
 
   const deltaFor = (current: number, prior: number | undefined) => {
@@ -176,7 +176,7 @@ export function FinanceHubPage() {
     return { value, pct, comparisonLabel: comparisonRange.label };
   };
 
-  const { data: reconStats } = useQuery({
+  const { data: reconStats, error: reconStatsError } = useQuery({
     queryKey: queryKeys.financeManager.reconciliations.stats(effectiveBranchId),
     queryFn: async () => {
       const res = await apiClient.get(
@@ -187,7 +187,7 @@ export function FinanceHubPage() {
     enabled: user?.role === 'super_admin' || !!effectiveBranchId,
   });
 
-  const { data: salaryStats } = useQuery({
+  const { data: salaryStats, error: salaryStatsError } = useQuery({
     queryKey: queryKeys.financeManager.salaries.stats(effectiveBranchId),
     queryFn: async () => {
       const res = await apiClient.get(
@@ -214,7 +214,7 @@ export function FinanceHubPage() {
   if (cashError) {
     return (
       <FinanceLayout title="Finance Hub">
-        <Error message="Failed to load finance data" />
+        <Error message="Failed to load finance data" onRetry={() => { void refetchDashboard(); }} />
       </FinanceLayout>
     );
   }
@@ -223,24 +223,28 @@ export function FinanceHubPage() {
     <FinanceLayout title="Finance Hub">
       <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <p className="text-gray-400 text-sm">
+          <p className="text-slate-400 text-sm">
             Real-time financial position for {selectedBranch?.name || 'all branches'}
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="px-3 py-1.5 rounded-lg bg-white/5 text-white border border-white/10 text-sm"
-          />
-          <span className="text-gray-500 text-sm">to</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="px-3 py-1.5 rounded-lg bg-white/5 text-white border border-white/10 text-sm"
-          />
+          <div className="flex items-end gap-2">
+            <Input
+              label="From"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-40"
+            />
+            <span className="pb-3 text-sm text-slate-500">to</span>
+            <Input
+              label="To"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-40"
+            />
+          </div>
           <div className="flex rounded-lg border border-white/10 bg-white/5 p-0.5 ml-2">
             {(['none', 'previous', 'yoy'] as ComparisonMode[]).map((mode) => (
               <button
@@ -248,8 +252,8 @@ export function FinanceHubPage() {
                 onClick={() => setComparisonMode(mode)}
                 className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
                   comparisonMode === mode
-                    ? 'bg-accent-green text-primary-dark'
-                    : 'text-gray-300 hover:bg-white/5'
+                    ? 'bg-emerald-500 text-slate-950 font-semibold'
+                    : 'text-slate-300 hover:bg-white/5'
                 }`}
                 title={mode === 'none' ? 'No comparison' : mode === 'previous' ? 'Compare with previous period' : 'Compare with same period last year'}
               >
@@ -267,20 +271,20 @@ export function FinanceHubPage() {
       </div>
 
       <div className="mb-8">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Cash Position</h3>
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Cash Position</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <StatCard
             label="Income"
             value={format(cash?.totalIncome ?? 0)}
-            icon={<TrendingUp className="w-4 h-4 text-green-400" />}
-            color="bg-green-500/10 border-green-500/20"
+            icon={<TrendingUp className="w-4 h-4 text-emerald-400" />}
+            color="bg-emerald-500/10 border-emerald-500/20"
             delta={deltaFor(cash?.totalIncome ?? 0, compCash?.totalIncome)}
           />
           <StatCard
             label="Expenses"
             value={format(cash?.totalExpense ?? 0)}
-            icon={<TrendingDown className="w-4 h-4 text-red-400" />}
-            color="bg-red-500/10 border-red-500/20"
+            icon={<TrendingDown className="w-4 h-4 text-rose-400" />}
+            color="bg-rose-500/10 border-rose-500/20"
             delta={deltaFor(cash?.totalExpense ?? 0, compCash?.totalExpense)}
           />
           <StatCard
@@ -311,7 +315,7 @@ export function FinanceHubPage() {
             color={
               (cash?.netCash ?? 0) >= 0
                 ? 'bg-cyan-500/10 border-cyan-500/20'
-                : 'bg-red-500/10 border-red-500/20'
+                : 'bg-rose-500/10 border-rose-500/20'
             }
             delta={deltaFor(cash?.netCash ?? 0, compCash?.netCash)}
           />
@@ -319,7 +323,7 @@ export function FinanceHubPage() {
       </div>
 
       <div className="mb-8">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Money Flow</h3>
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Money Flow</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Receivables Outstanding"
@@ -338,29 +342,31 @@ export function FinanceHubPage() {
           />
           <StatCard
             label="Pending Salaries"
-            value={format(salaryStats?.totalNet ?? 0)}
+            value={salaryStatsError ? '—' : format(salaryStats?.totalNet ?? 0)}
             icon={<Users className="w-5 h-5 text-purple-400" />}
             color="bg-purple-500/10 border-purple-500/20"
             link="/finance/salaries"
-            sublabel={`${salaryStats?.pendingCount ?? 0} pending`}
+            sublabel={salaryStatsError ? 'Failed to load' : `${salaryStats?.pendingCount ?? 0} pending`}
           />
           <StatCard
             label="Reconciliation Variance"
-            value={format(Math.abs(reconStats?.totalDiscrepancy ?? 0))}
+            value={reconStatsError ? '—' : format(Math.abs(reconStats?.totalDiscrepancy ?? 0))}
             icon={<AlertTriangle className="w-5 h-5 text-amber-400" />}
             color={
-              Math.abs(reconStats?.totalDiscrepancy ?? 0) < 1
-                ? 'bg-green-500/10 border-green-500/20'
-                : 'bg-amber-500/10 border-amber-500/20'
+              reconStatsError
+                ? 'bg-slate-500/10 border-slate-500/20'
+                : Math.abs(reconStats?.totalDiscrepancy ?? 0) < 1
+                  ? 'bg-emerald-500/10 border-emerald-500/20'
+                  : 'bg-amber-500/10 border-amber-500/20'
             }
             link="/finance/reconciliations"
-            sublabel={`${reconStats?.pending ?? 0} pending review`}
+            sublabel={reconStatsError ? 'Failed to load' : `${reconStats?.pending ?? 0} pending review`}
           />
         </div>
       </div>
 
       <div className="mb-8">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Profit &amp; Loss</h3>
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Profit &amp; Loss</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard
             label="Gross Revenue"
@@ -390,8 +396,8 @@ export function FinanceHubPage() {
             icon={<DollarSign className="w-4 h-4 text-white" />}
             color={
               (profitLoss?.netProfit ?? 0) >= 0
-                ? 'bg-green-500/10 border-green-500/20'
-                : 'bg-red-500/10 border-red-500/20'
+                ? 'bg-emerald-500/10 border-emerald-500/20'
+                : 'bg-rose-500/10 border-rose-500/20'
             }
             delta={deltaFor(profitLoss?.netProfit ?? 0, compProfit?.netProfit)}
             sublabel={`${(profitLoss?.margin ?? 0).toFixed(1)}% margin`}
@@ -400,7 +406,7 @@ export function FinanceHubPage() {
       </div>
 
       <div className="mb-8">
-        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Quick Actions</h3>
+        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Quick Actions</h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Link to="/finance/cash-book">
             <Button variant="secondary" className="w-full justify-start">

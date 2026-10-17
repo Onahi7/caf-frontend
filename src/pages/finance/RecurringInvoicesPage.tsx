@@ -15,6 +15,7 @@ import {
 } from '../../lib/recurring-invoices-api';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useConfirm } from '../../hooks/useConfirm';
+import { formatDate } from '../../lib/date-format';
 
 const CADENCE_LABELS: Record<RecurringCadence, string> = {
   weekly: 'Weekly',
@@ -25,7 +26,7 @@ const CADENCE_LABELS: Record<RecurringCadence, string> = {
 
 function fmtDate(iso?: string) {
   if (!iso) return '-';
-  return new Date(iso).toLocaleDateString();
+  return formatDate(iso);
 }
 
 function addDays(days: number): string {
@@ -114,6 +115,7 @@ export function RecurringInvoicesPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['recurring-invoices'] });
     },
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to update schedule')),
   });
 
   const removeMutation = useMutation({
@@ -122,6 +124,7 @@ export function RecurringInvoicesPage() {
       queryClient.invalidateQueries({ queryKey: ['recurring-invoices'] });
       showSuccess('Removed');
     },
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to remove schedule')),
   });
 
   const runNowMutation = useMutation({
@@ -134,6 +137,7 @@ export function RecurringInvoicesPage() {
         showSuccess(`Run #${result.runCount} completed. Next run: ${fmtDate(result.nextRunAt)}`);
       }
     },
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to run schedule now')),
   });
 
   if (isLoading) {
@@ -153,92 +157,92 @@ export function RecurringInvoicesPage() {
   }
 
   const renderForm = () => (
-    <div className="bg-primary-dark border border-gray-700 rounded-2xl p-5 mb-6">
+    <div className="bg-slate-900 border border-white/10 rounded-2xl p-5 mb-6">
       <h3 className="text-lg font-bold text-white mb-4">
         {editing ? 'Edit' : 'New'} Recurring Invoice
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="text-xs text-gray-400">Customer ID</label>
+          <label className="text-xs text-slate-400">Customer ID</label>
           <input
             type="text"
             value={form.customerId}
             onChange={(e) => setForm({ ...form, customerId: e.target.value })}
             placeholder="Customer ObjectId"
-            className="w-full mt-1 px-3 py-2 bg-primary-darker border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
+            className="w-full mt-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-400/60"
           />
         </div>
         <div>
-          <label className="text-xs text-gray-400">Customer Name</label>
+          <label className="text-xs text-slate-400">Customer Name</label>
           <input
             type="text"
             value={form.customerName}
             onChange={(e) => setForm({ ...form, customerName: e.target.value })}
             placeholder="e.g. John Doe"
-            className="w-full mt-1 px-3 py-2 bg-primary-darker border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
+            className="w-full mt-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-400/60"
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="text-xs text-gray-400">Description</label>
+          <label className="text-xs text-slate-400">Description</label>
           <input
             type="text"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
             placeholder="e.g. Monthly blood pressure medication"
-            className="w-full mt-1 px-3 py-2 bg-primary-darker border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
+            className="w-full mt-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-400/60"
           />
         </div>
         <div>
-          <label className="text-xs text-gray-400">Cadence</label>
+          <label className="text-xs text-slate-400">Cadence</label>
           <select
             value={form.cadence}
             onChange={(e) => setForm({ ...form, cadence: e.target.value as RecurringCadence })}
-            className="w-full mt-1 px-3 py-2 bg-primary-darker border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
+            className="w-full mt-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-400/60"
           >
             {(Object.keys(CADENCE_LABELS) as RecurringCadence[]).map((c) => (
-              <option key={c} value={c}>
+              <option key={c} value={c} className="bg-slate-900">
                 {CADENCE_LABELS[c]}
               </option>
             ))}
           </select>
         </div>
         <div>
-          <label className="text-xs text-gray-400">Next Run</label>
+          <label className="text-xs text-slate-400">Next Run</label>
           <input
             type="date"
             value={form.nextRunAt}
             onChange={(e) => setForm({ ...form, nextRunAt: e.target.value })}
-            className="w-full mt-1 px-3 py-2 bg-primary-darker border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
+            className="w-full mt-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-400/60"
           />
         </div>
         <div>
-          <label className="text-xs text-gray-400">Total Amount</label>
+          <label className="text-xs text-slate-400">Total Amount</label>
           <input
             type="number"
             min="0"
             step="0.01"
             value={form.total}
             onChange={(e) => setForm({ ...form, total: Number(e.target.value) })}
-            className="w-full mt-1 px-3 py-2 bg-primary-darker border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
+            className="w-full mt-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-400/60"
           />
         </div>
         <div>
-          <label className="text-xs text-gray-400">Max Runs (0 = unlimited)</label>
+          <label className="text-xs text-slate-400">Max Runs (0 = unlimited)</label>
           <input
             type="number"
             min="0"
             value={form.maxRuns}
             onChange={(e) => setForm({ ...form, maxRuns: Number(e.target.value) })}
-            className="w-full mt-1 px-3 py-2 bg-primary-darker border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
+            className="w-full mt-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-400/60"
           />
         </div>
         <div>
-          <label className="text-xs text-gray-400">End Date (optional)</label>
+          <label className="text-xs text-slate-400">End Date (optional)</label>
           <input
             type="date"
             value={form.endDate}
             onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-            className="w-full mt-1 px-3 py-2 bg-primary-darker border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:border-accent-green"
+            className="w-full mt-1 px-3 py-2 bg-slate-950 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-400/60"
           />
         </div>
       </div>
@@ -269,7 +273,7 @@ export function RecurringInvoicesPage() {
     <FinanceLayout title="Recurring Invoices">
       <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <p className="text-gray-400 text-sm">
+          <p className="text-slate-400 text-sm">
             Schedule credit-sale templates to bill customers automatically (e.g. monthly refills).
           </p>
         </div>
@@ -287,9 +291,9 @@ export function RecurringInvoicesPage() {
 
       {showForm && renderForm()}
 
-      <div className="bg-primary-dark border border-gray-700 rounded-2xl overflow-hidden">
+      <div className="bg-slate-900 border border-white/10 rounded-2xl overflow-hidden">
         {!templates || templates.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">
+          <div className="p-12 text-center text-slate-400">
             <p className="text-sm">No recurring invoices yet</p>
             <p className="text-xs mt-1">Create one to bill customers automatically.</p>
           </div>
@@ -297,7 +301,7 @@ export function RecurringInvoicesPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-gray-400 uppercase tracking-wider border-b border-gray-800">
+                <tr className="text-left text-xs text-slate-400 uppercase tracking-wider border-b border-white/[0.08]">
                   <th className="px-3 py-3 sm:px-6 sm:py-3">Customer / Description</th>
                   <th className="px-3 py-3 sm:px-6 sm:py-3">Cadence</th>
                   <th className="px-3 py-3 sm:px-6 sm:py-3">Total</th>
@@ -307,38 +311,38 @@ export function RecurringInvoicesPage() {
                   <th className="px-3 py-3 sm:px-6 sm:py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-white/[0.08]">
                 {templates.map((t) => {
                   const days = daysUntil(t.nextRunAt);
                   return (
-                    <tr key={t._id} className="hover:bg-primary-darker transition-colors">
+                    <tr key={t._id} className="hover:bg-slate-950/60 transition-colors">
                       <td className="px-3 py-3 sm:px-6 sm:py-3">
                         <p className="text-white font-semibold whitespace-normal break-words">
                           {t.customerName || '-'}
                         </p>
-                        <p className="text-xs text-gray-400 whitespace-normal break-words">{t.description}</p>
+                        <p className="text-xs text-slate-400 whitespace-normal break-words">{t.description}</p>
                       </td>
-                      <td className="px-3 py-3 sm:px-6 sm:py-3 text-gray-300">
+                      <td className="px-3 py-3 sm:px-6 sm:py-3 text-slate-300">
                         {CADENCE_LABELS[t.cadence]}
                       </td>
                       <td className="px-3 py-3 sm:px-6 sm:py-3 text-white font-semibold">
                         {fmtMoney(t.total)}
                       </td>
-                      <td className="px-3 py-3 sm:px-6 sm:py-3 text-gray-300">
+                      <td className="px-3 py-3 sm:px-6 sm:py-3 text-slate-300">
                         <p>{fmtDate(t.nextRunAt)}</p>
-                        <p className={`text-xs ${days < 0 ? 'text-red-400' : days <= 3 ? 'text-yellow-400' : 'text-gray-500'}`}>
+                        <p className={`text-xs ${days < 0 ? 'text-rose-400' : days <= 3 ? 'text-amber-400' : 'text-slate-500'}`}>
                           {days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? 'today' : `in ${days}d`}
                         </p>
                       </td>
-                      <td className="px-3 py-3 sm:px-6 sm:py-3 text-gray-300">
+                      <td className="px-3 py-3 sm:px-6 sm:py-3 text-slate-300">
                         {t.runCount}{t.maxRuns > 0 ? ` / ${t.maxRuns}` : ''}
                       </td>
                       <td className="px-3 py-3 sm:px-6 sm:py-3">
                         <span
                           className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${
                             t.active
-                              ? 'bg-green-500/20 text-green-400'
-                              : 'bg-gray-500/20 text-gray-400'
+                              ? 'bg-emerald-500/20 text-emerald-400'
+                              : 'bg-slate-500/20 text-slate-400'
                           }`}
                         >
                           {t.active ? 'Active' : 'Paused'}
@@ -347,17 +351,20 @@ export function RecurringInvoicesPage() {
                       <td className="px-3 py-3 sm:px-6 sm:py-3 text-right space-x-1 whitespace-nowrap">
                         <button
                           onClick={() => runNowMutation.mutate(t._id)}
-                          disabled={runNowMutation.isPending || !t.active}
-                          className="px-2 py-1 text-xs bg-accent-green/20 text-accent-green rounded hover:bg-accent-green/30 disabled:opacity-50"
+                          disabled={(runNowMutation.isPending && runNowMutation.variables === t._id) || !t.active}
+                          className="px-2 py-1 text-xs bg-emerald-500/20 text-emerald-400 rounded hover:bg-emerald-500/30 disabled:opacity-50"
                           title="Materialize this invoice now"
                         >
-                          Run now
+                          {runNowMutation.isPending && runNowMutation.variables === t._id ? 'Running...' : 'Run now'}
                         </button>
                         <button
                           onClick={() => toggleMutation.mutate({ id: t._id, active: !t.active })}
-                          className="px-2 py-1 text-xs bg-white/5 text-gray-300 rounded hover:bg-white/10"
+                          disabled={toggleMutation.isPending && toggleMutation.variables?.id === t._id}
+                          className="px-2 py-1 text-xs bg-white/5 text-slate-300 rounded hover:bg-white/10 disabled:opacity-50"
                         >
-                          {t.active ? 'Pause' : 'Resume'}
+                          {toggleMutation.isPending && toggleMutation.variables?.id === t._id
+                            ? 'Working...'
+                            : t.active ? 'Pause' : 'Resume'}
                         </button>
                         <button
                           onClick={async () => {
@@ -369,9 +376,10 @@ export function RecurringInvoicesPage() {
                             });
                             if (confirmed) removeMutation.mutate(t._id);
                           }}
-                          className="px-2 py-1 text-xs bg-red-500/20 text-red-400 rounded hover:bg-red-500/30"
+                          disabled={removeMutation.isPending && removeMutation.variables === t._id}
+                          className="px-2 py-1 text-xs bg-rose-500/20 text-rose-400 rounded hover:bg-rose-500/30 disabled:opacity-50"
                         >
-                          Delete
+                          {removeMutation.isPending && removeMutation.variables === t._id ? 'Deleting...' : 'Delete'}
                         </button>
                       </td>
                     </tr>

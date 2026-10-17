@@ -21,18 +21,24 @@ export const useAlertReplacement = () => {
     showSuccess('Success', message);
   };
   
-  // Generic alert replacement - tries to determine type from message content
-  const alert = (message: string) => {
-    const lowerMessage = message.toLowerCase();
-    
-    if (lowerMessage.includes('error') || lowerMessage.includes('failed') || lowerMessage.includes('invalid')) {
-      showError('Error', message);
-    } else if (lowerMessage.includes('warning') || lowerMessage.includes('please')) {
-      showWarning('Warning', message);
-    } else if (lowerMessage.includes('success') || lowerMessage.includes('completed')) {
-      showSuccess('Success', message);
-    } else {
-      showInfo('Information', message);
+  // Generic alert replacement - accepts an explicit severity, defaults to info.
+  // (Do not infer severity from message text: it mis-types legitimate messages.)
+  const alert = (
+    message: string,
+    severity: 'error' | 'warning' | 'info' | 'success' = 'info'
+  ) => {
+    switch (severity) {
+      case 'error':
+        showError('Error', message);
+        break;
+      case 'warning':
+        showWarning('Warning', message);
+        break;
+      case 'success':
+        showSuccess('Success', message);
+        break;
+      default:
+        showInfo('Information', message);
     }
   };
   

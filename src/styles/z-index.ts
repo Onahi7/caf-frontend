@@ -1,29 +1,34 @@
 /**
- * Standardized z-index scale for the application
- * Use these constants instead of hardcoded values for consistency
+ * Standardized z-index scale for the application.
+ *
+ * Tailwind needs static class names, so components use literal arbitrary
+ * values (e.g. `z-[70]`). Those literals MUST mirror this scale — when adding
+ * or changing an overlay, use the matching band below and update both places.
  */
-
 export const Z_INDEX = {
   // Base layer
   BASE: 0,
-  
+
   // Content layers
   DROPDOWN: 10,
   STICKY: 20,
   FIXED: 30,
-  
-  // Overlay layers
+
+  // Navigation overlays
   SIDEBAR_BACKDROP: 40,
-  MODAL_BACKDROP: 50,
-  MODAL: 50,
-  
-  // Notification layers
-  TOAST: 60,
-  TOOLTIP: 70,
-  
-  // Top layer
-  LOADING_OVERLAY: 80,
-  CRITICAL_ALERT: 90,
+  SIDEBAR: 50,
+
+  // Modal layers
+  MODAL: 70,
+  CONFIRM: 80,
+
+  // Blocking overlays
+  CAMERA_SCANNER: 85,
+  LOADING_OVERLAY: 90,
+
+  // Notification / critical layers
+  TOAST: 100,
+  CRITICAL_ALERT: 100,
 } as const;
 
 export type ZIndex = typeof Z_INDEX[keyof typeof Z_INDEX];

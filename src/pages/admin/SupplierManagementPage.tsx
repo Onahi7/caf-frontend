@@ -3,17 +3,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
+import { AdminPageHeader } from '../../components/admin';
 import { Button } from '../../components/ui/Button';
 import { Search, Plus, Trash2 } from 'lucide-react';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Input } from '../../components/ui/Input';
+import { Textarea } from '../../components/ui/Textarea';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { useToast } from '../../hooks/useToast';
 import { queryKeys } from '../../lib/query-keys';
 import { unwrapArray } from '../../lib/unwrap-response';
+import { getErrorMessage } from '../../lib/error-utils';
 
 interface Supplier {
   _id: string;
@@ -66,7 +69,7 @@ export default function SupplierManagementPage() {
       reset();
       showSuccess('Supplier created');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to create supplier'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to create supplier')),
   });
 
   // Update supplier mutation
@@ -81,7 +84,7 @@ export default function SupplierManagementPage() {
       reset();
       showSuccess('Supplier updated');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update supplier'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to update supplier')),
   });
 
   // Toggle supplier active mutation
@@ -93,7 +96,7 @@ export default function SupplierManagementPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.suppliers.all(), exact: false });
       showSuccess('Supplier status updated');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to update status'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to update status')),
   });
 
   // Delete supplier mutation
@@ -106,7 +109,7 @@ export default function SupplierManagementPage() {
       setSupplierToDelete(null);
       showSuccess('Supplier deleted');
     },
-    onError: (err: any) => showError(err?.response?.data?.message ?? 'Failed to delete supplier'),
+    onError: (err: unknown) => showError(getErrorMessage(err, 'Failed to delete supplier')),
   });
 
   const filteredSuppliers = useMemo(() => {
@@ -183,7 +186,7 @@ export default function SupplierManagementPage() {
       header: 'Status',
       render: (supplier: Supplier) => (
         <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
-          supplier.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
+          supplier.isActive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
         }`}>
           {supplier.isActive ? 'ACTIVE' : 'INACTIVE'}
         </span>
@@ -207,6 +210,7 @@ export default function SupplierManagementPage() {
             size="sm"
             onClick={() => handleToggleActive(supplier)}
             className={supplier.isActive ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300'}
+            isLoading={toggleActiveMutation.isPending && toggleActiveMutation.variables?.id === (supplier._id || (supplier as { id?: string }).id)}
           >
             {supplier.isActive ? 'Deactivate' : 'Activate'}
           </Button>
@@ -227,16 +231,16 @@ export default function SupplierManagementPage() {
   return (
     <AdminLayout title="Suppliers">
       <div className="space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">Suppliers</h1>
-            <p className="text-sm text-slate-400 mt-1">Manage pharmaceutical vendors, contacts, and supply contracts</p>
-          </div>
-          <Button onClick={() => handleOpenModal()} className="inline-flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            <span>Add Supplier</span>
-          </Button>
-        </div>
+        <AdminPageHeader
+          title="Suppliers"
+          subtitle="Manage pharmaceutical vendors, contacts, and supply contracts"
+          actions={
+            <Button onClick={() => handleOpenModal()} className="inline-flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              <span>Add Supplier</span>
+            </Button>
+          }
+        />
 
         {/* Search */}
         <div className="relative max-w-md">
@@ -295,19 +299,13 @@ export default function SupplierManagementPage() {
               error={errors.email?.message}
             />
 
-            <div>
-              <label className="block text-sm font-medium text-slate-200 mb-1">
-                Address <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                {...register('address', { required: 'Address is required' })}
-                className="w-full px-3 py-2 border border-slate-700 rounded-xl bg-slate-900 text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 resize-none"
-                rows={3}
-              />
-              {errors.address && (
-                <p className="mt-1 text-sm text-red-400">{errors.address.message}</p>
-              )}
-            </div>
+            <Textarea
+              label="Address"
+              required
+              rows={3}
+              error={errors.address?.message}
+              {...register('address', { required: 'Address is required' })}
+            />
 
             <Input
               label="Payment Terms"
@@ -331,10 +329,6 @@ export default function SupplierManagementPage() {
                 {editingSupplier ? 'Update Supplier' : 'Add Supplier'}
               </Button>
             </div>
-
-            {(createMutation.isError || updateMutation.isError) && (
-              <Error message="Failed to save supplier. Please try again." />
-            )}
           </form>
         </Modal>
 

@@ -9,9 +9,12 @@ import { Select } from '../../components/ui/Select';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { useCurrency } from '../../hooks/useCurrency';
+import { useToast } from '../../hooks/useToast';
+import { getErrorMessage } from '../../lib/error-utils';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDate } from '../../lib/date-format';
 import { buildApiUrl } from '../../lib/api-utils';
 import { SaveReportButton } from '../../components/finance/SaveReportButton';
 
@@ -49,6 +52,8 @@ export const ExpiryReportsPage = () => {
   const [filterBranchId, setFilterBranchId] = useState('');
   const effectiveBranchId = isSuperAdmin ? filterBranchId : selectedBranchId;
   const [daysUntilExpiry, setDaysUntilExpiry] = useState(30);
+  const [exporting, setExporting] = useState<'pdf' | 'excel' | null>(null);
+  const { showSuccess, showError } = useToast();
 
   // Auto-fetch on mount and when filters change
   const { data, isLoading, error, refetch } = useQuery({
@@ -76,6 +81,7 @@ export const ExpiryReportsPage = () => {
   });
 
   const handleExport = async (format: 'pdf' | 'excel') => {
+    setExporting(format);
     try {
       const response = await apiClient.get(buildApiUrl('/reports/expiry', {
         branchId: effectiveBranchId || undefined,
@@ -91,8 +97,12 @@ export const ExpiryReportsPage = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
+      showSuccess('Export ready', 'Your report download has started.');
     } catch (err) {
-      console.error('Export failed:', err);
+      showError(getErrorMessage(err, 'Export failed'));
+    } finally {
+      setExporting(null);
     }
   };
 
@@ -109,7 +119,7 @@ export const ExpiryReportsPage = () => {
     {
       key: 'expiryDate',
       header: 'Expiry Date',
-      render: (item: ExpiryReportItem) => new Date(item.expiryDate).toLocaleDateString()
+      render: (item: ExpiryReportItem) => formatDate(item.expiryDate)
     },
     {
       key: 'daysUntilExpiry',
@@ -121,7 +131,7 @@ export const ExpiryReportsPage = () => {
             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${status.color}`}>
               {status.label}
             </span>
-            <span className="text-gray-400">{item.daysUntilExpiry}d</span>
+            <span className="text-slate-400">{item.daysUntilExpiry}d</span>
           </div>
         );
       }
@@ -159,10 +169,10 @@ export const ExpiryReportsPage = () => {
                 params={{ branchId: effectiveBranchId, daysUntilExpiry }}
                 defaultName="Expiry Report"
               />
-              <Button variant="secondary" size="sm" onClick={() => handleExport('pdf')}>
+              <Button variant="secondary" size="sm" onClick={() => handleExport('pdf')} isLoading={exporting === 'pdf'} disabled={exporting !== null}>
                 Export PDF
               </Button>
-              <Button variant="secondary" size="sm" onClick={() => handleExport('excel')}>
+              <Button variant="secondary" size="sm" onClick={() => handleExport('excel')} isLoading={exporting === 'excel'} disabled={exporting !== null}>
                 Export Excel
               </Button>
             </div>
@@ -170,7 +180,7 @@ export const ExpiryReportsPage = () => {
         </div>
 
         {/* Filters */}
-        <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+        <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
           <div className="flex flex-col md:flex-row md:items-end gap-4">
             {isSuperAdmin && (
               <div className="flex-1">
@@ -190,7 +200,7 @@ export const ExpiryReportsPage = () => {
 
           {/* Quick Filter Buttons */}
           <div className="mt-4">
-            <p className="text-sm text-gray-400 mb-2">Show products expiring within:</p>
+            <p className="text-sm text-slate-400 mb-2">Show products expiring within:</p>
             <div className="flex flex-wrap gap-2">
               {QUICK_FILTERS.map((filter) => (
                 <button
@@ -199,7 +209,7 @@ export const ExpiryReportsPage = () => {
                   className={`px-4 py-2 rounded-lg text-sm font-medium border transition-all ${
                     daysUntilExpiry === filter.value
                       ? `${filter.color} ring-2 ring-white/20`
-                      : 'bg-white/5 text-gray-400 border-gray-600 hover:border-gray-500 hover:text-white'
+                      : 'bg-white/5 text-slate-400 border-white/15 hover:border-gray-500 hover:text-white'
                   }`}
                 >
                   {filter.label}
@@ -211,19 +221,19 @@ export const ExpiryReportsPage = () => {
 
         {/* Results */}
         {isLoading && (
-          <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
             <Loading />
           </div>
         )}
 
         {error && (
-          <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-6">
             <Error message="Failed to load expiry report. Please try again." onRetry={() => refetch()} />
           </div>
         )}
 
         {data && data.length > 0 && (
-          <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5">
             {/* Summary */}
             {totals && (
               <div className="px-6 py-4 grid grid-cols-2 md:grid-cols-4 gap-4 border-b border-white/5">
@@ -256,9 +266,9 @@ export const ExpiryReportsPage = () => {
         )}
 
         {data && data.length === 0 && (
-          <div className="bg-primary-dark/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-12 text-center">
-            <p className="text-gray-400 text-lg">No products expiring within {daysUntilExpiry} days.</p>
-            <p className="text-gray-500 text-sm mt-1">Try selecting a longer timeframe or different branch.</p>
+          <div className="bg-slate-900/50 backdrop-blur-sm rounded-2xl shadow-xl border border-white/5 p-12 text-center">
+            <p className="text-slate-400 text-lg">No products expiring within {daysUntilExpiry} days.</p>
+            <p className="text-slate-500 text-sm mt-1">Try selecting a longer timeframe or different branch.</p>
           </div>
         )}
       </div>

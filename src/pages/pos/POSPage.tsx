@@ -209,6 +209,7 @@ export const POSPage = () => {
   const [packSelectionQty, setPackSelectionQty] = useState(1);
   const [productViewMode, setProductViewMode] = useState<'grid' | 'list'>('grid');
   const scanFeedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleAddToCartRef = useRef<(product: Product, packSize?: PackSize, customQty?: number) => void>(() => {});
   const prevBranchIdRef = useRef<string | undefined>(selectedBranch?._id);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -386,7 +387,7 @@ export const POSPage = () => {
       } else {
         // Check if product has pack sizes - if so, show selector
         if (found.matchedPackSize) {
-          handleAddToCart(found, found.matchedPackSize);
+          handleAddToCartRef.current(found, found.matchedPackSize);
           setScanFeedback({ message: `Added: ${found.name} (${found.matchedPackSize.name})`, ok: true });
         } else if (found.packSizes && found.packSizes.length > 0) {
           setSelectedProductForPack(found);
@@ -436,6 +437,7 @@ export const POSPage = () => {
   useEffect(() => {
     return () => {
       stopContinuousScan();
+      if (scanFeedbackTimeout.current) clearTimeout(scanFeedbackTimeout.current);
     };
   }, [stopContinuousScan]);
 
@@ -665,6 +667,11 @@ export const POSPage = () => {
     });
   };
 
+  // Keep a latest-ref so callbacks defined earlier (e.g. barcode scan) never go stale
+  useEffect(() => {
+    handleAddToCartRef.current = handleAddToCart;
+  }, [handleAddToCart]);
+
   const handleQuickKeyAdd = (key: QuickKeyProduct) => {
     // Find the product in the currently loaded products
     const product = products.find((p) => p._id === key.productId);
@@ -806,10 +813,10 @@ export const POSPage = () => {
         <div className="flex flex-col items-center justify-center h-full text-center">
           <div className="mb-4">
             <h2 className="text-xl font-bold text-white mb-2">No Branch Selected</h2>
-            <p className="text-gray-400 mb-6">Please select a branch to continue using the POS system.</p>
+            <p className="text-slate-400 mb-6">Please select a branch to continue using the POS system.</p>
             <button
               onClick={() => navigate('/branches')}
-              className="px-6 py-2 bg-accent-green text-primary-dark font-semibold rounded-lg hover:bg-accent-green/90"
+              className="px-6 py-2 bg-emerald-500 text-slate-950 font-semibold rounded-lg hover:bg-emerald-500/90"
             >
               Select Branch
             </button>
@@ -823,7 +830,7 @@ export const POSPage = () => {
     <POSLayout hideHeader>
       <div className="flex flex-col h-full overflow-hidden">
         {/* Top Bar */}
-        <div className="bg-linear-to-r from-primary-dark to-primary-darker border-b border-gray-700 px-3 sm:px-6 py-2.5 sm:py-3 shrink-0">
+        <div className="bg-linear-to-r from-primary-dark to-primary-darker border-b border-white/10 px-3 sm:px-6 py-2.5 sm:py-3 shrink-0">
           <div className="flex items-center justify-between gap-2 sm:gap-4">
             {/* Left: Menu Toggle (mobile) + Branch Info */}
             <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
@@ -835,14 +842,14 @@ export const POSPage = () => {
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-linear-to-br from-accent-green to-emerald-600 flex items-center justify-center text-primary-dark font-bold text-sm sm:text-base shrink-0 shadow-sm">
+              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-linear-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-slate-950 font-bold text-sm sm:text-base shrink-0 shadow-sm">
                 {selectedBranch?.name?.charAt(0) || 'N'}
               </div>
               <div className="min-w-0">
                 <h1 className="text-sm sm:text-base font-bold text-white truncate leading-tight">
                   {selectedBranch?.name || 'No Branch'}
                 </h1>
-                <p className="text-[11px] sm:text-xs text-gray-400 truncate">
+                <p className="text-[11px] sm:text-xs text-slate-400 truncate">
                   Terminal - {currentShift?.status === 'open' ? 'Shift Open' : 'No Shift'}
                 </p>
               </div>
@@ -890,7 +897,7 @@ export const POSPage = () => {
               </div>
               <button 
                 onClick={() => setShowProfile(true)}
-                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-linear-to-br from-accent-green to-emerald-600 flex items-center justify-center text-primary-dark font-bold text-xs sm:text-sm hover:shadow-lg hover:shadow-accent-green/50 transition-shadow active:scale-95 shrink-0 cursor-pointer"
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-linear-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-slate-950 font-bold text-xs sm:text-sm hover:shadow-lg hover:shadow-emerald-500/50 transition-shadow active:scale-95 shrink-0 cursor-pointer"
                 aria-label="User Profile"
               >
                 {user?.firstName?.[0]}{user?.lastName?.[0]}
@@ -935,7 +942,18 @@ export const POSPage = () => {
         <div className="px-3 md:px-6 pt-3">
           <ParkedSalesBar
             heldSales={heldSales}
-            onRecall={(id) => {
+            onRecall={async (id) => {
+              const preview = heldSales.find((s) => s.id === id);
+              if (items.length > 0) {
+                const confirmed = await requestConfirmation({
+                  title: 'Replace current cart?',
+                  message: `The active cart has ${items.length} item${items.length === 1 ? '' : 's'} that will be discarded. Recalling "${preview?.label ?? 'parked sale'}" will replace it.`,
+                  confirmLabel: 'Replace cart',
+                  variant: 'warning',
+                });
+                if (!confirmed) return;
+              }
+
               const sale = recallHeldSale(id);
               if (sale) {
                 restoreCart({
@@ -1081,7 +1099,7 @@ export const POSPage = () => {
             {loadingProducts ? (
               <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4 xl:grid-cols-3" role="status" aria-busy="true">
                 {[0, 1, 2, 3, 4, 5].map((item) => (
-                  <div key={item} className="overflow-hidden rounded-xl border border-white/5 bg-primary-dark">
+                  <div key={item} className="overflow-hidden rounded-xl border border-white/5 bg-slate-900">
                     <div className="aspect-[4/3] animate-pulse bg-white/[0.06]" />
                     <div className="space-y-2 p-3">
                       <div className="h-4 w-3/4 animate-pulse rounded bg-white/10" />
@@ -2000,7 +2018,7 @@ export const POSPage = () => {
           {/* Top instruction bar */}
           <div className="w-full px-4 pt-[calc(1.5rem+env(safe-area-inset-top))] flex justify-center pointer-events-auto">
             <div className="bg-black/70 backdrop-blur-sm rounded-2xl px-5 py-3 flex items-center gap-3">
-              <div className="w-2.5 h-2.5 rounded-full bg-accent-green animate-pulse" />
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-white text-sm font-medium">Point camera at a barcode to add it to the cart</span>
             </div>
           </div>
@@ -2008,12 +2026,12 @@ export const POSPage = () => {
           {/* Centre targeting reticle */}
           <div className="relative w-64 h-48">
             {/* Corner brackets */}
-            <span className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-accent-green rounded-tl-lg" />
-            <span className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-accent-green rounded-tr-lg" />
-            <span className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-accent-green rounded-bl-lg" />
-            <span className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-accent-green rounded-br-lg" />
+            <span className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-500 rounded-tl-lg" />
+            <span className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-500 rounded-tr-lg" />
+            <span className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-500 rounded-bl-lg" />
+            <span className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-500 rounded-br-lg" />
             {/* Scan line animation */}
-            <span className="absolute inset-x-2 top-1/2 h-0.5 bg-accent-green/70 animate-pulse" />
+            <span className="absolute inset-x-2 top-1/2 h-0.5 bg-emerald-500/70 animate-pulse" />
           </div>
 
           {/* Scan feedback toast */}
@@ -2022,7 +2040,7 @@ export const POSPage = () => {
               <div
                 className={`px-5 py-3 rounded-2xl text-sm font-semibold shadow-lg ${
                   scanFeedback.ok
-                    ? 'bg-accent-green text-primary-dark'
+                    ? 'bg-emerald-500 text-slate-950'
                     : 'bg-red-500/90 text-white'
                 }`}
               >

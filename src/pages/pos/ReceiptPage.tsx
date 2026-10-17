@@ -4,17 +4,18 @@ import { useState } from 'react';
 import apiClient from '../../lib/api-client';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useToast } from '../../hooks/useToast';
+import { getErrorMessage } from '../../lib/error-utils';
 import { queryKeys } from '../../lib/query-keys';
 import { POSLayout } from '../../components/pos/POSLayout';
+import { EmailInputModal } from '../../components/pos/EmailInputModal';
 import { 
   Printer, 
   Mail, 
   Share2, 
   CheckCircle2, 
-  ShoppingBag, 
+  AlertTriangle,
   Receipt,
-  ArrowLeft,
-  X 
+  ArrowLeft
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 
@@ -59,10 +60,9 @@ export const ReceiptPage = () => {
   const { saleId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { format, symbol } = useCurrency();
+  const { format } = useCurrency();
   const { showSuccess, showError, showInfo } = useToast();
   const [showEmailModal, setShowEmailModal] = useState(false);
-  const [emailAddress, setEmailAddress] = useState('');
   const [emailSending, setEmailSending] = useState(false);
 
   // Check if sale data was passed via navigation state
@@ -106,27 +106,17 @@ export const ReceiptPage = () => {
     }
   };
 
-  const handleEmailReceipt = async () => {
-    if (!emailAddress) {
-      showError('Please enter an email address');
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)) {
-      showError('Please enter a valid email address');
-      return;
-    }
-
+  const handleEmailReceipt = async (email: string) => {
     setEmailSending(true);
     try {
       await apiClient.post('/email/receipt', {
         saleId: saleId || sale?._id,
-        email: emailAddress,
+        email,
       });
       showSuccess('Receipt sent successfully');
       setShowEmailModal(false);
-      setEmailAddress('');
     } catch (error: unknown) {
-      showError(error instanceof Error ? error.message : 'Failed to send receipt');
+      showError(getErrorMessage(error, 'Failed to send receipt'));
     } finally {
       setEmailSending(false);
     }
@@ -167,6 +157,12 @@ export const ReceiptPage = () => {
     return 'Product';
   };
 
+  const upfrontPaid = ((sale.payments || []) as SalePayment[]).reduce(
+    (sum: number, p: SalePayment) => sum + (Number(p.amount) || 0),
+    0,
+  );
+  const isUnpaidCredit = sale.paymentMethod === 'credit' && upfrontPaid < sale.total - 0.01;
+
   return (
     <POSLayout title="Receipt">
       <div className="min-h-full bg-slate-950 flex flex-col">
@@ -194,13 +190,27 @@ export const ReceiptPage = () => {
           </div>
 
           <div className="flex-1 max-w-xl w-full mx-auto p-4 sm:p-6 space-y-5 overflow-y-auto">
-            {/* Payment Successful Banner */}
+            {/* Payment Banner */}
             <div className="text-center pt-2">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-950/40">
-                <CheckCircle2 className="w-8 h-8" />
-              </div>
-              <h2 className="text-xl sm:text-2xl font-black text-white">Payment Completed</h2>
-              <p className="text-xs text-slate-400 mt-1">Transaction recorded on POS terminal</p>
+              {isUnpaidCredit ? (
+                <>
+                  <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-amber-950/40">
+                    <AlertTriangle className="w-8 h-8" />
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white">Credit Sale Recorded</h2>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Balance of {format(sale.total - upfrontPaid)} remains due on the customer account
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-emerald-950/40">
+                    <CheckCircle2 className="w-8 h-8" />
+                  </div>
+                  <h2 className="text-xl sm:text-2xl font-black text-white">Payment Completed</h2>
+                  <p className="text-xs text-slate-400 mt-1">Transaction recorded on POS terminal</p>
+                </>
+              )}
             </div>
 
             {/* Receipt Card */}
@@ -288,14 +298,14 @@ export const ReceiptPage = () => {
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 onClick={() => window.print()}
-                className="py-3 px-4 bg-slate-900 hover:bg-slate-850 border border-white/10 rounded-xl text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-sm"
+                className="py-3 px-4 bg-slate-900 hover:bg-slate-800 border border-white/10 rounded-xl text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-sm"
               >
                 <Printer className="w-4 h-4 text-emerald-400" />
                 <span>Print Thermal</span>
               </button>
               <button
                 onClick={() => setShowEmailModal(true)}
-                className="py-3 px-4 bg-slate-900 hover:bg-slate-850 border border-white/10 rounded-xl text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-sm"
+                className="py-3 px-4 bg-slate-900 hover:bg-slate-800 border border-white/10 rounded-xl text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-sm"
               >
                 <Mail className="w-4 h-4 text-emerald-400" />
                 <span>Email Receipt</span>
@@ -396,62 +406,12 @@ export const ReceiptPage = () => {
         </div>
 
         {/* Email Receipt Modal */}
-        {showEmailModal && (
-          <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-            onClick={() => setShowEmailModal(false)}
-          >
-            <div
-              className="bg-slate-900 border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Mail className="w-5 h-5 text-emerald-400" />
-                  <h2 className="text-base font-bold text-white">Email Receipt</h2>
-                </div>
-                <button
-                  onClick={() => setShowEmailModal(false)}
-                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Recipient Email Address
-                </label>
-                <input
-                  type="email"
-                  value={emailAddress}
-                  onChange={(e) => setEmailAddress(e.target.value)}
-                  placeholder="customer@example.com"
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-white/10 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500"
-                  autoFocus
-                />
-              </div>
-
-              <div className="flex gap-3 pt-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowEmailModal(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleEmailReceipt}
-                  disabled={emailSending}
-                  isLoading={emailSending}
-                  className="flex-1"
-                >
-                  Send Email
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        <EmailInputModal
+          isOpen={showEmailModal}
+          onClose={() => setShowEmailModal(false)}
+          onSubmit={handleEmailReceipt}
+          isLoading={emailSending}
+        />
       </div>
     </POSLayout>
   );

@@ -150,10 +150,7 @@ export const ConfirmDialog = ({
           </button>
           <button
             type="button"
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
+            onClick={onConfirm}
             disabled={isLoading}
             className={`min-h-11 rounded-xl px-5 py-2 font-semibold transition-all focus:outline-none focus:ring-2 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${variantConfig.button}`}
           >

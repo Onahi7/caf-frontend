@@ -11,7 +11,10 @@ import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
 import { useAuthStore } from '../../stores/auth-store';
+import { useToast } from '../../hooks/useToast';
+import { getErrorMessage } from '../../lib/error-utils';
 import { queryKeys } from '../../lib/query-keys';
+import { formatDate } from '../../lib/date-format';
 import { buildApiUrl } from '../../lib/api-utils';
 import { SaveReportButton } from '../../components/finance/SaveReportButton';
 
@@ -57,6 +60,8 @@ export const TransferReportsPage = () => {
   const branchId = getBranchId(selectedBranch);
   const isSuperAdmin = user?.role === 'super_admin';
   const effectiveBranchId = isSuperAdmin ? undefined : branchId;
+  const [exporting, setExporting] = useState(false);
+  const { showSuccess, showError } = useToast();
 
   // Fetch transfer reports
   const { data: reportData, isLoading, error } = useQuery({
@@ -79,6 +84,7 @@ export const TransferReportsPage = () => {
   });
 
   const handleExport = async () => {
+    setExporting(true);
     try {
       const response = await apiClient.get(buildApiUrl('/reports/transfers', {
         startDate: dateFrom,
@@ -97,17 +103,21 @@ export const TransferReportsPage = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(url);
+      showSuccess('Export ready', 'Your report download has started.');
     } catch (err) {
-      console.error('Export failed:', err);
+      showError(getErrorMessage(err, 'Export failed'));
+    } finally {
+      setExporting(false);
     }
   };
 
   if (!isSuperAdmin && !branchId) {
     return (
       <AdminLayout>
-        <div className="rounded-2xl border border-white/10 bg-primary-dark/60 p-8 text-center">
+        <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-8 text-center">
           <h2 className="text-xl font-semibold text-white">Select a Branch First</h2>
-          <p className="mt-2 text-gray-400">
+          <p className="mt-2 text-slate-400">
             Transfer reports use your assigned branch. Choose a branch to continue.
           </p>
         </div>
@@ -123,7 +133,7 @@ export const TransferReportsPage = () => {
       key: 'createdAt',
       header: 'Date',
       render: (row: TransferReportData['transfers'][number]) =>
-        new Date(row.createdAt).toLocaleDateString(),
+        formatDate(row.createdAt),
     },
     { key: 'sourceBranchName', header: 'From' },
     { key: 'destinationBranchName', header: 'To' },
@@ -153,14 +163,14 @@ export const TransferReportsPage = () => {
               params={{ branchId: effectiveBranchId, dateFrom, dateTo }}
               defaultName="Transfer Report"
             />
-            <Button onClick={handleExport}>
+            <Button onClick={handleExport} isLoading={exporting} disabled={exporting}>
               Export to Excel
             </Button>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+        <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Input
               label="From Date"
@@ -179,11 +189,11 @@ export const TransferReportsPage = () => {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             >
-              <option value="all" className="bg-primary-dark text-white">All Status</option>
-              <option value="pending" className="bg-primary-dark text-white">Pending</option>
-              <option value="approved" className="bg-primary-dark text-white">Approved</option>
-              <option value="completed" className="bg-primary-dark text-white">Completed</option>
-              <option value="rejected" className="bg-primary-dark text-white">Rejected</option>
+              <option value="all" className="bg-slate-900 text-white">All Status</option>
+              <option value="pending" className="bg-slate-900 text-white">Pending</option>
+              <option value="approved" className="bg-slate-900 text-white">Approved</option>
+              <option value="completed" className="bg-slate-900 text-white">Completed</option>
+              <option value="rejected" className="bg-slate-900 text-white">Rejected</option>
             </Select>
           </div>
         </div>
@@ -192,26 +202,26 @@ export const TransferReportsPage = () => {
         {reportData && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-                <p className="text-sm text-gray-400">Total Transfers</p>
+              <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+                <p className="text-sm text-slate-400">Total Transfers</p>
                 <p className="text-3xl font-bold text-white">{reportData.summary.totalTransfers}</p>
               </div>
-              <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-                <p className="text-sm text-gray-400">Pending</p>
+              <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+                <p className="text-sm text-slate-400">Pending</p>
                 <p className="text-3xl font-bold text-yellow-400">{reportData.summary.pendingTransfers}</p>
               </div>
-              <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-                <p className="text-sm text-gray-400">Approved</p>
+              <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+                <p className="text-sm text-slate-400">Approved</p>
                 <p className="text-3xl font-bold text-blue-400">{reportData.summary.approvedTransfers}</p>
               </div>
-              <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
-                <p className="text-sm text-gray-400">Completed</p>
+              <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+                <p className="text-sm text-slate-400">Completed</p>
                 <p className="text-3xl font-bold text-green-400">{reportData.summary.completedTransfers}</p>
               </div>
             </div>
 
             {/* Transfer List */}
-            <div className="bg-primary-dark/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
+            <div className="bg-slate-900/50 backdrop-blur-sm p-6 rounded-2xl shadow-xl border border-white/5">
               <h2 className="text-xl font-bold text-white mb-4">Transfer Activity</h2>
               <Table data={reportData.transfers || []} columns={tableColumns} />
             </div>

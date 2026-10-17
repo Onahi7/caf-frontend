@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCartStore } from '../../stores/cart-store';
 import { useBranchStore, getBranchId } from '../../stores/branch-store';
-import { useAlertReplacement } from '../../hooks/useAlertReplacement';
 import { useToast } from '../../hooks/useToast';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useHaptics } from '../../hooks/useHaptics';
@@ -13,9 +12,9 @@ import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
 import { CustomerTypeahead, type CustomerOption } from '../../components/ui/CustomerTypeahead';
 import { useHeldSalesStore } from '../../stores/held-sales-store';
-import { AlertTriangle, Clock, ArrowLeft, Receipt, CreditCard, CheckCircle2, X, Plus, Trash2, User, UserCheck, Split } from 'lucide-react';
-import { Button } from '../../components/ui/Button';
+import { AlertTriangle, Clock, ArrowLeft, Receipt, CreditCard, CheckCircle2, Plus, Trash2, User, UserCheck, Split } from 'lucide-react';
 import { OpenShiftModal } from '../../components/pos/ShiftModals';
+import { EmailInputModal } from '../../components/pos/EmailInputModal';
 import { 
   CartSummary, 
   PaymentMethodCard, 
@@ -54,14 +53,6 @@ interface Shift {
   status: 'open' | 'closed';
 }
 
-interface RecentSale {
-  _id: string;
-  total: number;
-  createdAt: string;
-  paymentMethod?: string;
-  items?: Array<unknown>;
-}
-
 interface PaymentMethodDef {
   id: string;
   label: string;
@@ -82,8 +73,7 @@ export const PaymentPage = () => {
   const branchId = user?.role === 'super_admin'
     ? (getBranchId(selectedBranch) || user?.branchId)
     : (user?.branchId || getBranchId(selectedBranch));
-  const { alertInfo } = useAlertReplacement();
-  const { showSuccess, showError } = useToast();
+  const { showSuccess, showError, showWarning } = useToast();
   const { format, symbol } = useCurrency();
   const { haptic } = useHaptics();
 
@@ -152,7 +142,6 @@ export const PaymentPage = () => {
     useState<CreditCollectionMethod>('cash');
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showOpenShiftModal, setShowOpenShiftModal] = useState(false);
-  const [emailAddress, setEmailAddress] = useState('');
   const [lastSaleId, setLastSaleId] = useState<string | null>(null);
   const [paymentReference, setPaymentReference] = useState('');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -191,7 +180,11 @@ export const PaymentPage = () => {
   });
 
   const { data: currentShift } = useQuery({
-    queryKey: ['pos-payment-current-shift', getBranchId(selectedBranch), user?.id],
+    queryKey: queryKeys.shifts.current({
+      branchId: getBranchId(selectedBranch),
+      cashierId: user?.id,
+      terminalId,
+    }),
     queryFn: async () => {
       const branchId = getBranchId(selectedBranch);
       const cashierId = user?.id;
@@ -286,7 +279,6 @@ export const PaymentPage = () => {
     onSuccess: () => {
       showSuccess('Receipt sent successfully');
       setShowEmailModal(false);
-      setEmailAddress('');
     },
     onError: (error) => {
       showError(getErrorMessage(error, 'Failed to send receipt'));
@@ -338,21 +330,12 @@ export const PaymentPage = () => {
     }
   };
 
-  const handleEmailReceipt = () => {
-    if (!emailAddress) {
-      showError('Please enter an email address');
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailAddress)) {
-      showError('Please enter a valid email address');
-      return;
-    }
+  const handleEmailReceipt = (email: string) => {
     if (!lastSaleId) {
       showError('No sale to email');
       return;
     }
-
-    emailReceiptMutation.mutate({ saleId: lastSaleId, email: emailAddress });
+    emailReceiptMutation.mutate({ saleId: lastSaleId, email });
   };
 
   const checkoutMutation = useMutation({
@@ -460,61 +443,45 @@ export const PaymentPage = () => {
             : undefined,
       };
 
-      try {
-        const response = await apiClient.post('/sales/checkout', payload);
-        return response.data;
-      } catch (error) {
-        // Temporary resilience: if backend throws 500 after commit, recover by
-        // scanning most recent sales and redirecting to the created receipt.
-        const axiosError = error as {
-          response?: { status?: number };
-        };
-        if (axiosError?.response?.status === 500) {
-          const recentResponse = await apiClient.get('/sales', {
-            params: { branchId, limit: 10 },
-          });
-
-          const sales = (recentResponse.data?.data || []) as RecentSale[];
-          const now = Date.now();
-          const targetPaymentMethod = paymentMethodMap[paymentMethod];
-          const candidate = sales.find((sale) => {
-            const createdAtMs = new Date(sale.createdAt).getTime();
-            const isFresh = Number.isFinite(createdAtMs) && now - createdAtMs < 2 * 60 * 1000;
-            const sameTotal = Math.abs((sale.total || 0) - total) < 0.01;
-            const sameItemCount = (sale.items?.length || 0) === items.length;
-            const samePaymentMethod = sale.paymentMethod === targetPaymentMethod;
-            return isFresh && sameTotal && sameItemCount && samePaymentMethod;
-          });
-
-          if (candidate?._id) {
-            return {
-              success: true,
-              message: 'Checkout recovered from server error',
-              data: {
-                saleId: candidate._id,
-              },
-            };
-          }
-        }
-
-        throw error;
-      }
+      const response = await apiClient.post('/sales/checkout', payload);
+      return response.data;
     },
     onSuccess: (data) => {
+      setShowConfirmModal(false);
+      haptic('success');
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all(), exact: false });
+      queryClient.invalidateQueries({ queryKey: queryKeys.sales.all() });
+      queryClient.invalidateQueries({ queryKey: queryKeys.shifts.all() });
+      clearCart();
+
       const saleId = data?.data?.saleId;
       if (!saleId) {
-        showError('Checkout completed but sale ID is missing from response');
+        showWarning(
+          'Sale recorded',
+          'The sale was recorded but the receipt ID is missing. Check Sales history for the record.'
+        );
+        navigate('/pos');
         return;
       }
 
-      haptic('success');
       setLastSaleId(saleId);
-      clearCart();
-      queryClient.invalidateQueries({ queryKey: queryKeys.products.all(), exact: false });
       navigate(`/pos/receipt/${saleId}`);
     },
     onError: (error) => {
       haptic('error');
+      setShowConfirmModal(false);
+
+      const wasQueuedOffline = Boolean((error as { isOfflineQueued?: boolean })?.isOfflineQueued);
+      if (wasQueuedOffline) {
+        clearCart();
+        showWarning(
+          'Sale saved offline',
+          'It will sync automatically when the connection returns. Do not re-enter this sale.'
+        );
+        navigate('/pos');
+        return;
+      }
+
       showError(getErrorMessage(error, 'Failed to process checkout'));
     },
   });
@@ -524,7 +491,8 @@ export const PaymentPage = () => {
     items.length > 0 &&
     isShiftOpen &&
     isCashValid &&
-    isCreditValid;
+    isCreditValid &&
+    isSplitValid;
 
   const getDisabledReason = () => {
     if (items.length === 0) return 'No items in cart';
@@ -536,6 +504,11 @@ export const PaymentPage = () => {
     }
     if (paymentMethod === 'credit' && !creditDueDate) return 'Please set a due date for credit sale';
     if (paymentMethod === 'credit' && parsedCreditAmount > total) return 'Upfront payment cannot exceed total';
+    if (paymentMethod === 'split' && !isSplitValid) {
+      if (splitLines.length < 2) return 'Split tender requires at least 2 payment methods';
+      if (splitLines.some((l) => Number(l.amount) <= 0)) return 'Every split line needs an amount';
+      return `Allocated ${format(totalSplitTendered)} of ${format(total)} — allocation must match the order total`;
+    }
     return null;
   };
 
@@ -558,14 +531,14 @@ export const PaymentPage = () => {
         }
       }
 
-      if (e.key.toLowerCase() === 'h' && items.length > 0) {
+      if (e.key.toLowerCase() === 'h' && items.length > 0 && !showConfirmModal && !showEmailModal && !showOpenShiftModal && !checkoutMutation.isPending) {
         handleHoldSale();
       }
     };
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [paymentMethod, parsedAmountReceived, total, isCreditValid, isSplitValid, items.length, currentShift, showConfirmModal, checkoutMutation.isPending, handleHoldSale]);
+  }, [paymentMethod, parsedAmountReceived, total, isCreditValid, isSplitValid, items.length, currentShift, showConfirmModal, showEmailModal, showOpenShiftModal, checkoutMutation.isPending, handleHoldSale]);
 
   const allPaymentMethods: PaymentMethodDef[] = [
     { id: 'cash', label: 'Cash', shortLabel: 'Cash', icon: (
@@ -705,7 +678,7 @@ export const PaymentPage = () => {
 
                 {(checkoutQuote?.taxAmount ?? 0) > 0 && (
                   <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
-                    <span className="text-gray-400">Tax</span>
+                    <span className="text-slate-400">Tax</span>
                     <span className="font-medium text-white">{format(checkoutQuote?.taxAmount ?? 0)}</span>
                   </div>
                 )}
@@ -854,7 +827,7 @@ export const PaymentPage = () => {
                         <span className="text-lg sm:text-xl font-bold text-emerald-400 font-mono">{format(changeDue)}</span>
                       </div>
                     )}
-                    {parseFloat(amountReceived || '0') < total && (
+                    {paymentMethod === 'cash' && !isNaN(parsedAmountReceived) && parsedAmountReceived < total && (
                       <div className="flex items-center justify-between py-3 px-4 rounded-xl bg-rose-500/10 border border-rose-500/20 animate-in fade-in slide-in-from-bottom duration-300">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-lg bg-rose-500/20 flex items-center justify-center">
@@ -862,7 +835,7 @@ export const PaymentPage = () => {
                           </div>
                           <span className="text-xs sm:text-sm text-rose-300 font-medium">Insufficient Amount</span>
                         </div>
-                        <span className="text-xs sm:text-sm font-bold text-rose-400 font-mono">{format(total - parseFloat(amountReceived || '0'))} short</span>
+                        <span className="text-xs sm:text-sm font-bold text-rose-400 font-mono">{format(total - parsedAmountReceived)} short</span>
                       </div>
                     )}
                   </div>
@@ -1244,66 +1217,22 @@ export const PaymentPage = () => {
       <ConfirmationModal
         isOpen={showConfirmModal}
         onClose={() => setShowConfirmModal(false)}
-        onConfirm={() => {
-          setShowConfirmModal(false);
-          checkoutMutation.mutate();
-        }}
+        onConfirm={() => checkoutMutation.mutate()}
         title="Confirm Payment"
         message={`Process payment of ${format(total)} via ${paymentMethod.replace('_', ' ')}?`}
-        confirmText="Process Payment"
+        confirmText={checkoutMutation.isPending ? 'Processing…' : 'Process Payment'}
         cancelText="Review"
         isLoading={checkoutMutation.isPending}
         type="info"
       />
 
       {/* Email Modal */}
-      {showEmailModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md" onClick={() => setShowEmailModal(false)} />
-          <div className="relative bg-slate-900/95 border border-white/[0.1] rounded-2xl shadow-2xl shadow-black/80 max-w-md w-full p-6 animate-in zoom-in-95 duration-200 backdrop-blur-2xl">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-base font-bold text-white tracking-tight">Email Receipt</h3>
-              <button
-                onClick={() => setShowEmailModal(false)}
-                className="w-8 h-8 rounded-xl bg-white/[0.05] border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
-                aria-label="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">Email Address</label>
-                <input
-                  type="email"
-                  value={emailAddress}
-                  onChange={(e) => setEmailAddress(e.target.value)}
-                  placeholder="customer@example.com"
-                  className="w-full px-3.5 py-2.5 bg-slate-950/70 border border-white/10 rounded-xl text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                  autoFocus
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <Button
-                  variant="secondary"
-                  onClick={() => setShowEmailModal(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleEmailReceipt}
-                  isLoading={emailReceiptMutation.isPending}
-                  className="flex-1"
-                >
-                  Send Receipt
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <EmailInputModal
+        isOpen={showEmailModal}
+        onClose={() => setShowEmailModal(false)}
+        onSubmit={handleEmailReceipt}
+        isLoading={emailReceiptMutation.isPending}
+      />
 
       {/* Open Shift Modal */}
       <OpenShiftModal

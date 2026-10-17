@@ -12,10 +12,10 @@ export const AccountSecurityPage = () => {
 
   const content = (
     <div className="max-w-3xl space-y-5">
-      <div className="rounded-2xl border border-white/10 bg-primary-dark p-5">
-        <p className="text-sm uppercase tracking-[0.2em] text-accent-green">Account</p>
+      <div className="rounded-2xl border border-white/10 bg-slate-900 p-5">
+        <p className="text-sm uppercase tracking-[0.2em] text-emerald-500">Account</p>
         <h1 className="mt-2 text-2xl font-bold text-white">Security Settings</h1>
-        <p className="mt-2 text-sm text-gray-400">
+        <p className="mt-2 text-sm text-slate-400">
           Manage sign-in options for this device. These settings apply only to the current user and device.
         </p>
       </div>

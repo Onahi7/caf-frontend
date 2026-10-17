@@ -96,7 +96,7 @@ export const MarketerReviewAssignmentsPage = () => {
 
   return (
     <MarketerLayout title="Review Product Assignments">
-      <div className="bg-primary-dark/50 rounded-2xl border border-white/10 p-5">
+      <div className="bg-slate-900/50 rounded-2xl border border-white/10 p-5">
         <Table
           data={data?.data || []}
           columns={columns}
