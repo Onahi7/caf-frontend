@@ -26,6 +26,7 @@ import { QuickKeysGrid } from '../../components/pos/QuickKeysGrid';
 import { CartQuantityInput } from '../../components/pos/CartQuantityInput';
 import type { QuickKeyProduct } from '../../stores/quick-keys-store';
 import { queryKeys } from '../../lib/query-keys';
+import { pluralizeProductUnit } from '../../lib/product-options';
 import { NotificationBell } from '../../components/NotificationBell';
 import { usePOSSidebarStore } from '../../stores/pos-sidebar-store';
 import {
@@ -141,12 +142,8 @@ export const POSPage = () => {
 
     const formatCountAndUnit = (count: number, unitName: string) => {
       const cleanName = unitName || 'unit';
-      if (count === 1) return `1 ${cleanName}`;
-      const lower = cleanName.toLowerCase();
-      if (lower.endsWith('s') || lower.endsWith('x') || lower.endsWith('ch') || lower.endsWith('sh')) {
-        return `${count} ${cleanName}es`;
-      }
-      return `${count} ${cleanName}s`;
+      if (cleanName.includes(' ')) return `${count} × ${cleanName}`;
+      return `${count} ${pluralizeProductUnit(cleanName, count)}`;
     };
 
     if (!packSizes || packSizes.length === 0) {
@@ -1414,6 +1411,7 @@ export const POSPage = () => {
                       <h3 className="text-slate-100 font-semibold text-xs leading-snug break-words">{item.productName}</h3>
                       <p className="text-[11px] text-slate-400 mt-0.5">
                         <span className="font-mono">#{item.sku}</span>
+                        {!item.packSize && <span className="ml-2 text-slate-300">Sold per {item.baseUnit || 'item'}</span>}
                         {item.packSize && (
                           <span className="ml-1 px-1.5 py-0.5 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded text-[10px] font-semibold">
                             {item.packSize.name}
@@ -1548,7 +1546,7 @@ export const POSPage = () => {
             </div>
             <button
               onClick={() => setShowMobileCart(false)}
-              className="w-8 h-8 flex items-center justify-center rounded-xl bg-white/[0.05] border border-white/10 text-slate-400 hover:text-white transition-colors"
+              className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/[0.05] border border-white/10 text-slate-400 hover:text-white transition-colors"
               aria-label="Close cart"
             >
               <X className="w-4 h-4" />
@@ -1617,6 +1615,7 @@ export const POSPage = () => {
                           {item.packSize.name}
                         </span>
                       )}
+                      {!item.packSize && <span className="text-[10px] text-slate-300">Sold per {item.baseUnit || 'item'}</span>}
                       <span className="text-[10px] text-slate-500 font-mono">
                         #{item.sku}
                       </span>
@@ -1624,7 +1623,7 @@ export const POSPage = () => {
                   </div>
                   <button
                     onClick={() => removeItem(item.productId, item.packSize)}
-                    className="text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors p-1.5 rounded-lg shrink-0"
+                    className="flex min-h-11 min-w-11 items-center justify-center text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors p-1.5 rounded-lg shrink-0"
                     aria-label="Remove item"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1635,7 +1634,7 @@ export const POSPage = () => {
                   <div className="flex items-center space-x-1 bg-slate-950/80 rounded-xl p-0.5 border border-white/[0.06]">
                     <button
                       onClick={() => handleQuantityDecrement(item.productId, item.packSize, item.quantity)}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white disabled:opacity-30"
+                      className="w-11 h-11 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white disabled:opacity-30"
                       disabled={item.quantity <= 1}
                       aria-label="Decrease quantity"
                     >
@@ -1645,11 +1644,11 @@ export const POSPage = () => {
                       value={item.quantity}
                       min={1}
                       onChange={(newQty) => updateQuantity(item.productId, newQty, item.packSize)}
-                      className="w-10 bg-transparent text-center text-slate-100 font-semibold text-xs focus:outline-none tabular-nums"
+                      className="w-12 h-11 bg-transparent text-center text-slate-100 font-semibold text-base focus:outline-none focus:ring-2 focus:ring-emerald-500 rounded-lg tabular-nums"
                     />
                     <button
                       onClick={() => handleQuantityIncrement(item.productId, item.packSize, item.quantity)}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                      className="w-11 h-11 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
                       aria-label="Increase quantity"
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -1770,7 +1769,7 @@ export const POSPage = () => {
       )}
 
       {/* Expense Modal */}
-      {currentShift && (
+      {currentShift && showExpenseModal && (
         <ExpenseModal
           isOpen={showExpenseModal}
           onClose={() => setShowExpenseModal(false)}
@@ -1878,10 +1877,10 @@ export const POSPage = () => {
                         </span>
                       </div>
                       <p className="text-slate-400 text-xs">
-                        Sold individually as loose {unitName}s
+                        Sold as one whole {unitName}.
                       </p>
                       <p className="text-[11px] text-slate-400">
-                        Dispensary Stock: <span className={hasBaseStock ? 'text-emerald-400 font-medium' : 'text-rose-400 font-medium'}>{selectedProductForPack.stock} loose {unitName}s available</span>
+                        Available stock: <span className={hasBaseStock ? 'text-emerald-400 font-medium' : 'text-rose-400 font-medium'}>{selectedProductForPack.stock} {unitName}s</span>
                       </p>
                       {!hasBaseStock && (
                         <p className="text-[11px] text-rose-400 font-medium">
@@ -1961,7 +1960,7 @@ export const POSPage = () => {
                         <span>≈ {format(effectiveUnitPrice)} each</span>
                         <span className="text-slate-600">·</span>
                         <span className={availablePacks > 0 ? 'text-slate-300' : 'text-rose-400'}>
-                          {availablePacks} full {pack.name.toLowerCase()}{availablePacks === 1 ? '' : 's'} available
+                          {availablePacks} full {availablePacks === 1 ? 'pack' : 'packs'} available
                         </span>
                       </div>
 

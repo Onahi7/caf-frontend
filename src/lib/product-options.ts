@@ -1,3 +1,8 @@
+export const pluralizeProductUnit = (unit: string, quantity = 2) => {
+  if (quantity === 1 || ['ml', 'mg', 'g'].includes(unit)) return unit;
+  return unit === 'box' ? 'boxes' : `${unit}s`;
+};
+
 export const PRODUCT_CATEGORY_OPTIONS = [
   { value: 'prescription', label: 'Prescription Drugs' },
   { value: 'otc', label: 'Over-the-Counter (OTC)' },

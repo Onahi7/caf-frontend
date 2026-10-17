@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Select } from '../ui/Select';
 import { Textarea } from '../ui/Textarea';
@@ -12,7 +12,7 @@ interface ExpenseModalProps {
   isLoading?: boolean;
 }
 
-export const expenseCategories = [
+const expenseCategories = [
   { value: 'supplies', label: 'Store & Office Supplies' },
   { value: 'maintenance', label: 'Equipment & Maintenance' },
   { value: 'utilities', label: 'Utilities & Internet' },
@@ -24,11 +24,13 @@ export const expenseCategories = [
 
 export const ExpenseModal = ({ isOpen, onClose, onSubmit, isLoading }: ExpenseModalProps) => {
   const { symbol } = useCurrency();
+  const amountId = useId();
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('supplies');
   const [description, setDescription] = useState('');
 
   const handleClose = () => {
+    if (isLoading) return;
     setAmount('');
     setCategory('supplies');
     setDescription('');
@@ -40,9 +42,6 @@ export const ExpenseModal = ({ isOpen, onClose, onSubmit, isLoading }: ExpenseMo
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0 || !description.trim()) return;
     onSubmit({ amount: parsedAmount, category, description: description.trim() });
-    setAmount('');
-    setCategory('supplies');
-    setDescription('');
   };
 
   return (
@@ -53,7 +52,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSubmit, isLoading }: ExpenseMo
         </p>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+          <label htmlFor={amountId} className="block text-sm font-medium text-slate-200 mb-1.5">
             Expense Amount ({symbol})
           </label>
           <div className="relative">
@@ -61,14 +60,16 @@ export const ExpenseModal = ({ isOpen, onClose, onSubmit, isLoading }: ExpenseMo
               {symbol}
             </span>
             <input
+              id={amountId}
               type="number"
+              inputMode="decimal"
               step="0.01"
               min="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
               required
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-white/10 bg-slate-950/60 text-white placeholder-slate-500 text-sm focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+              className="w-full min-h-11 pl-9 pr-4 py-2.5 rounded-xl border border-white/10 bg-slate-950/60 text-white placeholder-slate-500 text-base sm:text-sm focus:border-emerald-500/50 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
               autoFocus
             />
           </div>
@@ -103,7 +104,7 @@ export const ExpenseModal = ({ isOpen, onClose, onSubmit, isLoading }: ExpenseMo
           <Button
             type="submit"
             variant="primary"
-            disabled={isLoading || !amount.trim() || !description.trim()}
+            disabled={isLoading || !Number.isFinite(Number(amount)) || Number(amount) <= 0 || !description.trim()}
             isLoading={isLoading}
             className="flex-1"
           >

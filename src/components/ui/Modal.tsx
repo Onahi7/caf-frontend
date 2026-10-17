@@ -13,6 +13,7 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
+  ariaLabel?: string;
   children: ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }
@@ -21,6 +22,7 @@ export const Modal = ({
   isOpen,
   onClose,
   title,
+  ariaLabel,
   children,
   size = 'md',
 }: ModalProps) => {
@@ -41,7 +43,7 @@ export const Modal = ({
       previousFocusRef.current = document.activeElement as HTMLElement;
 
       const timer = setTimeout(() => {
-        if (!containerRef.current) return;
+        if (!containerRef.current || modalStack[modalStack.length - 1] !== modalId) return;
 
         // If an input, textarea or select inside this modal is ALREADY focused, do not steal focus
         const active = document.activeElement as HTMLElement | null;
@@ -80,11 +82,16 @@ export const Modal = ({
 
       return () => {
         clearTimeout(timer);
+        const wasTopModal = modalStack[modalStack.length - 1] === modalId;
         const index = modalStack.lastIndexOf(modalId);
         if (index !== -1) modalStack.splice(index, 1);
         openModalCount = Math.max(0, openModalCount - 1);
         if (openModalCount === 0) {
           document.body.style.overflow = bodyOverflowBeforeLock;
+        }
+        // Restore focus only when this modal closes, never when a callback changes.
+        if (wasTopModal && previousFocusRef.current?.isConnected) {
+          previousFocusRef.current.focus();
         }
       };
     }
@@ -104,8 +111,10 @@ export const Modal = ({
       }
 
       if (e.key === 'Tab') {
-        const focusable = containerRef.current?.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        const focusable = Array.from(containerRef.current?.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]'
+        ) ?? []).filter((element) =>
+          element.tabIndex >= 0 && !element.matches(':disabled, [hidden], [inert], [inert] *') && element.getClientRects().length > 0
         );
         if (!focusable || focusable.length === 0) return;
 
@@ -133,13 +142,6 @@ export const Modal = ({
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      if (
-        previousFocusRef.current &&
-        typeof previousFocusRef.current.focus === 'function' &&
-        document.body.contains(previousFocusRef.current)
-      ) {
-        previousFocusRef.current.focus();
-      }
     };
   }, [isOpen, onClose]);
 
@@ -159,6 +161,7 @@ export const Modal = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby={title ? titleId : undefined}
+      aria-label={!title ? ariaLabel : undefined}
     >
       {/* Backdrop */}
       <div
@@ -186,7 +189,7 @@ export const Modal = ({
             <button
               type="button"
               onClick={onClose}
-              className="shrink-0 rounded-xl p-2 text-slate-400 transition-colors hover:bg-white/[0.08] hover:text-white"
+              className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-xl p-2 text-slate-400 transition-colors hover:bg-white/[0.08] hover:text-white"
               aria-label="Close modal"
             >
               <X className="w-5 h-5" />
@@ -197,7 +200,7 @@ export const Modal = ({
           <button
             type="button"
             onClick={onClose}
-            className="absolute top-3.5 right-3.5 z-20 rounded-xl p-2 text-slate-400 transition-colors hover:bg-white/[0.08] hover:text-white"
+            className="absolute top-1.5 right-1.5 z-20 flex min-h-11 min-w-11 items-center justify-center rounded-xl p-2 text-slate-400 transition-colors hover:bg-white/[0.08] hover:text-white"
             aria-label="Close modal"
           >
             <X className="w-5 h-5" />

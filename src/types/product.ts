@@ -2,6 +2,9 @@ export interface PackSize {
   code?: string;
   name: string;
   unit: string;
+  contentsDescription?: string;
+  purchaseUnit?: string;
+  unitsPerPurchaseUnit?: number;
   quantityPerPack: number;
   sellingPrice: number;
   barcode?: string;

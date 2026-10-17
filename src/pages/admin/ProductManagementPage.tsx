@@ -33,6 +33,7 @@ import {
   PACK_TYPE_OPTIONS,
   PRODUCT_CATEGORY_OPTIONS,
   PRODUCT_UNIT_OPTIONS,
+  pluralizeProductUnit,
 } from '../../lib/product-options';
 import { PackSizeRow } from '../../components/admin/PackSizeRow';
 
@@ -56,6 +57,9 @@ interface Product {
   brand: string;
   unit: string;
   reorderLevel: number;
+  contentsDescription?: string;
+  purchaseUnit?: string;
+  unitsPerPurchaseUnit?: number;
   basePrice: number;
   costPrice: number;
   suggestedRetailPrice: number;
@@ -81,6 +85,11 @@ interface ProductFormData {
    brand: string;
    unit: string;
    initialStock: number;
+   receivedQuantity: number;
+   purchaseUnit: string;
+   unitsPerPurchaseUnit: number;
+   contentsDescription: string;
+   initialLotNumber?: string;
    initialExpiryDate?: string;
    initialSupplierId?: string;
    initialSupplyDate?: string;
@@ -181,7 +190,12 @@ export const ProductManagementPage = () => {
   });
 
   const { register, handleSubmit, reset, watch, trigger, setValue, formState: { errors } } = useForm<ProductFormData>();
-  const initialStock = Number(watch('initialStock') || 0);
+  const sellingUnit = watch('unit') || 'piece';
+  const purchaseUnit = watch('purchaseUnit') || sellingUnit;
+  const purchaseFactor = purchaseUnit === sellingUnit ? 1 : Number(watch('unitsPerPurchaseUnit') || 0);
+  const receivedQuantity = Number(watch('receivedQuantity') || 0);
+  const initialStock = editingProduct ? Number(editingProduct.quantityAvailable || 0) : Number((receivedQuantity * purchaseFactor).toFixed(6));
+  const openingPurchasePrice = Number(watch('initialPurchasePrice') || 0);
 
   const { isAvailable: cameraAvailable, scanOnce, ScannerModal } = useBarcodeScanner();
 
@@ -296,6 +310,9 @@ export const ProductManagementPage = () => {
       category: data.category,
       brand: data.brand,
       unit: data.unit,
+      contentsDescription: data.contentsDescription?.trim(),
+      purchaseUnit,
+      unitsPerPurchaseUnit: purchaseFactor,
       reorderLevel: data.reorderLevel,
       basePrice: data.basePrice,
       costPrice: data.costPrice,
@@ -305,7 +322,8 @@ export const ProductManagementPage = () => {
       isControlled: data.isControlled,
       branchId: data.branchId,
       packSizes,
-      initialStock: data.initialStock,
+      initialStock,
+      initialLotNumber: data.initialLotNumber?.trim() || undefined,
       initialExpiryDate: toIsoDate(data.initialExpiryDate),
       initialSupplierId: data.initialSupplierId || undefined,
       initialSupplyDate: data.initialSupplyDate || undefined,
@@ -342,6 +360,9 @@ export const ProductManagementPage = () => {
       category: data.category,
       brand: data.brand,
       unit: data.unit,
+      contentsDescription: data.contentsDescription?.trim(),
+      purchaseUnit,
+      unitsPerPurchaseUnit: purchaseFactor,
       reorderLevel: data.reorderLevel,
       maxStockLevel: data.maxStockLevel,
       basePrice: sellingPrice,
@@ -360,6 +381,14 @@ export const ProductManagementPage = () => {
   };
 
   const onSubmit = (data: ProductFormData) => {
+    if (!Number.isFinite(purchaseFactor) || purchaseFactor < 1) {
+      showError('Enter how many selling units are in each received pack.');
+      return;
+    }
+    if ((data.packSizes || []).some((pack) => !pack.name.trim() || !Number.isInteger(Number(pack.quantityPerPack)) || Number(pack.quantityPerPack) < 1 || !Number.isFinite(Number(pack.sellingPrice)) || Number(pack.sellingPrice) < 0)) {
+      showError('Complete each selling pack with a name, whole quantity and valid price, or remove the unused row.');
+      return;
+    }
     const packSizes = normalizePackSizes(data.packSizes);
     const duplicatePackBarcode = packSizes.find(
       (pack, index) =>
@@ -375,14 +404,18 @@ export const ProductManagementPage = () => {
       return;
     }
 
+    const purchaseCostPerSellingUnit = Number(data.initialPurchasePrice) > 0
+      ? Number(data.initialPurchasePrice) / purchaseFactor
+      : Number(data.costPrice || 0);
     const normalizedData: ProductFormData = {
       ...data,
       sku: data.sku?.trim() || generateSku(data.name),
       basePrice: getEffectiveSellingPrice(data),
       suggestedRetailPrice: getEffectiveSellingPrice(data),
       initialSellingPrice: getEffectiveSellingPrice(data),
-      costPrice: Number(data.initialPurchasePrice || data.costPrice || 0),
-      initialPurchasePrice: Number(data.initialPurchasePrice || data.costPrice || 0),
+      costPrice: purchaseCostPerSellingUnit,
+      initialPurchasePrice: purchaseCostPerSellingUnit,
+      maxStockLevel: data.maxStockLevel === undefined || String(data.maxStockLevel) === '' ? undefined : Number(data.maxStockLevel),
       packSizes,
     };
 
@@ -413,6 +446,10 @@ export const ProductManagementPage = () => {
         category: product.category,
         brand: product.brand,
         unit: product.unit,
+        contentsDescription: product.contentsDescription || '',
+        purchaseUnit: product.purchaseUnit === product.unit ? '' : product.purchaseUnit || '',
+        unitsPerPurchaseUnit: product.unitsPerPurchaseUnit || 1,
+        receivedQuantity: 0,
         initialStock: product.quantityAvailable || 0,
         initialExpiryDate: product.expiryDate ? product.expiryDate.split('T')[0] : '',
         initialSupplierId:
@@ -420,7 +457,7 @@ export const ProductManagementPage = () => {
             ? product.supplierId
             : product.supplierId?._id || '',
         initialSupplyDate: product.supplyDate ? product.supplyDate.split('T')[0] : '',
-        initialPurchasePrice: product.costPrice || 0,
+        initialPurchasePrice: (product.costPrice || 0) * (product.unitsPerPurchaseUnit || 1),
         initialSellingPrice: product.suggestedRetailPrice || product.basePrice || 0,
         basePrice: product.basePrice || 0,
         costPrice: product.costPrice || 0,
@@ -447,6 +484,10 @@ export const ProductManagementPage = () => {
         category: '',
         brand: '',
         unit: 'piece',
+        contentsDescription: '',
+        purchaseUnit: '',
+        unitsPerPurchaseUnit: 1,
+        receivedQuantity: 0,
         initialStock: 0,
         initialExpiryDate: '',
         initialSupplierId: '',
@@ -624,7 +665,7 @@ export const ProductManagementPage = () => {
     { key: 'unit', header: 'Unit' },
     {
       key: 'packSizes',
-      header: 'Packaging Tiers',
+      header: 'Selling options',
       render: (product: Product) => (
         product.packSizes && product.packSizes.length > 0 ? (
           <div className="flex flex-wrap gap-1.5 max-w-xs">
@@ -641,7 +682,7 @@ export const ProductManagementPage = () => {
             ))}
           </div>
         ) : (
-          <span className="text-slate-500 text-xs italic">Base {product.unit} only</span>
+          <span className="text-slate-400 text-xs">Sold per {product.unit}</span>
         )
       ),
     },
@@ -844,7 +885,7 @@ export const ProductManagementPage = () => {
           />
         )}
 
-        <Modal isOpen={isModalOpen} onClose={handleCloseModal} size="xl">
+        <Modal isOpen={isModalOpen} onClose={handleCloseModal} ariaLabel={editingProduct ? 'Edit Product' : 'Add New Product'} size="xl">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Modal Stepper Header */}
             <div className="border-b border-white/[0.08] pb-5">
@@ -968,7 +1009,9 @@ export const ProductManagementPage = () => {
                 />
 
                 <Select
-                  label="Unit"
+                  label="Smallest item you sell"
+                  helperText={watch('category') === 'laboratory' ? 'Choose the smallest item you sell: a kit, test strip, bottle, or piece.' : 'Choose Card if you only sell whole cards. The tablets inside will not be sold individually.'}
+                  disabled={!!editingProduct && Number(editingProduct.quantityAvailable) > 0}
                   error={errors.unit?.message}
                   {...register('unit', { required: 'Unit is required' })}
                   options={[
@@ -977,6 +1020,13 @@ export const ProductManagementPage = () => {
                   ]}
                 >
                 </Select>
+
+                <Input
+                  label={`Contents of one ${sellingUnit} (optional)`}
+                  placeholder={sellingUnit === 'card' ? 'e.g. 14 tablets per card' : sellingUnit === 'kit' ? 'e.g. One complete test kit' : 'e.g. 100 ml per bottle'}
+                  {...register('contentsDescription')}
+                  helperText="Description only. This does not change stock or enable sales of the contents."
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <Input
@@ -1135,39 +1185,87 @@ export const ProductManagementPage = () => {
 
             {wizardStep === 2 ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Input
-                    label={`${editingProduct ? 'Current Total Stock' : 'Opening Shelf Stock'} (in ${watch('unit') || 'single units'}s)`}
+                {editingProduct && <Input
+                    label={`Current stock (${sellingUnit})`}
                     type="number"
-                    min="0"
-                    {...register('initialStock', { min: 0 })}
-                    error={errors.initialStock?.message}
-                    placeholder="e.g. 50"
-                    disabled={!!editingProduct}
-                    helperText={
-                      editingProduct
-                        ? 'Read-only after creation. Use Stock Adjustments to change stock with an audit trail.'
-                        : `Total count of single ${watch('unit') || 'units'}s on shelf`
-                    }
-                  />
+                    value={editingProduct?.quantityAvailable || 0}
+                    readOnly
+                    helperText="Use stock receiving or stock adjustments to change existing stock."
+                  />}
 
+                <div className="space-y-4 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                  <h3 className="font-semibold text-slate-100">How do you receive this product?</h3>
+                  <Select
+                    label="Received as"
+                    {...register('purchaseUnit', { onChange: (event) => { if (!event.target.value || event.target.value === sellingUnit) setValue('unitsPerPurchaseUnit', 1, { shouldValidate: true }); } })}
+                    options={[
+                      { value: '', label: `Individual ${sellingUnit} (no outer packaging)` },
+                      ...PACK_TYPE_OPTIONS.filter((option) => option.value.toLowerCase() !== sellingUnit).map((option) => ({ value: option.value.toLowerCase(), label: option.label })),
+                    ]}
+                  />
+                  {purchaseUnit !== sellingUnit && (
+                    <Input
+                      label={`How many ${pluralizeProductUnit(sellingUnit)} in one ${purchaseUnit}?`}
+                      type="number"
+                      inputMode="numeric"
+                      min="1"
+                      step="1"
+                      {...register('unitsPerPurchaseUnit', {
+                        valueAsNumber: true,
+                        validate: (value) => purchaseUnit === sellingUnit || (Number.isInteger(Number(value)) && Number(value) >= 1) || 'Enter a whole number of at least 1',
+                      })}
+                      error={errors.unitsPerPurchaseUnit?.message}
+                      helperText={`Count ${pluralizeProductUnit(sellingUnit)}, not the items inside each ${sellingUnit}.`}
+                    />
+                  )}
+                  {!editingProduct && (
+                    <Input
+                      label={`How many ${pluralizeProductUnit(purchaseUnit)} did you receive?`}
+                      type="number"
+                      inputMode={['ml', 'mg', 'g'].includes(purchaseUnit) ? 'decimal' : 'numeric'}
+                      min="0"
+                      step={['ml', 'mg', 'g'].includes(purchaseUnit) ? 'any' : '1'}
+                      {...register('receivedQuantity', {
+                        valueAsNumber: true,
+                        required: 'Enter the quantity received, or 0 to add the product without stock',
+                        min: { value: 0, message: 'Cannot be negative' },
+                        validate: (value) => Number.isFinite(value) && (['ml', 'mg', 'g'].includes(purchaseUnit) || Number.isInteger(value)) || 'Enter a valid whole quantity',
+                      })}
+                      error={errors.receivedQuantity?.message}
+                    />
+                  )}
                   <Input
-                    label={`Purchase Price (per ${watch('unit') || 'single item'})`}
+                    label={`Purchase price per ${purchaseUnit}`}
                     type="number"
+                    inputMode="decimal"
                     step="0.01"
                     {...register('initialPurchasePrice', {
                       min: { value: 0, message: 'Must be 0 or greater' },
                     })}
                     error={errors.initialPurchasePrice?.message}
-                    placeholder="Defaults to Cost Price"
+                    placeholder={`Leave 0 to use the cost per ${sellingUnit} from step 1`}
+                    helperText={openingPurchasePrice > 0 && purchaseFactor > 0 ? `${format(openingPurchasePrice / purchaseFactor)} cost per ${sellingUnit}, calculated automatically.` : `All cost and selling prices are stored per ${sellingUnit}.`}
                   />
                 </div>
+
+                {!editingProduct && purchaseFactor >= 1 && Number.isFinite(initialStock) && (
+                  <div role="status" className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-100">
+                    You received <strong>{receivedQuantity} {pluralizeProductUnit(purchaseUnit, receivedQuantity)}</strong>
+                    {purchaseUnit !== sellingUnit ? <> × <strong>{purchaseFactor} {pluralizeProductUnit(sellingUnit, purchaseFactor)}</strong> each</> : null}.
+                    {' '}Opening stock: <strong>{initialStock} {pluralizeProductUnit(sellingUnit, initialStock)}</strong>.
+                    {watch('contentsDescription') && <p className="mt-1 text-slate-300">Contents: {watch('contentsDescription')}. Stock is counted in {pluralizeProductUnit(sellingUnit)}.</p>}
+                  </div>
+                )}
 
                 <Input
                   label="Expiry Date"
                   type="date"
-                  {...register('initialExpiryDate')}
+                  required={!editingProduct && initialStock > 0}
+                  {...register('initialExpiryDate', { validate: (value) => !!editingProduct || initialStock <= 0 || !!value || 'Enter the expiry date for the stock received' })}
+                  error={errors.initialExpiryDate?.message}
                 />
+
+                {!editingProduct && <Input label="Batch / lot number (optional)" {...register('initialLotNumber')} />}
 
                 <Input
                   label="Supply Date"
@@ -1177,7 +1275,9 @@ export const ProductManagementPage = () => {
 
                 <Select
                   label="Supplier"
-                  {...register('initialSupplierId')}
+                  required={!editingProduct && initialStock > 0}
+                  {...register('initialSupplierId', { validate: (value) => !!editingProduct || initialStock <= 0 || !!value || 'Choose the supplier for the stock received' })}
+                  error={errors.initialSupplierId?.message}
                 >
                   <option value="" className="bg-slate-900 text-white">Select Supplier</option>
                   {suppliers?.map((supplier) => (
@@ -1201,8 +1301,8 @@ export const ProductManagementPage = () => {
                 <div className="space-y-3 p-4 bg-slate-900/60 rounded-2xl border border-white/[0.08]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider">Selling Packs & Boxes (Optional)</label>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Sell in cards, boxes, or cartons with automatic stock deduction</p>
+                      <h3 className="text-sm font-semibold text-slate-200">Other ways you sell this product</h3>
+                      <p className="text-xs text-slate-400 mt-0.5">Optional. Without extra selling packs, cashiers sell only by {sellingUnit}.</p>
                     </div>
                     <button
                       type="button"
@@ -1212,18 +1312,21 @@ export const ProductManagementPage = () => {
                       {showPackSizeEditor ? 'Done' : '+ Add / Edit Packs'}
                     </button>
                   </div>
-                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3.5 text-xs text-slate-300 leading-relaxed space-y-2">
-                    <div className="font-semibold text-emerald-300 flex items-center gap-1.5">
-                      <span>💡</span>
-                      <span>How to set up Cards & Boxes vs. Loose Tablets:</span>
-                    </div>
-                    <p>
-                      • <strong className="text-white">Medicines sold per Card (cannot be broken):</strong> If you sell medicines where tablets cannot be cut or sold loosely (like antimalarials, antibiotics, or oral contraceptives), set your Unit above to <strong className="text-emerald-300">Card</strong>. Then add a pack below for <em>Box of 10 Cards</em>. Cashiers can only sell whole cards or full boxes.
-                    </p>
-                    <p>
-                      • <strong className="text-white">Medicines where loose tablets can be sold:</strong> Set your Unit above to <strong className="text-emerald-300">Tablet</strong>. Enter total loose tablets in stock, then add packaging options below (e.g. <em>Card of 10</em> or <em>Box of 100</em>). When cashiers sell a card, the system automatically subtracts 10 tablets.
-                    </p>
-                  </div>
+                  {purchaseUnit !== sellingUnit && (
+                    <Button type="button" variant="outline" onClick={() => {
+                      const packs = watch('packSizes') || [];
+                      setValue('packSizes', [...packs, {
+                        _clientId: crypto.randomUUID(),
+                        name: `${purchaseUnit.charAt(0).toUpperCase() + purchaseUnit.slice(1)} of ${purchaseFactor} ${pluralizeProductUnit(sellingUnit, purchaseFactor)}`,
+                        unit: purchaseUnit,
+                        quantityPerPack: purchaseFactor,
+                        sellingPrice: Number(watch('basePrice') || 0) * purchaseFactor,
+                      }]);
+                      setShowPackSizeEditor(true);
+                    }} disabled={!Number.isInteger(purchaseFactor) || purchaseFactor < 1 || (watch('packSizes') || []).some((pack) => pack.unit === purchaseUnit && Number(pack.quantityPerPack) === purchaseFactor)}>
+                      Also sell a {purchaseUnit} of {purchaseFactor} {pluralizeProductUnit(sellingUnit, purchaseFactor)}
+                    </Button>
+                  )}
 
                   {!showPackSizeEditor && watch('packSizes') && watch('packSizes').length > 0 && (
                     <div className="flex flex-wrap gap-2 pt-1">
@@ -1283,6 +1386,12 @@ export const ProductManagementPage = () => {
                       </div>
                     </>
                   )}
+                </div>
+                <div className="rounded-xl border border-white/10 bg-slate-950/40 p-4 text-sm text-slate-200">
+                  <h3 className="font-semibold text-white">Check before saving</h3>
+                  <p className="mt-2">Smallest item sold: <strong>1 {sellingUnit}</strong> at {format(getEffectiveSellingPrice(watch()))}.</p>
+                  <p className="mt-1">{watch('contentsDescription') || `Stock is counted in ${pluralizeProductUnit(sellingUnit)}.`}</p>
+                  <p className="mt-1">{(watch('packSizes') || []).length ? `Cashiers can also choose: ${(watch('packSizes') || []).map((pack) => `${pack.name} (${pack.quantityPerPack} ${pluralizeProductUnit(sellingUnit, pack.quantityPerPack)})`).join(', ')}.` : `Cashiers sell by ${sellingUnit}. No extra selling packs enabled.`}</p>
                 </div>
               </>
             ) : null}

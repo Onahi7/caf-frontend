@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { SlidersHorizontal } from 'lucide-react';
+import { Minus, Plus, SlidersHorizontal } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
 import { AdminPageHeader } from '../../components/admin';
@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import { Loading } from '../../components/ui/Loading';
 import { Error } from '../../components/ui/Error';
 import { BranchSelector } from '../../components/BranchSelector';
@@ -46,6 +47,7 @@ interface StockMovement {
 }
 
 interface AdjustmentFormData {
+  direction: 'add' | 'remove';
   productId: string;
   batchId: string;
   quantityChange: number;
@@ -81,11 +83,14 @@ export default function StockAdjustmentPage() {
   const [adjPage, setAdjPage] = useState(1);
   const [adjLimit, setAdjLimit] = useState(20);
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<AdjustmentFormData>();
+  const { register, handleSubmit, reset, control, getValues, setValue, trigger, formState: { errors } } = useForm<AdjustmentFormData>({
+    defaultValues: { direction: 'add' },
+    mode: 'onChange',
+  });
   const branchId = getBranchId(selectedBranch);
 
-  const { data: batches = [], isLoading: batchesLoading } = useQuery({
-    queryKey: ['batches', branchId, selectedProduct?._id],
+  const { data: batches = [], isLoading: batchesLoading, error: batchesError, refetch: refetchBatches } = useQuery({
+    queryKey: [...queryKeys.batches.all(), 'adjustment', branchId, selectedProduct?._id],
     queryFn: async () => {
       const response = await apiClient.get(
         `/batches/branch/${branchId}/product/${selectedProduct?._id}`,
@@ -94,6 +99,14 @@ export default function StockAdjustmentPage() {
     },
     enabled: Boolean(branchId && selectedProduct?._id && isModalOpen),
   });
+
+  const [direction, quantityInput, selectedBatchId] = useWatch({ control, name: ['direction', 'quantityChange', 'batchId'] });
+  const quantity = Number(quantityInput);
+  const selectedBatch = batches.find((batch) => batch._id === selectedBatchId);
+  const signedQuantity = direction === 'remove' ? -quantity : quantity;
+  const hasQuantity = Number.isFinite(quantity) && quantity > 0;
+  const availableToRemove = Math.min(selectedProduct?.quantityAvailable ?? 0, selectedBatch?.quantityAvailable ?? 0);
+  const exceedsStock = direction === 'remove' && hasQuantity && quantity > availableToRemove;
 
   // Products with pagination
   const { data: productsData, isLoading, error, refetch: refetchProducts } = useQuery({
@@ -147,10 +160,11 @@ export default function StockAdjustmentPage() {
   const handleAdjLimitChange = (limit: number) => { setAdjLimit(limit); setAdjPage(1); };
 
   const adjustmentMutation = useMutation({
-    mutationFn: async (data: AdjustmentFormData) =>
+    mutationFn: async (data: Omit<AdjustmentFormData, 'direction'>) =>
       apiClient.post('/inventory/adjust', { ...data, branchId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.products.all(), exact: false });
+      queryClient.invalidateQueries({ queryKey: queryKeys.batches.all(), exact: false });
       queryClient.invalidateQueries({ queryKey: queryKeys.adjustments.all(), exact: false });
       showSuccess('Stock adjusted successfully');
       setIsModalOpen(false);
@@ -167,7 +181,7 @@ export default function StockAdjustmentPage() {
     adjustmentMutation.mutate({
       productId: selectedProduct._id,
       batchId: data.batchId,
-      quantityChange: Number(data.quantityChange),
+      quantityChange: data.direction === 'remove' ? -Number(data.quantityChange) : Number(data.quantityChange),
       reason: data.reason.trim(),
     });
   };
@@ -352,13 +366,12 @@ export default function StockAdjustmentPage() {
                 )}
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-300">
-                  Target Batch <span className="text-rose-400">*</span>
-                </label>
-                <select
-                  {...register('batchId', { required: 'Batch is required' })}
+                <Select
+                  label="Target Batch"
+                  required
+                  {...register('batchId', { required: 'Batch is required', onChange: () => { void trigger('quantityChange'); } })}
                   disabled={batchesLoading}
-                  className="w-full rounded-xl border border-white/10 bg-slate-900/90 px-3.5 py-2.5 text-xs text-white focus:border-emerald-500/50 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
+                  error={errors.batchId?.message}
                 >
                   <option value="">{batchesLoading ? 'Loading batches…' : 'Select a batch'}</option>
                   {batches.map((batch) => (
@@ -366,39 +379,75 @@ export default function StockAdjustmentPage() {
                       {batch.lotNumber} · {batch.quantityAvailable} units · expires {formatDateCell(batch.expiryDate)}
                     </option>
                   ))}
-                </select>
-                {errors.batchId && <p className="mt-1 text-xs text-rose-400 font-medium">{errors.batchId.message}</p>}
-                {!batchesLoading && batches.length === 0 && (
+                </Select>
+                {batchesError && <Error message="Could not load batches. Try again before adjusting stock." onRetry={() => { void refetchBatches(); }} />}
+                {!batchesLoading && !batchesError && batches.length === 0 && (
                   <p className="mt-1 text-xs text-amber-400 font-medium">Create a batch before adjusting this product.</p>
                 )}
               </div>
+              <fieldset>
+                <legend className="mb-2 text-sm font-medium text-slate-200">Adjustment type</legend>
+                <div className="grid grid-cols-2 gap-3">
+                  {(['add', 'remove'] as const).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      aria-pressed={direction === option}
+                      onClick={() => { setValue('direction', option); void trigger('quantityChange'); }}
+                      className={`flex min-h-12 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500 ${direction === option ? (option === 'add' ? 'border-emerald-400 bg-emerald-500/15 text-emerald-300' : 'border-rose-400 bg-rose-500/15 text-rose-300') : 'border-slate-700 bg-slate-900 text-slate-300'}`}
+                    >
+                      {option === 'add' ? <Plus className="h-5 w-5" aria-hidden="true" /> : <Minus className="h-5 w-5" aria-hidden="true" />}
+                      {option === 'add' ? 'Add stock' : 'Remove stock'}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
               <Input
-                label="Quantity Change"
+                label={direction === 'remove' ? 'Quantity to remove' : 'Quantity to add'}
                 type="number"
-                placeholder="+ to add, - to remove"
+                inputMode="decimal"
+                step="any"
+                min="0"
+                required
+                placeholder="Enter quantity"
                 {...register('quantityChange', {
                   valueAsNumber: true,
-                  required: 'Required',
-                  validate: (v) => Number(v) !== 0 || 'Cannot be zero'
+                  required: 'Enter a quantity',
+                  validate: (v) => {
+                    if (!Number.isFinite(v) || v <= 0) return 'Enter a quantity greater than zero';
+                    if (getValues('direction') === 'remove' && v > availableToRemove) return `Only ${availableToRemove} ${selectedProduct.unit || 'units'} can be removed from this batch`;
+                    return true;
+                  },
                 })}
                 error={errors.quantityChange?.message}
+                helperText="Enter a positive amount; use the buttons above to add or remove stock."
               />
+              {selectedBatch && hasQuantity && (
+                <div role="status" aria-live="polite" className={`rounded-xl border p-3 text-sm ${exceedsStock ? 'border-rose-500/30 bg-rose-500/10 text-rose-300' : 'border-emerald-500/20 bg-emerald-500/5 text-slate-200'}`}>
+                  {exceedsStock ? 'Not enough stock in the selected batch.' : (
+                    <>
+                      <p>Product stock: {selectedProduct.quantityAvailable} → <strong>{Number((selectedProduct.quantityAvailable + signedQuantity).toFixed(6))}</strong> {selectedProduct.unit || 'units'}</p>
+                      <p className="mt-1">Batch {selectedBatch.lotNumber}: {selectedBatch.quantityAvailable} → <strong>{Number((selectedBatch.quantityAvailable + signedQuantity).toFixed(6))}</strong></p>
+                    </>
+                  )}
+                </div>
+              )}
               <Textarea
                 label="Reason for Adjustment"
                 required
                 rows={3}
                 placeholder="Explain reason for discrepancy (e.g. damaged during unpacking, expired batch writeoff, audit count correction)"
                 error={errors.reason?.message}
-                {...register('reason', { required: 'Reason is required' })}
+                {...register('reason', { required: 'Reason is required', validate: (v) => !!v.trim() || 'Enter a reason for this adjustment' })}
               />
               <div className="flex justify-end space-x-3 pt-4 border-t border-white/[0.08]">
                 <Button type="button" variant="secondary" onClick={handleCloseModal}>Cancel</Button>
                 <Button 
                   type="submit" 
-                  disabled={batches.length === 0}
+                  disabled={batchesLoading || !!batchesError || batches.length === 0 || exceedsStock}
                   isLoading={adjustmentMutation.isPending}
                 >
-                  Adjust Stock
+                  {direction === 'remove' ? 'Remove Stock' : 'Add Stock'}
                 </Button>
               </div>
               {adjustmentMutation.isError && <Error message="Failed to adjust stock. Please try again." />}
