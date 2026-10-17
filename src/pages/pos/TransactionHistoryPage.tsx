@@ -53,7 +53,6 @@ export const TransactionHistoryPage = () => {
     isSuperAdmin ? 'all' : getBranchId(selectedBranch) || '',
   );
   const { format } = useCurrency();
-  const { showInfo } = useToast();
   const selectedBranchId = getBranchId(selectedBranch);
   const effectiveBranchId = isSuperAdmin
     ? (branchFilter !== 'all' ? branchFilter : undefined)

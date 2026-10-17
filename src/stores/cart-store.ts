@@ -27,12 +27,23 @@ export interface CartItem {
   quantityInBaseUnits: number; // Actual quantity deducted from stock
 }
 
+export interface CartCustomer {
+  id: string;
+  name: string;
+  phone?: string;
+  email?: string;
+  loyaltyPoints?: number;
+  creditBalance?: number;
+  creditLimit?: number;
+}
+
 interface CartState {
   items: CartItem[];
   discount: number;
   manualDiscount: number;
   promotionId?: string;
   prescriptionUrl?: string;
+  customer: CartCustomer | null;
 
   // Computed values
   subtotal: number;
@@ -46,8 +57,17 @@ interface CartState {
   setDiscount: (discount: number) => void;
   setPromotion: (promotionId: string | undefined, discount: number, manualDiscount?: number) => void;
   setPrescription: (url: string) => void;
+  setCustomer: (customer: CartCustomer | null) => void;
+  clearCustomer: () => void;
   clearCart: () => void;
-  restoreCart: (snapshot: { items: CartItem[]; discount: number; manualDiscount?: number; promotionId?: string; prescriptionUrl?: string }) => void;
+  restoreCart: (snapshot: {
+    items: CartItem[];
+    discount: number;
+    manualDiscount?: number;
+    promotionId?: string;
+    prescriptionUrl?: string;
+    customer?: CartCustomer | null;
+  }) => void;
   calculateTotals: () => void;
 }
 
@@ -78,142 +98,153 @@ export const useCartStore = create<CartState>()(
       manualDiscount: 0,
       promotionId: undefined,
       prescriptionUrl: undefined,
+      customer: null,
       subtotal: 0,
       total: 0,
 
-  addItem: (item) => {
-    const items = get().items;
-    const key = itemKey(item.productId, item.packSize);
-    const existingItem = items.find(
-      (i) => itemKey(i.productId, i.packSize) === key
-    );
+      addItem: (item) => {
+        const items = get().items;
+        const key = itemKey(item.productId, item.packSize);
+        const existingItem = items.find(
+          (i) => itemKey(i.productId, i.packSize) === key
+        );
 
-    if (existingItem) {
-      // Update quantity if same product + same pack size already in cart
-      set({
-        items: items.map((i) =>
-          itemKey(i.productId, i.packSize) === key
-            ? {
-                ...i,
-                quantity: i.quantity + item.quantity,
-                subtotal: (i.quantity + item.quantity) * i.unitPrice,
-                quantityInBaseUnits: i.quantityInBaseUnits + item.quantityInBaseUnits,
-              }
-            : i
-        ),
-      });
-    } else {
-      // Add new item (different product or different pack size)
-      set({
-        items: [
-          ...items,
-          {
-            ...item,
-            subtotal: item.quantity * item.unitPrice,
-          },
-        ],
-      });
-    }
-    get().calculateTotals();
-  },
+        if (existingItem) {
+          // Update quantity if same product + same pack size already in cart
+          set({
+            items: items.map((i) =>
+              itemKey(i.productId, i.packSize) === key
+                ? {
+                    ...i,
+                    quantity: i.quantity + item.quantity,
+                    subtotal: (i.quantity + item.quantity) * i.unitPrice,
+                    quantityInBaseUnits: i.quantityInBaseUnits + item.quantityInBaseUnits,
+                  }
+                : i
+            ),
+          });
+        } else {
+          // Add new item (different product or different pack size)
+          set({
+            items: [
+              ...items,
+              {
+                ...item,
+                subtotal: item.quantity * item.unitPrice,
+              },
+            ],
+          });
+        }
+        get().calculateTotals();
+      },
 
-  removeItem: (productId, packSizeUnit) => {
-    const key = itemKey(productId, packSizeUnit);
-    set({
-      items: get().items.filter(
-        (item) => itemKey(item.productId, item.packSize) !== key
-      ),
-    });
-    get().calculateTotals();
-  },
+      removeItem: (productId, packSizeUnit) => {
+        const key = itemKey(productId, packSizeUnit);
+        set({
+          items: get().items.filter(
+            (item) => itemKey(item.productId, item.packSize) !== key
+          ),
+        });
+        get().calculateTotals();
+      },
 
-  updateQuantity: (productId, quantity, packSizeUnit) => {
-    if (quantity <= 0) {
-      get().removeItem(productId, packSizeUnit);
-      return;
-    }
+      updateQuantity: (productId, quantity, packSizeUnit) => {
+        if (quantity <= 0) {
+          get().removeItem(productId, packSizeUnit);
+          return;
+        }
 
-    const key = itemKey(productId, packSizeUnit);
-    set({
-      items: get().items.map((item) => {
-        if (itemKey(item.productId, item.packSize) !== key) return item;
+        const key = itemKey(productId, packSizeUnit);
+        set({
+          items: get().items.map((item) => {
+            if (itemKey(item.productId, item.packSize) !== key) return item;
 
-        const quantityInBaseUnits = item.packSize
-          ? quantity * item.packSize.quantityPerPack
-          : quantity;
+            const quantityInBaseUnits = item.packSize
+              ? quantity * item.packSize.quantityPerPack
+              : quantity;
 
-        return {
-          ...item,
-          quantity,
-          subtotal: quantity * item.unitPrice,
-          quantityInBaseUnits,
-        };
-      }),
-    });
-    get().calculateTotals();
-  },
-
-  updateItemPrice: (productId, unitPrice, packSizeUnit) => {
-    const key = itemKey(productId, packSizeUnit);
-    set({
-      items: get().items.map((item) =>
-        itemKey(item.productId, item.packSize) === key
-          ? {
+            return {
               ...item,
-              unitPrice,
-              subtotal: item.quantity * unitPrice,
-            }
-          : item
-      ),
-    });
-    get().calculateTotals();
-  },
+              quantity,
+              subtotal: quantity * item.unitPrice,
+              quantityInBaseUnits,
+            };
+          }),
+        });
+        get().calculateTotals();
+      },
 
-  setDiscount: (discount) => {
-    set({ discount: Math.max(0, discount), manualDiscount: Math.max(0, discount), promotionId: undefined });
-    get().calculateTotals();
-  },
+      updateItemPrice: (productId, unitPrice, packSizeUnit) => {
+        const key = itemKey(productId, packSizeUnit);
+        set({
+          items: get().items.map((item) =>
+            itemKey(item.productId, item.packSize) === key
+              ? {
+                  ...item,
+                  unitPrice,
+                  subtotal: item.quantity * unitPrice,
+                }
+              : item
+          ),
+        });
+        get().calculateTotals();
+      },
 
-  setPromotion: (promotionId, discount, manualDiscount = 0) => {
-    set({ promotionId, discount: Math.max(0, discount), manualDiscount: Math.max(0, manualDiscount) });
-    get().calculateTotals();
-  },
+      setDiscount: (discount) => {
+        set({ discount: Math.max(0, discount), manualDiscount: Math.max(0, discount), promotionId: undefined });
+        get().calculateTotals();
+      },
 
-  setPrescription: (url) => {
-    set({ prescriptionUrl: url });
-  },
+      setPromotion: (promotionId, discount, manualDiscount = 0) => {
+        set({ promotionId, discount: Math.max(0, discount), manualDiscount: Math.max(0, manualDiscount) });
+        get().calculateTotals();
+      },
 
-  clearCart: () => {
-    set({
-      items: [],
-      discount: 0,
-      manualDiscount: 0,
-      promotionId: undefined,
-      prescriptionUrl: undefined,
-      subtotal: 0,
-      total: 0,
-    });
-  },
+      setPrescription: (url) => {
+        set({ prescriptionUrl: url });
+      },
 
-  restoreCart: (snapshot) => {
-    set({
-      items: snapshot.items.map((i) => ({ ...i })),
-      discount: snapshot.discount ?? 0,
-      manualDiscount: snapshot.manualDiscount ?? 0,
-      promotionId: snapshot.promotionId,
-      prescriptionUrl: snapshot.prescriptionUrl,
-    });
-    get().calculateTotals();
-  },
+      setCustomer: (customer) => {
+        set({ customer });
+      },
 
-  calculateTotals: () => {
-    const items = get().items;
-    const discount = Math.max(0, get().discount);
-    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    const total = Math.max(0, subtotal - Math.min(discount, subtotal));
+      clearCustomer: () => {
+        set({ customer: null });
+      },
 
-    set({ subtotal, total, discount: Math.min(discount, subtotal) });
-  },
+      clearCart: () => {
+        set({
+          items: [],
+          discount: 0,
+          manualDiscount: 0,
+          promotionId: undefined,
+          prescriptionUrl: undefined,
+          customer: null,
+          subtotal: 0,
+          total: 0,
+        });
+      },
+
+      restoreCart: (snapshot) => {
+        set({
+          items: snapshot.items.map((i) => ({ ...i })),
+          discount: snapshot.discount ?? 0,
+          manualDiscount: snapshot.manualDiscount ?? 0,
+          promotionId: snapshot.promotionId,
+          prescriptionUrl: snapshot.prescriptionUrl,
+          customer: snapshot.customer ?? null,
+        });
+        get().calculateTotals();
+      },
+
+      calculateTotals: () => {
+        const items = get().items;
+        const discount = Math.max(0, get().discount);
+        const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+        const total = Math.max(0, subtotal - Math.min(discount, subtotal));
+
+        set({ subtotal, total, discount: Math.min(discount, subtotal) });
+      },
     }),
     {
       name: 'pos-cart-storage',
@@ -223,6 +254,7 @@ export const useCartStore = create<CartState>()(
         manualDiscount: state.manualDiscount,
         promotionId: state.promotionId,
         prescriptionUrl: state.prescriptionUrl,
+        customer: state.customer,
         subtotal: state.subtotal,
         total: state.total,
       }),

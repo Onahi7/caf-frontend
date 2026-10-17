@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { CartItem } from './cart-store';
+import type { CartItem, CartCustomer } from './cart-store';
 
 export interface HeldSale {
   id: string;                    // UUID
@@ -13,6 +13,7 @@ export interface HeldSale {
   customerId?: string;
   customerName?: string;
   customerPhone?: string;
+  customer?: CartCustomer | null;
   notes?: string;
   heldAt: string;                // ISO timestamp
   heldBy: string;                // userId

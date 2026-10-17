@@ -13,7 +13,7 @@ import { useAuthStore } from '../../stores/auth-store';
 import { queryKeys } from '../../lib/query-keys';
 import { CustomerTypeahead, type CustomerOption } from '../../components/ui/CustomerTypeahead';
 import { useHeldSalesStore } from '../../stores/held-sales-store';
-import { AlertTriangle, Clock, ArrowLeft, Receipt, CreditCard, CheckCircle2, X } from 'lucide-react';
+import { AlertTriangle, Clock, ArrowLeft, Receipt, CreditCard, CheckCircle2, X, Plus, Trash2, User, UserCheck, Split } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { OpenShiftModal } from '../../components/pos/ShiftModals';
 import { 
@@ -32,7 +32,15 @@ type PaymentMethod =
   | 'qmoney'
   | 'bank_transfer'
   | 'insurance'
-  | 'credit';
+  | 'credit'
+  | 'split';
+
+export interface SplitPaymentLine {
+  id: string;
+  method: PaymentMethod;
+  amount: number;
+  reference?: string;
+}
 type CreditCollectionMethod =
   | 'cash'
   | 'card'
@@ -85,15 +93,22 @@ export const PaymentPage = () => {
 
   const terminalId = 'TERMINAL-01';
   
+  const cartCustomer = useCartStore((s) => s.customer);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [amountReceived, setAmountReceived] = useState(cartTotal.toFixed(2));
   const isAmountManuallyEditedRef = useRef(false);
-  const [creditCustomerName, setCreditCustomerName] = useState('');
-  const [creditCustomerPhone, setCreditCustomerPhone] = useState('');
+  const [creditCustomerName, setCreditCustomerName] = useState(cartCustomer?.name || '');
+  const [creditCustomerPhone, setCreditCustomerPhone] = useState(cartCustomer?.phone || '');
   const [creditDueDate, setCreditDueDate] = useState('');
-  const [creditCustomerId, setCreditCustomerId] = useState<string | undefined>(undefined);
-  const [linkedCustomer, setLinkedCustomer] = useState<CustomerOption | null>(null);
+  const [creditCustomerId, setCreditCustomerId] = useState<string | undefined>(cartCustomer?.id);
+  const [linkedCustomer, setLinkedCustomer] = useState<CustomerOption | null>(
+    cartCustomer ? { _id: cartCustomer.id, name: cartCustomer.name, phone: cartCustomer.phone || '', email: cartCustomer.email } : null
+  );
   const [creditAmountPaid, setCreditAmountPaid] = useState('0');
+  const [splitLines, setSplitLines] = useState<SplitPaymentLine[]>([
+    { id: '1', method: 'cash', amount: 0 },
+    { id: '2', method: 'orange_money', amount: 0 },
+  ]);
 
   const { data: checkoutQuote, isLoading: quoteLoading } = useQuery({
     queryKey: ['checkout-quote', branchId, promotionId, manualDiscount, items],
@@ -129,11 +144,10 @@ export const PaymentPage = () => {
   });
   const total = checkoutQuote?.total ?? cartTotal;
 
-  useEffect(() => {
-    if (checkoutQuote && paymentMethod === 'cash' && !isAmountManuallyEditedRef.current) {
-      setAmountReceived(checkoutQuote.total.toFixed(2));
-    }
-  }, [checkoutQuote, paymentMethod]);
+  // Keep displayed amount up to date if user has not manually modified tender
+  const effectiveCashReceived = isAmountManuallyEditedRef.current
+    ? amountReceived
+    : (checkoutQuote?.total ?? cartTotal).toFixed(2);
   const [creditInitialMethod, setCreditInitialMethod] =
     useState<CreditCollectionMethod>('cash');
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -176,7 +190,7 @@ export const PaymentPage = () => {
     },
   });
 
-  const { data: currentShift, refetch: refetchCurrentShift } = useQuery({
+  const { data: currentShift } = useQuery({
     queryKey: ['pos-payment-current-shift', getBranchId(selectedBranch), user?.id],
     queryFn: async () => {
       const branchId = getBranchId(selectedBranch);
@@ -209,9 +223,10 @@ export const PaymentPage = () => {
     retry: false,
   });
 
-  const changeDue = Math.max(0, parseFloat(amountReceived || '0') - total);
+  const tenderToUse = isAmountManuallyEditedRef.current ? amountReceived : effectiveCashReceived;
+  const parsedAmountReceived = parseFloat(tenderToUse || '0');
+  const changeDue = Math.max(0, parsedAmountReceived - total);
   const parsedCreditAmount = parseFloat(creditAmountPaid || '0');
-  const parsedAmountReceived = parseFloat(amountReceived || '0');
   const isShiftOpen = Boolean(currentShift && currentShift.status === 'open');
   const isCashValid = paymentMethod !== 'cash' || (!isNaN(parsedAmountReceived) && parsedAmountReceived >= total);
   const isCreditValid =
@@ -220,6 +235,14 @@ export const PaymentPage = () => {
       !isNaN(parsedCreditAmount) &&
       parsedCreditAmount >= 0 &&
       parsedCreditAmount <= total);
+
+  const totalSplitTendered = splitLines.reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
+  const splitRemaining = Math.max(0, total - totalSplitTendered);
+  const isSplitValid =
+    paymentMethod !== 'split' ||
+    (splitLines.length >= 2 &&
+      Math.abs(totalSplitTendered - total) < 0.01 &&
+      splitLines.every((l) => Number(l.amount) > 0));
 
   // Remove skeleton loader after initial mount
   useEffect(() => {
@@ -270,7 +293,7 @@ export const PaymentPage = () => {
     },
   });
 
-  const handleHoldSale = () => {
+  const handleHoldSale = useCallback(() => {
     if (items.length === 0) {
       showError('Cart is empty');
       return;
@@ -280,8 +303,9 @@ export const PaymentPage = () => {
       return;
     }
     haptic('medium');
-    const customerName = paymentMethod === 'credit' ? creditCustomerName.trim() : undefined;
-    const customerPhone = paymentMethod === 'credit' ? creditCustomerPhone.trim() : undefined;
+    const customerName = (creditCustomerName.trim() || cartCustomer?.name) || undefined;
+    const customerPhone = (creditCustomerPhone.trim() || cartCustomer?.phone) || undefined;
+    const customerId = creditCustomerId || cartCustomer?.id || undefined;
     const heldCount = heldSales.length + 1;
     const defaultLabel = customerName
       ? `Sale for ${customerName}`
@@ -293,7 +317,7 @@ export const PaymentPage = () => {
       manualDiscount,
       promotionId,
       prescriptionUrl,
-      customerId: paymentMethod === 'credit' ? creditCustomerId : undefined,
+      customerId,
       customerName,
       customerPhone,
       heldBy: user.id,
@@ -304,7 +328,7 @@ export const PaymentPage = () => {
     clearCart();
     showSuccess(`Held "${held.label}" - ${heldSales.length + 1} sale(s) parked`);
     navigate(-1);
-  };
+  }, [items, user, branchId, haptic, creditCustomerName, cartCustomer, creditCustomerPhone, creditCustomerId, heldSales.length, holdSale, discount, manualDiscount, promotionId, prescriptionUrl, subtotal, total, clearCart, showSuccess, navigate, showError]);
 
   const handlePaymentMethodChange = (method: PaymentMethod) => {
     haptic('light');
@@ -364,6 +388,15 @@ export const PaymentPage = () => {
         }
       }
 
+      if (paymentMethod === 'split') {
+        if (splitLines.length < 2) {
+          throw new Error('Split tender requires at least 2 payment methods');
+        }
+        if (Math.abs(totalSplitTendered - total) > 0.01) {
+          throw new Error(`Total split payments (${totalSplitTendered.toFixed(2)}) must match order total (${total.toFixed(2)})`);
+        }
+      }
+
       const paymentMethodMap: Record<PaymentMethod, string> = {
         cash: 'cash',
         card: 'card',
@@ -373,6 +406,7 @@ export const PaymentPage = () => {
         bank_transfer: 'bank_transfer',
         insurance: 'insurance',
         credit: 'credit',
+        split: 'split',
       };
 
       const creditInitialMethodMap: Record<CreditCollectionMethod, string> = {
@@ -406,15 +440,20 @@ export const PaymentPage = () => {
         discount: typeof manualDiscount === 'number' && manualDiscount >= 0 ? manualDiscount : 0,
         promotionId: promotionId && promotionId.trim() && promotionId !== 'null' ? promotionId : undefined,
         paymentMethod: paymentMethodMap[paymentMethod],
+        payments: paymentMethod === 'split' ? splitLines.map((line) => ({
+          paymentMethod: paymentMethodMap[line.method],
+          amount: Number(line.amount),
+          paymentReference: line.reference?.trim() || undefined,
+        })) : undefined,
         paymentReference: ['orange_money', 'africell_money', 'qmoney'].includes(paymentMethod) && paymentReference.trim()
           ? paymentReference.trim()
           : undefined,
         saleType: paymentMethod === 'credit' ? 'credit' : 'cash',
-        amountPaid: paymentMethod === 'credit' ? parsedCreditAmount : total,
+        amountPaid: paymentMethod === 'credit' ? parsedCreditAmount : (paymentMethod === 'split' ? totalSplitTendered : total),
         dueDate: paymentMethod === 'credit' ? creditDueDate : undefined,
-        customerName: paymentMethod === 'credit' && creditCustomerName.trim() ? creditCustomerName.trim() : undefined,
-        customerPhone: paymentMethod === 'credit' ? creditCustomerPhone.trim() || undefined : undefined,
-        customerId: paymentMethod === 'credit' ? creditCustomerId : undefined,
+        customerName: (creditCustomerName.trim() || cartCustomer?.name) || undefined,
+        customerPhone: (creditCustomerPhone.trim() || cartCustomer?.phone) || undefined,
+        customerId: creditCustomerId || cartCustomer?.id || undefined,
         initialPaymentMethod:
           paymentMethod === 'credit' && parsedCreditAmount > 0
             ? creditInitialMethodMap[creditInitialMethod]
@@ -509,9 +548,10 @@ export const PaymentPage = () => {
 
       if (e.key === 'Enter' && !showConfirmModal && !checkoutMutation.isPending) {
         const canPay = 
-          (paymentMethod === 'cash' && parseFloat(amountReceived) >= total) ||
-          (paymentMethod === 'credit' && creditDueDate) ||
-          (paymentMethod !== 'cash' && paymentMethod !== 'credit');
+          (paymentMethod === 'cash' && parsedAmountReceived >= total) ||
+          (paymentMethod === 'credit' && isCreditValid) ||
+          (paymentMethod === 'split' && isSplitValid) ||
+          (paymentMethod !== 'cash' && paymentMethod !== 'credit' && paymentMethod !== 'split');
         
         if (canPay && currentShift?.status === 'open') {
           setShowConfirmModal(true);
@@ -525,13 +565,16 @@ export const PaymentPage = () => {
 
     document.addEventListener('keydown', handleKeyPress);
     return () => document.removeEventListener('keydown', handleKeyPress);
-  }, [paymentMethod, amountReceived, total, creditDueDate, items.length, currentShift, showConfirmModal, checkoutMutation.isPending]);
+  }, [paymentMethod, parsedAmountReceived, total, isCreditValid, isSplitValid, items.length, currentShift, showConfirmModal, checkoutMutation.isPending, handleHoldSale]);
 
   const allPaymentMethods: PaymentMethodDef[] = [
     { id: 'cash', label: 'Cash', shortLabel: 'Cash', icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
       </svg>
+    )},
+    { id: 'split', label: 'Split Tender', shortLabel: 'Split', icon: (
+      <Split className="w-6 h-6" />
     )},
     { id: 'bank_transfer', label: 'Bank Transfer', shortLabel: 'Transfer', icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -633,6 +676,32 @@ export const PaymentPage = () => {
                   total={total}
                   format={format}
                 />
+                {/* Active Customer Card */}
+                <div className="rounded-2xl border border-white/[0.08] bg-slate-900/60 p-4 backdrop-blur-md">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/25 flex items-center justify-center text-emerald-400 shrink-0">
+                        {creditCustomerName || cartCustomer ? <UserCheck className="w-4 h-4" /> : <User className="w-4 h-4 text-slate-500" />}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] text-slate-400 font-medium">Customer for Sale</p>
+                        <p className="text-xs sm:text-sm font-bold text-white truncate">
+                          {creditCustomerName || cartCustomer?.name || 'Walk-in Customer'}
+                        </p>
+                        {(creditCustomerPhone || cartCustomer?.phone) && (
+                          <p className="text-[10px] text-slate-400 font-mono truncate">{creditCustomerPhone || cartCustomer?.phone}</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/pos/customers')}
+                      className="px-2.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-xs font-semibold text-emerald-400 transition-colors shrink-0"
+                    >
+                      {creditCustomerName || cartCustomer ? 'Change' : '+ Attach'}
+                    </button>
+                  </div>
+                </div>
 
                 {(checkoutQuote?.taxAmount ?? 0) > 0 && (
                   <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm">
@@ -796,6 +865,153 @@ export const PaymentPage = () => {
                         <span className="text-xs sm:text-sm font-bold text-rose-400 font-mono">{format(total - parseFloat(amountReceived || '0'))} short</span>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Split Tender Input */}
+                {paymentMethod === 'split' && (
+                  <div className="rounded-2xl border border-white/[0.08] bg-slate-900/60 p-4 sm:p-5 backdrop-blur-md space-y-4 animate-in slide-in-from-right duration-300">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Split Tender Allocation</p>
+                        <p className="text-[11px] text-slate-400">Allocate total across multiple payment methods</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSplitLines([
+                            ...splitLines,
+                            { id: Date.now().toString(), method: 'card', amount: splitRemaining > 0 ? splitRemaining : 0 },
+                          ]);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs font-semibold transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add Line
+                      </button>
+                    </div>
+
+                    {/* Split Lines List */}
+                    <div className="space-y-3">
+                      {splitLines.map((line, idx) => (
+                        <div key={line.id} className="p-3.5 rounded-xl bg-slate-950/70 border border-white/[0.08] space-y-2.5">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-bold text-slate-300">Payment Line #{idx + 1}</span>
+                            {splitLines.length > 2 && (
+                              <button
+                                type="button"
+                                onClick={() => setSplitLines(splitLines.filter((l) => l.id !== line.id))}
+                                className="text-slate-500 hover:text-rose-400 p-1 rounded transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                            {/* Method Selector */}
+                            <div className="sm:col-span-5">
+                              <label className="block text-[10px] text-slate-400 font-medium mb-1">Method</label>
+                              <select
+                                value={line.method}
+                                onChange={(e) => {
+                                  const method = e.target.value as PaymentMethod;
+                                  setSplitLines(splitLines.map((l) => l.id === line.id ? { ...l, method } : l));
+                                }}
+                                className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs font-semibold focus:outline-none focus:border-emerald-500"
+                              >
+                                <option value="cash">Cash</option>
+                                <option value="card">Debit Card</option>
+                                <option value="orange_money">Orange Money</option>
+                                <option value="africell_money">Africell Money</option>
+                                <option value="qmoney">QMoney</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                              </select>
+                            </div>
+
+                            {/* Amount Input */}
+                            <div className="sm:col-span-4">
+                              <label className="block text-[10px] text-slate-400 font-medium mb-1">Amount ({symbol})</label>
+                              <div className="relative">
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  value={line.amount || ''}
+                                  placeholder="0.00"
+                                  onChange={(e) => {
+                                    const amount = parseFloat(e.target.value) || 0;
+                                    setSplitLines(splitLines.map((l) => l.id === line.id ? { ...l, amount } : l));
+                                  }}
+                                  className="w-full px-3 py-2 bg-slate-900 border border-white/10 rounded-xl text-white text-xs font-bold font-mono focus:outline-none focus:border-emerald-500"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Fill Remaining CTA */}
+                            <div className="sm:col-span-3 flex items-end">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const currentOtherSum = splitLines.filter((l) => l.id !== line.id).reduce((s, l) => s + (Number(l.amount) || 0), 0);
+                                  const fillAmt = Math.max(0, total - currentOtherSum);
+                                  setSplitLines(splitLines.map((l) => l.id === line.id ? { ...l, amount: fillAmt } : l));
+                                }}
+                                className="w-full py-2 px-2 rounded-xl bg-white/[0.05] hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-emerald-400 transition-colors"
+                              >
+                                Fill Remaining
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Reference for non-cash */}
+                          {line.method !== 'cash' && (
+                            <div>
+                              <input
+                                type="text"
+                                value={line.reference || ''}
+                                placeholder="Reference / Txn ID (optional)"
+                                onChange={(e) => {
+                                  const reference = e.target.value;
+                                  setSplitLines(splitLines.map((l) => l.id === line.id ? { ...l, reference } : l));
+                                }}
+                                className="w-full px-3 py-1.5 bg-slate-900/60 border border-white/10 rounded-lg text-white text-[11px] placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Split Summary Bar */}
+                    <div className="p-3.5 rounded-xl border border-white/[0.08] bg-slate-950/80 space-y-2">
+                      <div className="flex justify-between text-xs text-slate-400">
+                        <span>Total Due</span>
+                        <span className="font-mono text-white font-bold">{format(total)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs text-slate-400">
+                        <span>Total Allocated</span>
+                        <span className="font-mono text-emerald-400 font-bold">{format(totalSplitTendered)}</span>
+                      </div>
+                      <div className="pt-2 border-t border-white/[0.08] flex justify-between items-center text-xs">
+                        {Math.abs(totalSplitTendered - total) < 0.01 ? (
+                          <div className="flex items-center gap-1.5 text-emerald-300 font-bold">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                            <span>Tender allocation balanced exactly</span>
+                          </div>
+                        ) : totalSplitTendered < total ? (
+                          <div className="flex items-center gap-1.5 text-rose-300 font-bold">
+                            <AlertTriangle className="w-4 h-4 text-rose-400" />
+                            <span>Remaining to allocate: {format(total - totalSplitTendered)}</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 text-amber-300 font-bold">
+                            <AlertTriangle className="w-4 h-4 text-amber-400" />
+                            <span>Change/Overallocated: {format(totalSplitTendered - total)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
 

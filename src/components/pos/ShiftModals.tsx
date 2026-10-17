@@ -3,7 +3,7 @@ import { Modal } from '../ui/Modal';
 import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
 import { useCurrency } from '../../hooks/useCurrency';
-import { AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 
 interface OpenShiftModalProps {
   isOpen: boolean;
@@ -32,13 +32,13 @@ export const OpenShiftModal = ({ isOpen, onClose, onSubmit, isLoading }: OpenShi
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Open Register Shift" size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <p className="text-xs text-slate-400 leading-relaxed">
-          Count the starting cash in your physical register drawer before accepting transactions.
+        <p className="text-xs text-slate-400">
+          Enter the starting physical cash (float) counted in the drawer before starting transactions.
         </p>
 
         <div>
           <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Opening Cash Float ({symbol})
+            Opening Float ({symbol})
           </label>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-sm select-none">
@@ -58,7 +58,7 @@ export const OpenShiftModal = ({ isOpen, onClose, onSubmit, isLoading }: OpenShi
           </div>
         </div>
 
-        <div className="flex gap-3 pt-3">
+        <div className="flex gap-3 pt-2">
           <Button
             type="button"
             variant="secondary"
@@ -70,12 +70,11 @@ export const OpenShiftModal = ({ isOpen, onClose, onSubmit, isLoading }: OpenShi
           </Button>
           <Button
             type="submit"
-            variant="primary"
             disabled={isLoading || !openingCash.trim()}
             isLoading={isLoading}
             className="flex-1"
           >
-            Open Shift
+            Open Register
           </Button>
         </div>
       </form>
@@ -109,6 +108,7 @@ export const CloseShiftModal = ({
   const { symbol, format } = useCurrency();
   const [closingCash, setClosingCash] = useState('');
   const [notes, setNotes] = useState('');
+  const [isBlindClose, setIsBlindClose] = useState(false);
 
   const handleClose = () => {
     setClosingCash('');
@@ -140,32 +140,68 @@ export const CloseShiftModal = ({
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Close Register Shift" size="sm">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Blind Close Mode Toggle Bar */}
+        <div className="flex items-center justify-between px-1 text-xs">
+          <span className="text-slate-400 font-medium">Reconciliation Mode:</span>
+          <button
+            type="button"
+            onClick={() => setIsBlindClose((prev) => !prev)}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+          >
+            {isBlindClose ? (
+              <>
+                <Eye className="w-3.5 h-3.5" />
+                <span>Reveal Expected Total</span>
+              </>
+            ) : (
+              <>
+                <EyeOff className="w-3.5 h-3.5" />
+                <span>Switch to Blind Close</span>
+              </>
+            )}
+          </button>
+        </div>
+
         {/* Shift Cash Reconciliation Summary */}
         <div className="rounded-2xl border border-white/[0.08] bg-slate-950/50 p-4 space-y-2.5">
-          <div className="flex justify-between text-xs text-slate-400">
-            <span>Opening Cash</span>
-            <span className="font-mono text-slate-200">{format(openingCash)}</span>
-          </div>
-          <div className="flex justify-between text-xs text-slate-400">
-            <span>Cash Sales Total</span>
-            <span className="font-mono text-slate-200">{format(totalSales)}</span>
-          </div>
-          {salesCount !== undefined && (
-            <div className="flex justify-between text-xs text-slate-400">
-              <span>Transactions</span>
-              <span className="font-mono text-slate-200">{salesCount}</span>
+          {isBlindClose ? (
+            <div className="py-3 text-center space-y-1">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-1">
+                <ShieldCheck className="w-4 h-4" />
+              </div>
+              <p className="text-xs font-bold text-slate-200">Blind Reconciliation Active</p>
+              <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                Count your physical drawer independently to prevent bias.
+              </p>
             </div>
+          ) : (
+            <>
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>Opening Cash</span>
+                <span className="font-mono text-slate-200">{format(openingCash)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>Cash Sales Total</span>
+                <span className="font-mono text-slate-200">{format(totalSales)}</span>
+              </div>
+              {salesCount !== undefined && (
+                <div className="flex justify-between text-xs text-slate-400">
+                  <span>Transactions</span>
+                  <span className="font-mono text-slate-200">{salesCount}</span>
+                </div>
+              )}
+              {totalExpenses > 0 && (
+                <div className="flex justify-between text-xs text-rose-400">
+                  <span>Expenses Disbursed</span>
+                  <span className="font-mono">- {format(totalExpenses)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-sm font-semibold pt-2 border-t border-white/[0.08]">
+                <span className="text-white">Expected in Drawer</span>
+                <span className="font-mono text-emerald-400 font-bold">{format(computedExpectedCash)}</span>
+              </div>
+            </>
           )}
-          {totalExpenses > 0 && (
-            <div className="flex justify-between text-xs text-rose-400">
-              <span>Expenses Disbursed</span>
-              <span className="font-mono">- {format(totalExpenses)}</span>
-            </div>
-          )}
-          <div className="flex justify-between text-sm font-semibold pt-2 border-t border-white/[0.08]">
-            <span className="text-white">Expected in Drawer</span>
-            <span className="font-mono text-emerald-400 font-bold">{format(computedExpectedCash)}</span>
-          </div>
         </div>
 
         <div>
@@ -190,8 +226,8 @@ export const CloseShiftModal = ({
           </div>
         </div>
 
-        {/* Discrepancy indicator */}
-        {hasEnteredCash && (
+        {/* Discrepancy indicator (visible if not in blind mode, or if entered cash and blind mode was toggled off) */}
+        {!isBlindClose && hasEnteredCash && (
           <div
             className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border ${
               Math.abs(discrepancy) < 0.01

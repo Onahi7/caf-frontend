@@ -47,15 +47,12 @@ export const ShiftManagementPage = () => {
   const queryClient = useQueryClient();
   const selectedBranch = useBranchStore((state) => state.selectedBranch);
   const user = useAuthStore((state) => state.user);
-  const { format, symbol } = useCurrency();
+  const { format } = useCurrency();
   const { showError, showWarning, showSuccess, showInfo } = useToast();
   
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [openingCash, setOpeningCash] = useState('');
-  const [closingCash, setClosingCash] = useState('');
-  const [closeNotes, setCloseNotes] = useState('');
   const [activeTab, setActiveTab] = useState<'current' | 'history' | 'expenses'>('current');
 
   const terminalId = 'TERMINAL-01';
@@ -158,12 +155,11 @@ export const ShiftManagementPage = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.shifts.all(), exact: false });
       setShowOpenModal(false);
-      setOpeningCash('');
       refetchCurrentShift();
       showSuccess('Shift opened successfully');
     },
     onError: (error) => {
-      const status = (error as any)?.response?.status;
+      const status = (error as { response?: { status?: number } })?.response?.status;
       if (status === 409) {
         queryClient.invalidateQueries({ queryKey: queryKeys.shifts.all(), exact: false });
         refetchCurrentShift();
@@ -194,11 +190,9 @@ export const ShiftManagementPage = () => {
       });
       return (response.data?.data ?? response.data) as Shift;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.shifts.all(), exact: false });
       setShowCloseModal(false);
-      setClosingCash('');
-      setCloseNotes('');
       refetchCurrentShift();
       showSuccess('Shift closed successfully');
     },
@@ -238,35 +232,7 @@ export const ShiftManagementPage = () => {
     },
   });
 
-  const handleOpenShift = () => {
-    const amount = parseFloat(openingCash);
-    if (isNaN(amount) || amount < 0) return;
-    openShiftMutation.mutate({ openingCash: amount });
-  };
 
-  const handleCloseShift = () => {
-    if (!currentShift) {
-      showWarning('No Active Shift', 'No active shift found');
-      return;
-    }
-    
-    if (!closingCash.trim()) {
-      showWarning('Missing Information', 'Please enter the closing cash amount');
-      return;
-    }
-    
-    const amount = parseFloat(closingCash);
-    if (isNaN(amount) || amount < 0) {
-      showError('Invalid Amount', 'Please enter a valid closing cash amount');
-      return;
-    }
-    
-    closeShiftMutation.mutate({
-      shiftId: currentShift._id,
-      closingCash: amount,
-      notes: closeNotes || undefined,
-    });
-  };
 
   const formatDate = (dateStr: string) => new Date(dateStr).toLocaleDateString('en-US', { 
     month: 'short', day: 'numeric', year: 'numeric' 
@@ -282,13 +248,7 @@ export const ShiftManagementPage = () => {
     return 'text-red-400';
   };
 
-  const expenseCategories = [
-    { value: 'supplies', label: 'Supplies' },
-    { value: 'maintenance', label: 'Maintenance' },
-    { value: 'utilities', label: 'Utilities' },
-    { value: 'petty_cash', label: 'Petty Cash' },
-    { value: 'other', label: 'Other' },
-  ];
+
 
   return (
     <POSLayout title="Shift Management">

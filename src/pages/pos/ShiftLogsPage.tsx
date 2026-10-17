@@ -34,7 +34,7 @@ export const ShiftLogsPage = () => {
   const selectedBranch = useBranchStore((state) => state.selectedBranch);
   const user = useAuthStore((state) => state.user);
   const { format, symbol } = useCurrency();
-  const { alertInfo, alertError } = useAlertReplacement();
+  const { alertError } = useAlertReplacement();
   const { showSuccess, showError } = useToast();
   const [closingCash, setClosingCash] = useState('');
   const queryClient = useQueryClient();

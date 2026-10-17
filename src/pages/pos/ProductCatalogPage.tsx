@@ -11,7 +11,7 @@ import { useAlertReplacement } from '../../hooks/useAlertReplacement';
 import { useDebounce } from '../../hooks/useDebounce';
 import { QRScannerModal } from '../../components/pos/QRScannerModal';
 import { queryKeys } from '../../lib/query-keys';
-import type { POSProduct, PackSize } from '../../types/product';
+import type { POSProduct } from '../../types/product';
 
 type Category = 'all' | 'otc' | 'prescription' | 'vitamins' | 'supplies';
 

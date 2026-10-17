@@ -45,6 +45,9 @@ import {
   AlertCircle,
   Clock,
   RotateCcw,
+  User,
+  UserCheck,
+  UserPlus,
 } from 'lucide-react';
 
 interface Shift {
@@ -115,6 +118,9 @@ export const POSPage = () => {
     manualDiscount,
     promotionId,
     prescriptionUrl,
+    customer,
+    setCustomer,
+    clearCustomer,
     clearCart 
   } = useCartStore();
   const heldSales = useHeldSalesStore((s) => s.heldSales);
@@ -676,7 +682,10 @@ export const POSPage = () => {
     if (items.length === 0) return;
     const branchId = getBranchId(selectedBranch) || user?.branchId || '';
     const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const label = `Sale (${items.length} item${items.length > 1 ? 's' : ''}) · ${timestamp}`;
+    const customerName = customer?.name;
+    const label = customerName
+      ? `${customerName} (${items.length} item${items.length > 1 ? 's' : ''}) · ${timestamp}`
+      : `Sale (${items.length} item${items.length > 1 ? 's' : ''}) · ${timestamp}`;
     
     holdSale({
       label,
@@ -685,6 +694,9 @@ export const POSPage = () => {
       manualDiscount,
       promotionId,
       prescriptionUrl,
+      customerId: customer?.id,
+      customerName: customer?.name,
+      customerPhone: customer?.phone,
       heldBy: user?.id || 'cashier',
       branchId,
       subtotal,
@@ -932,6 +944,11 @@ export const POSPage = () => {
                   manualDiscount: sale.manualDiscount,
                   promotionId: sale.promotionId,
                   prescriptionUrl: sale.prescriptionUrl,
+                  customer: sale.customerId && sale.customerName ? {
+                    id: sale.customerId,
+                    name: sale.customerName,
+                    phone: sale.customerPhone,
+                  } : null,
                 });
                 showSuccess(`Recalled "${sale.label}"`);
               }
@@ -1313,6 +1330,53 @@ export const POSPage = () => {
               </span>
             )}
           </div>
+          {/* Active Customer Strip */}
+          <div className="px-4 py-2.5 bg-slate-950/60 border-b border-white/[0.06]">
+            {customer ? (
+              <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-3 py-2 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                    <UserCheck className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-emerald-300 leading-tight truncate">{customer.name}</p>
+                    <p className="text-[10px] text-slate-400 font-mono truncate">{customer.phone || 'No phone set'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                  <button
+                    onClick={() => navigate('/pos/customers')}
+                    className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold px-1.5 py-0.5 rounded hover:bg-emerald-500/10 transition-colors"
+                  >
+                    Change
+                  </button>
+                  <button
+                    onClick={() => clearCustomer()}
+                    className="text-slate-400 hover:text-rose-400 p-1 rounded-lg hover:bg-rose-500/10 transition-colors"
+                    title="Remove customer (revert to Walk-in)"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <div className="w-6 h-6 rounded-lg bg-white/[0.04] flex items-center justify-center text-slate-500">
+                    <User className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="font-medium text-slate-300">Walk-in Customer</span>
+                </div>
+                <button
+                  onClick={() => navigate('/pos/customers')}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-colors"
+                >
+                  <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>+ Customer</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Cart Items */}
           <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
@@ -1471,6 +1535,50 @@ export const POSPage = () => {
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+          {/* Mobile Customer Strip */}
+          <div className="px-4 py-2.5 bg-slate-950/80 border-b border-white/[0.06]">
+            {customer ? (
+              <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/25 rounded-xl px-3 py-2 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                    <UserCheck className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-emerald-300 leading-tight truncate">{customer.name}</p>
+                    <p className="text-[10px] text-slate-400 font-mono truncate">{customer.phone || 'No phone set'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                  <button
+                    onClick={() => { setShowMobileCart(false); navigate('/pos/customers'); }}
+                    className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold px-1.5 py-0.5 rounded hover:bg-emerald-500/10 transition-colors"
+                  >
+                    Change
+                  </button>
+                  <button
+                    onClick={() => clearCustomer()}
+                    className="text-slate-400 hover:text-rose-400 p-1 rounded-lg hover:bg-rose-500/10 transition-colors"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 text-slate-400">
+                  <User className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="font-medium text-slate-300">Walk-in Customer</span>
+                </div>
+                <button
+                  onClick={() => { setShowMobileCart(false); navigate('/pos/customers'); }}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/[0.05] hover:bg-white/10 text-slate-200 hover:text-white border border-white/10 text-xs font-semibold transition-colors"
+                >
+                  <UserPlus className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>+ Customer</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Mobile Cart Items */}
