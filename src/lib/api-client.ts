@@ -3,7 +3,7 @@ import { SyncService } from '../services/sync-service';
 import { useAuthStore, getJwtExpiryMs } from '../stores/auth-store';
 import { getCachedStepUpToken, clearStepUpToken } from '../hooks/useStepUp';
 
-const DEFAULT_API_BASE_URL = 'https://carefam-00c1641bcdf9.herokuapp.com/api';
+const DEFAULT_API_BASE_URL = 'https://api.carefam.xyz/api';
 const API_BASE_URL = import.meta.env.VITE_API_URL?.trim() || DEFAULT_API_BASE_URL;
 
 // Simple UUID v4 generator (no external dependency needed)

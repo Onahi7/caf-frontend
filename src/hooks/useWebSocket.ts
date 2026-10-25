@@ -5,7 +5,7 @@ import apiClient from '../lib/api-client';
 import { useBranchStore } from '../stores/branch-store';
 import { SyncService } from '../services/sync-service';
 
-const DEFAULT_WS_URL = 'wss://carefam-00c1641bcdf9.herokuapp.com/inventory';
+const DEFAULT_WS_URL = 'https://api.carefam.xyz/inventory';
 const WS_URL = import.meta.env.VITE_WS_URL?.trim() || DEFAULT_WS_URL;
 
 interface InventoryUpdate {

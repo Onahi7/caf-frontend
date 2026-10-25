@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+!.env.example
+node_modules
+dist
+.wrangler
+.capgo
+android
+audit-shots
+*.jks
+*.keystore
+keystore-base64.txt
+encrypted*.txt
