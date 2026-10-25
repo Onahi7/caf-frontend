@@ -34,6 +34,7 @@ interface User {
   lastName: string;
   role: 'super_admin' | 'branch_manager' | 'cashier' | 'auditor' | 'marketer' | 'finance_manager';
   branchId?: string;
+  fieldZoneCode?: 'WEST' | 'CENTRAL' | 'EAST';
   branchName?: string;
   isActive: boolean;
   createdAt: string;
@@ -57,6 +58,7 @@ interface UserFormData {
   lastName: string;
   role: string;
   branchId: string;
+  fieldZoneCode?: 'WEST' | 'CENTRAL' | 'EAST' | '';
 }
 
 export const UserManagementPage = () => {
@@ -165,6 +167,7 @@ export const UserManagementPage = () => {
       const payload = {
         ...data,
         branchId: branchId || undefined,
+        fieldZoneCode: data.role === 'marketer' ? (data.fieldZoneCode || undefined) : undefined,
       };
       const response = await apiClient.post('/users', payload);
       return response.data;
@@ -185,12 +188,13 @@ export const UserManagementPage = () => {
     mutationFn: async (data: UserFormData) => {
       if (!editingUser) return;
       const branchId = canChooseBranch ? data.branchId : outletBranchId;
-      const payload: Omit<Partial<UserFormData>, 'branchId'> & { branchId?: string | null } = {
+      const payload: Omit<Partial<UserFormData>, 'branchId' | 'fieldZoneCode'> & { branchId?: string | null; fieldZoneCode?: UserFormData['fieldZoneCode'] | null } = {
         email: data.email,
         firstName: data.firstName,
         lastName: data.lastName,
         role: data.role,
         branchId: branchId || null,
+        fieldZoneCode: data.role === 'marketer' ? (data.fieldZoneCode || null) : null,
       };
       // Only include password if it's provided
       if (data.password) {
@@ -255,6 +259,7 @@ export const UserManagementPage = () => {
         lastName: user.lastName,
         role: user.role,
         branchId: canChooseBranch ? user.branchId || '' : outletBranchId,
+        fieldZoneCode: user.fieldZoneCode || '',
         password: '',
       });
     } else {
@@ -266,6 +271,7 @@ export const UserManagementPage = () => {
         lastName: '',
         role: 'cashier',
         branchId: outletBranchId,
+        fieldZoneCode: '',
         password: '',
       });
     }
@@ -551,6 +557,19 @@ export const UserManagementPage = () => {
                   options={branchOptions}
                   disabled={!canChooseBranch}
                 />
+                {selectedRole === 'marketer' && (
+                  <Select
+                    label="Freetown Zone"
+                    {...register('fieldZoneCode', { required: 'Zone is required for a marketer' })}
+                    error={errors.fieldZoneCode?.message}
+                    options={[
+                      { value: '', label: 'Select a zone' },
+                      { value: 'WEST', label: 'West Zone' },
+                      { value: 'CENTRAL', label: 'Central Zone' },
+                      { value: 'EAST', label: 'East Zone' },
+                    ]}
+                  />
+                )}
               </div>
 
               {requiresBranch && (

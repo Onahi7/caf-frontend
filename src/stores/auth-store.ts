@@ -42,6 +42,7 @@ export interface User {
   lastName: string;
   role: 'super_admin' | 'branch_manager' | 'cashier' | 'auditor' | 'marketer' | 'finance_manager';
   branchId?: string;
+  fieldZoneCode?: 'WEST' | 'CENTRAL' | 'EAST';
 }
 
 interface AuthState {
