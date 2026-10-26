@@ -48,8 +48,8 @@ export const UserProfileModal = ({ isOpen, onClose }: UserProfileModalProps) => 
       showError('New passwords do not match');
       return;
     }
-    if (newPassword.length < 8) {
-      showError('Password must be at least 8 characters');
+    if (newPassword.length < 6) {
+      showError('Password must be at least 6 characters');
       return;
     }
 
@@ -241,7 +241,7 @@ export const UserProfileModal = ({ isOpen, onClose }: UserProfileModalProps) => 
               type="password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Enter new password (min 8 characters)"
+              placeholder="Enter new password (min 6 characters)"
               autoComplete="new-password"
             />
 

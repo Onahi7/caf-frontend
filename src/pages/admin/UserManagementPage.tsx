@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { Search, UserPlus, Trash2 } from 'lucide-react';
+import { Search, UserPlus, Trash2, Sparkles, Copy, Check, Info } from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
 import { AdminPageHeader } from '../../components/admin';
@@ -61,12 +61,24 @@ interface UserFormData {
   fieldZoneCode?: 'WEST' | 'CENTRAL' | 'EAST' | '';
 }
 
+const roleDescriptions: Record<string, string> = {
+  cashier: 'Processes sales at checkout, handles cash drawers & receipts at assigned branch.',
+  marketer: 'Visits hospitals, clinics and pharmacies in assigned zone. Logs interactions and submits daily collections.',
+  branch_manager: 'Supervises branch inventory, staff access, daily operational reconciliation, and stock transfers.',
+  finance_manager: 'Reviews branch cash remittances, bank deposits, daily field collections, and expense ledgers.',
+  auditor: 'Audits pharmacy stock levels, cash variance logs, and compliance records across all outlets.',
+  super_admin: 'Complete administrative access to all system settings, user accounts, branches, and financials.',
+};
+
 export const UserManagementPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [justGeneratedPassword, setJustGeneratedPassword] = useState<string | null>(null);
+  const [hasCopiedPassword, setHasCopiedPassword] = useState(false);
+
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
   const currentUser = useAuthStore((state) => state.user);
@@ -76,10 +88,20 @@ export const UserManagementPage = () => {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<UserFormData>();
 
   const selectedRole = watch('role');
+  const watchedFirstName = watch('firstName');
+  const watchedLastName = watch('lastName');
+  const watchedUsername = watch('username');
+
+  // Suggest username from first + last name when creating a new user
+  const suggestedUsername = useMemo(() => {
+    if (!watchedFirstName || !watchedLastName) return '';
+    return `${watchedFirstName[0]}${watchedLastName}`.toLowerCase().replace(/[^a-z0-9]/g, '');
+  }, [watchedFirstName, watchedLastName]);
 
   // Check if role requires branch assignment
   const needsBranch = requiresBranchAssignment(selectedRole);
@@ -160,6 +182,32 @@ export const UserManagementPage = () => {
             { value: 'marketer', label: 'Marketer' },
           ];
 
+  // Helper to generate a memorable, friendly password
+  const handleGeneratePassword = () => {
+    const prefixes = ['Care', 'Farm', 'Kono', 'Salone', 'Pharma', 'Health'];
+    const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const randomDigits = Math.floor(100 + Math.random() * 900); // 3 digits
+    const symbols = ['!', '@', '#', '$'];
+    const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
+    const generated = `${randomPrefix}${randomDigits}${randomSymbol}`;
+
+    setValue('password', generated, { shouldValidate: true, shouldDirty: true });
+    setJustGeneratedPassword(generated);
+    setHasCopiedPassword(false);
+
+    try {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(generated);
+        setHasCopiedPassword(true);
+        showSuccess(`Generated & copied to clipboard: ${generated}`);
+      } else {
+        showSuccess(`Generated password: ${generated}`);
+      }
+    } catch {
+      showSuccess(`Generated password: ${generated}`);
+    }
+  };
+
   // Create user mutation
   const createMutation = useMutation({
     mutationFn: async (data: UserFormData) => {
@@ -176,6 +224,8 @@ export const UserManagementPage = () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.users.all(), exact: false });
       setIsModalOpen(false);
       reset();
+      setJustGeneratedPassword(null);
+      setHasCopiedPassword(false);
       showSuccess('User created successfully');
     },
     onError: (error) => {
@@ -208,6 +258,8 @@ export const UserManagementPage = () => {
       setIsModalOpen(false);
       setEditingUser(null);
       reset();
+      setJustGeneratedPassword(null);
+      setHasCopiedPassword(false);
       showSuccess('User updated successfully');
     },
     onError: (error) => {
@@ -250,6 +302,8 @@ export const UserManagementPage = () => {
   });
 
   const handleOpenModal = (user?: User) => {
+    setJustGeneratedPassword(null);
+    setHasCopiedPassword(false);
     if (user) {
       setEditingUser(user);
       reset({
@@ -281,6 +335,8 @@ export const UserManagementPage = () => {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setEditingUser(null);
+    setJustGeneratedPassword(null);
+    setHasCopiedPassword(false);
     reset();
   };
 
@@ -355,11 +411,18 @@ export const UserManagementPage = () => {
     },
     {
       key: 'branch',
-      header: 'Branch',
+      header: 'Branch & Assignment',
       render: (user: User) => (
-        <span className="text-xs sm:text-sm text-slate-300">
-          {user.branchName || '—'}
-        </span>
+        <div className="text-xs sm:text-sm">
+          <div className="font-medium text-slate-200">{user.branchName || 'No branch (HQ)'}</div>
+          {user.role === 'marketer' && user.fieldZoneCode && (
+            <div className="mt-0.5">
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                {user.fieldZoneCode} Zone
+              </span>
+            </div>
+          )}
+        </div>
       ),
     },
     {
@@ -493,24 +556,64 @@ export const UserManagementPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Username"
+                labelRight={
+                  !editingUser && !watchedUsername && suggestedUsername.length >= 3 ? (
+                    <button
+                      type="button"
+                      onClick={() => setValue('username', suggestedUsername, { shouldValidate: true, shouldDirty: true })}
+                      className="text-xs text-emerald-400 hover:text-emerald-300 font-medium cursor-pointer"
+                    >
+                      Use @{suggestedUsername}
+                    </button>
+                  ) : undefined
+                }
                 {...register('username', { required: 'Username is required' })}
                 error={errors.username?.message}
-                placeholder="Enter username"
+                placeholder="e.g. fkamara"
                 disabled={!!editingUser}
               />
               <div>
                 <Input
-                  label={editingUser ? 'New Password (leave blank to keep current)' : 'Password'}
+                  label={editingUser ? 'New Password' : 'Password'}
+                  labelRight={
+                    <div className="flex items-center gap-2">
+                      {justGeneratedPassword && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (justGeneratedPassword && navigator.clipboard) {
+                              navigator.clipboard.writeText(justGeneratedPassword);
+                              setHasCopiedPassword(true);
+                              showSuccess('Password copied to clipboard!');
+                            }
+                          }}
+                          className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors cursor-pointer"
+                        >
+                          {hasCopiedPassword ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{hasCopiedPassword ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleGeneratePassword}
+                        className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-medium transition-colors cursor-pointer"
+                        title="Generate random password"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>{editingUser ? 'Generate New' : 'Generate'}</span>
+                      </button>
+                    </div>
+                  }
                   type="password"
                   {...register('password', editingUser ? optionalPasswordValidation : passwordValidation)}
                   error={errors.password?.message}
-                  placeholder="--------"
+                  placeholder={editingUser ? "Leave blank to keep existing password" : "Enter password (min 6 characters)"}
+                  helperText={
+                    editingUser
+                      ? "Leave blank to keep current password. Enter at least 6 characters to reset."
+                      : "Minimum 6 characters. Letters, numbers, and symbols are all accepted."
+                  }
                 />
-                {!editingUser && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    Min 8 chars with uppercase, lowercase, number & special char (@$!%*?&)
-                  </p>
-                )}
               </div>
             </div>
 
@@ -564,13 +667,23 @@ export const UserManagementPage = () => {
                     error={errors.fieldZoneCode?.message}
                     options={[
                       { value: '', label: 'Select a zone' },
-                      { value: 'WEST', label: 'West Zone' },
-                      { value: 'CENTRAL', label: 'Central Zone' },
-                      { value: 'EAST', label: 'East Zone' },
+                      { value: 'WEST', label: 'West Zone (Wilberforce, Lumley, Goderich)' },
+                      { value: 'CENTRAL', label: 'Central Zone (CBD, Brookfields, Congo Cross)' },
+                      { value: 'EAST', label: 'East Zone (Kissy, Wellington, Calaba Town)' },
                     ]}
                   />
                 )}
               </div>
+
+              {selectedRole && roleDescriptions[selectedRole] && (
+                <div className="mt-3 p-3 rounded-xl bg-slate-900/60 border border-white/5 text-xs text-slate-300 flex items-start gap-2.5">
+                  <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold text-white">{roleLabels[selectedRole] || selectedRole}: </span>
+                    {roleDescriptions[selectedRole]}
+                  </div>
+                </div>
+              )}
 
               {requiresBranch && (
                 <p className="text-xs text-slate-400 mt-2">

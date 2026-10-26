@@ -3,23 +3,15 @@
  * Centralizes validation logic to ensure consistency across the application
  */
 
-// Password validation
+// Password validation (relaxed and user-friendly: min 6 chars, any characters accepted)
 export const passwordValidation = {
   required: 'Password is required',
-  minLength: { value: 8, message: 'Password must be at least 8 characters' },
-  pattern: {
-    value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-    message: 'Password must contain uppercase, lowercase, number, and special character (@$!%*?&)',
-  },
+  minLength: { value: 6, message: 'Password must be at least 6 characters' },
 };
 
 // Optional password validation (for edit forms)
 export const optionalPasswordValidation = {
-  minLength: { value: 8, message: 'Password must be at least 8 characters' },
-  pattern: {
-    value: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
-    message: 'Password must contain uppercase, lowercase, number, and special character (@$!%*?&)',
-  },
+  minLength: { value: 6, message: 'Password must be at least 6 characters' },
 };
 
 // Email validation
