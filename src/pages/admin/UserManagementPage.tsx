@@ -1,7 +1,19 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { Search, UserPlus, Trash2, Sparkles, Copy, Check, Info } from 'lucide-react';
+import {
+  Search,
+  UserPlus,
+  Trash2,
+  Sparkles,
+  Copy,
+  Check,
+  Info,
+  KeyRound,
+  CheckCircle2,
+  ExternalLink,
+  MessageCircle,
+} from 'lucide-react';
 import apiClient from '../../lib/api-client';
 import { AdminLayout } from '../../components/AdminLayout';
 import { AdminPageHeader } from '../../components/admin';
@@ -61,6 +73,17 @@ interface UserFormData {
   fieldZoneCode?: 'WEST' | 'CENTRAL' | 'EAST' | '';
 }
 
+interface OnboardingCardData {
+  name: string;
+  username: string;
+  password: string;
+  role: string;
+  branchName?: string;
+  zoneCode?: string;
+  portalUrl: string;
+  isReset?: boolean;
+}
+
 const roleDescriptions: Record<string, string> = {
   cashier: 'Processes sales at checkout, handles cash drawers & receipts at assigned branch.',
   marketer: 'Visits hospitals, clinics and pharmacies in assigned zone. Logs interactions and submits daily collections.',
@@ -74,8 +97,14 @@ export const UserManagementPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [userToReset, setUserToReset] = useState<User | null>(null);
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [onboardingCard, setOnboardingCard] = useState<OnboardingCardData | null>(null);
+  const [cardCopied, setCardCopied] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [justGeneratedPassword, setJustGeneratedPassword] = useState<string | null>(null);
   const [hasCopiedPassword, setHasCopiedPassword] = useState(false);
 
@@ -183,14 +212,17 @@ export const UserManagementPage = () => {
           ];
 
   // Helper to generate a memorable, friendly password
-  const handleGeneratePassword = () => {
+  const generatePasswordString = () => {
     const prefixes = ['Care', 'Farm', 'Kono', 'Salone', 'Pharma', 'Health'];
     const randomPrefix = prefixes[Math.floor(Math.random() * prefixes.length)];
     const randomDigits = Math.floor(100 + Math.random() * 900); // 3 digits
     const symbols = ['!', '@', '#', '$'];
     const randomSymbol = symbols[Math.floor(Math.random() * symbols.length)];
-    const generated = `${randomPrefix}${randomDigits}${randomSymbol}`;
+    return `${randomPrefix}${randomDigits}${randomSymbol}`;
+  };
 
+  const handleGeneratePassword = () => {
+    const generated = generatePasswordString();
     setValue('password', generated, { shouldValidate: true, shouldDirty: true });
     setJustGeneratedPassword(generated);
     setHasCopiedPassword(false);
@@ -208,6 +240,19 @@ export const UserManagementPage = () => {
     }
   };
 
+  const handleGenerateResetPassword = () => {
+    const generated = generatePasswordString();
+    setResetNewPassword(generated);
+    try {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(generated);
+        showSuccess(`Generated & copied: ${generated}`);
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   // Create user mutation
   const createMutation = useMutation({
     mutationFn: async (data: UserFormData) => {
@@ -218,14 +263,33 @@ export const UserManagementPage = () => {
         fieldZoneCode: data.role === 'marketer' ? (data.fieldZoneCode || undefined) : undefined,
       };
       const response = await apiClient.post('/users', payload);
-      return response.data;
+      return { responseData: response.data, submittedData: data };
     },
-    onSuccess: () => {
+    onSuccess: ({ submittedData }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.users.all(), exact: false });
       setIsModalOpen(false);
       reset();
       setJustGeneratedPassword(null);
       setHasCopiedPassword(false);
+
+      const targetBranch = branches?.find(
+        (b) => (b._id || b.id) === (canChooseBranch ? submittedData.branchId : outletBranchId),
+      );
+      const isMarketer = submittedData.role === 'marketer';
+      const portalUrl = isMarketer
+        ? 'https://caf-marketer.pages.dev'
+        : window.location.origin;
+
+      setOnboardingCard({
+        name: `${submittedData.firstName} ${submittedData.lastName}`,
+        username: submittedData.username,
+        password: submittedData.password || '',
+        role: roleLabels[submittedData.role] || submittedData.role,
+        branchName: targetBranch?.name || 'Headquarters / All Branches',
+        zoneCode: submittedData.fieldZoneCode || undefined,
+        portalUrl,
+        isReset: false,
+      });
       showSuccess('User created successfully');
     },
     onError: (error) => {
@@ -264,6 +328,40 @@ export const UserManagementPage = () => {
     },
     onError: (error) => {
       showError(getErrorMessage(error, 'Failed to update user'));
+    },
+  });
+
+  // Reset password mutation
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+      return apiClient.patch(`/users/${userId}`, { password: newPassword });
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all(), exact: false });
+      const targetUser = userToReset;
+      setUserToReset(null);
+
+      if (targetUser) {
+        const isMarketer = targetUser.role === 'marketer';
+        const portalUrl = isMarketer
+          ? 'https://caf-marketer.pages.dev'
+          : window.location.origin;
+
+        setOnboardingCard({
+          name: `${targetUser.firstName} ${targetUser.lastName}`,
+          username: targetUser.username,
+          password: variables.newPassword,
+          role: roleLabels[targetUser.role] || targetUser.role,
+          branchName: targetUser.branchName || 'Headquarters',
+          zoneCode: targetUser.fieldZoneCode || undefined,
+          portalUrl,
+          isReset: true,
+        });
+      }
+      showSuccess('Password reset successfully');
+    },
+    onError: (error) => {
+      showError(getErrorMessage(error, 'Failed to reset password'));
     },
   });
 
@@ -340,6 +438,12 @@ export const UserManagementPage = () => {
     reset();
   };
 
+  const handleOpenResetModal = (user: User) => {
+    setUserToReset(user);
+    const initialPass = generatePasswordString();
+    setResetNewPassword(initialPass);
+  };
+
   const onSubmit = (data: UserFormData) => {
     if (editingUser) {
       updateMutation.mutate(data);
@@ -366,20 +470,71 @@ export const UserManagementPage = () => {
     finance_manager: 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/25',
   };
 
+  // Role & status counts for quick-filter chips
+  const roleCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: users?.length || 0, active: 0, inactive: 0 };
+    users?.forEach((u) => {
+      counts[u.role] = (counts[u.role] || 0) + 1;
+      if (u.isActive) counts.active += 1;
+      else counts.inactive += 1;
+    });
+    return counts;
+  }, [users]);
+
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     return users.filter((u) => {
       const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'active' && u.isActive) ||
+        (statusFilter === 'inactive' && !u.isActive);
       const q = searchQuery.trim().toLowerCase();
-      if (!q) return matchesRole;
+      if (!q) return matchesRole && matchesStatus;
       const matchesQuery =
         u.username.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q) ||
         `${u.firstName} ${u.lastName}`.toLowerCase().includes(q) ||
         (u.branchName && u.branchName.toLowerCase().includes(q));
-      return matchesRole && matchesQuery;
+      return matchesRole && matchesStatus && matchesQuery;
     });
-  }, [users, roleFilter, searchQuery]);
+  }, [users, roleFilter, statusFilter, searchQuery]);
+
+  // Formatted onboarding text for WhatsApp or clipboard
+  const welcomeText = useMemo(() => {
+    if (!onboardingCard) return '';
+    return (
+      `👋 Hello ${onboardingCard.name},\n\n` +
+      `Your CareFarm staff account has been ${onboardingCard.isReset ? 'reset' : 'created'} successfully:\n` +
+      `• Username: ${onboardingCard.username}\n` +
+      `• Password: ${onboardingCard.password}\n` +
+      `• Role: ${onboardingCard.role}\n` +
+      (onboardingCard.branchName ? `• Branch: ${onboardingCard.branchName}\n` : '') +
+      (onboardingCard.zoneCode ? `• Field Zone: ${onboardingCard.zoneCode} Zone\n` : '') +
+      `• Sign In URL: ${onboardingCard.portalUrl}\n\n` +
+      `Please sign in and change your password upon login.`
+    );
+  }, [onboardingCard]);
+
+  const handleCopyWelcomeCard = () => {
+    if (!welcomeText) return;
+    try {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(welcomeText);
+        setCardCopied(true);
+        showSuccess('Welcome message copied to clipboard!');
+        setTimeout(() => setCardCopied(false), 2500);
+      }
+    } catch {
+      showError('Failed to copy message');
+    }
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!welcomeText) return;
+    const url = `https://wa.me/?text=${encodeURIComponent(welcomeText)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const columns = [
     {
@@ -464,13 +619,25 @@ export const UserManagementPage = () => {
             >
               Edit
             </Button>
+            {canManage && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleOpenResetModal(user)}
+                title="Reset password for this user"
+                className="text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+              >
+                <KeyRound className="w-3.5 h-3.5 mr-1" />
+                Reset
+              </Button>
+            )}
             {!isSelf && canManage && (
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => toggleStatusMutation.mutate(user)}
                 isLoading={isTogglingThisUser}
-                className={user.isActive ? "text-amber-400 hover:text-amber-300" : "text-emerald-400 hover:text-emerald-300"}
+                className={user.isActive ? "text-slate-400 hover:text-rose-300 hover:bg-rose-500/10" : "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"}
               >
                 {user.isActive ? 'Deactivate' : 'Activate'}
               </Button>
@@ -509,7 +676,90 @@ export const UserManagementPage = () => {
           }
         />
 
-        {/* Search & Role Filter Bar */}
+        {/* Quick Category Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+          <button
+            type="button"
+            onClick={() => { setRoleFilter('all'); setStatusFilter('all'); }}
+            className={`px-3 py-1.5 rounded-xl font-medium transition-all shrink-0 cursor-pointer ${
+              roleFilter === 'all' && statusFilter === 'all'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                : 'bg-slate-900/60 text-slate-400 border border-white/5 hover:border-white/10 hover:text-slate-200'
+            }`}
+          >
+            All Users ({roleCounts.all})
+          </button>
+          <button
+            type="button"
+            onClick={() => setRoleFilter('cashier')}
+            className={`px-3 py-1.5 rounded-xl font-medium transition-all shrink-0 cursor-pointer ${
+              roleFilter === 'cashier'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+                : 'bg-slate-900/60 text-slate-400 border border-white/5 hover:border-white/10 hover:text-slate-200'
+            }`}
+          >
+            Cashiers ({roleCounts.cashier || 0})
+          </button>
+          <button
+            type="button"
+            onClick={() => setRoleFilter('marketer')}
+            className={`px-3 py-1.5 rounded-xl font-medium transition-all shrink-0 cursor-pointer ${
+              roleFilter === 'marketer'
+                ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 shadow-xs'
+                : 'bg-slate-900/60 text-slate-400 border border-white/5 hover:border-white/10 hover:text-slate-200'
+            }`}
+          >
+            Marketers ({roleCounts.marketer || 0})
+          </button>
+          <button
+            type="button"
+            onClick={() => setRoleFilter('branch_manager')}
+            className={`px-3 py-1.5 rounded-xl font-medium transition-all shrink-0 cursor-pointer ${
+              roleFilter === 'branch_manager'
+                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-xs'
+                : 'bg-slate-900/60 text-slate-400 border border-white/5 hover:border-white/10 hover:text-slate-200'
+            }`}
+          >
+            Branch Managers ({roleCounts.branch_manager || 0})
+          </button>
+          <button
+            type="button"
+            onClick={() => setRoleFilter('finance_manager')}
+            className={`px-3 py-1.5 rounded-xl font-medium transition-all shrink-0 cursor-pointer ${
+              roleFilter === 'finance_manager'
+                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                : 'bg-slate-900/60 text-slate-400 border border-white/5 hover:border-white/10 hover:text-slate-200'
+            }`}
+          >
+            Finance ({roleCounts.finance_manager || 0})
+          </button>
+          <button
+            type="button"
+            onClick={() => setRoleFilter('super_admin')}
+            className={`px-3 py-1.5 rounded-xl font-medium transition-all shrink-0 cursor-pointer ${
+              roleFilter === 'super_admin'
+                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-xs'
+                : 'bg-slate-900/60 text-slate-400 border border-white/5 hover:border-white/10 hover:text-slate-200'
+            }`}
+          >
+            Super Admins ({roleCounts.super_admin || 0})
+          </button>
+          {roleCounts.inactive > 0 && (
+            <button
+              type="button"
+              onClick={() => { setStatusFilter(statusFilter === 'inactive' ? 'all' : 'inactive'); setRoleFilter('all'); }}
+              className={`px-3 py-1.5 rounded-xl font-medium transition-all shrink-0 cursor-pointer ${
+                statusFilter === 'inactive'
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-xs'
+                  : 'bg-slate-900/60 text-slate-400 border border-white/5 hover:border-white/10 hover:text-rose-300'
+              }`}
+            >
+              Inactive ({roleCounts.inactive})
+            </button>
+          )}
+        </div>
+
+        {/* Search Bar */}
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -539,12 +789,12 @@ export const UserManagementPage = () => {
         <Table
           data={filteredUsers}
           columns={columns}
-          emptyMessage={searchQuery || roleFilter !== 'all' ? "No users match the current search filters" : "No users found"}
+          emptyMessage={searchQuery || roleFilter !== 'all' || statusFilter !== 'all' ? "No users match the current search filters" : "No users found"}
           exportFilename="users"
           title="User Accounts"
         />
 
-        {/* Modal */}
+        {/* Add / Edit User Modal */}
         <Modal
           isOpen={isModalOpen}
           onClose={handleCloseModal}
@@ -711,6 +961,160 @@ export const UserManagementPage = () => {
               </Button>
             </div>
           </form>
+        </Modal>
+
+        {/* Quick Reset Password Modal */}
+        <Modal
+          isOpen={!!userToReset}
+          onClose={() => setUserToReset(null)}
+          title={`Reset Password: ${userToReset?.firstName} ${userToReset?.lastName}`}
+          size="md"
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-slate-400">
+              Generate or enter a new temporary password for <strong className="text-white">@{userToReset?.username}</strong>.
+              You will be able to share the updated login credentials via WhatsApp or copy them immediately.
+            </p>
+
+            <Input
+              label="New Temporary Password"
+              labelRight={
+                <button
+                  type="button"
+                  onClick={handleGenerateResetPassword}
+                  className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-medium cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Generate</span>
+                </button>
+              }
+              type="password"
+              value={resetNewPassword}
+              onChange={(e) => setResetNewPassword(e.target.value)}
+              placeholder="Enter at least 6 characters"
+              helperText="Minimum 6 characters. Letters, numbers, and symbols are accepted."
+            />
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-white/[0.08]">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setUserToReset(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  const targetId = userToReset?._id || userToReset?.id;
+                  if (targetId && resetNewPassword.trim().length >= 6) {
+                    resetPasswordMutation.mutate({ userId: targetId, newPassword: resetNewPassword.trim() });
+                  } else {
+                    showError('Password must be at least 6 characters long');
+                  }
+                }}
+                isLoading={resetPasswordMutation.isPending}
+                disabled={resetNewPassword.trim().length < 6}
+              >
+                Save & Show Welcome Card
+              </Button>
+            </div>
+          </div>
+        </Modal>
+
+        {/* Staff Account Ready / WhatsApp Credential Share Modal */}
+        <Modal
+          isOpen={!!onboardingCard}
+          onClose={() => setOnboardingCard(null)}
+          title={onboardingCard?.isReset ? 'Password Reset Successful' : 'Staff Account Ready'}
+          size="md"
+        >
+          {onboardingCard && (
+            <div className="space-y-5">
+              <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <div>
+                  <span className="font-semibold text-white">{onboardingCard.name}</span>'s account credentials are ready.
+                  Share them directly with the staff member.
+                </div>
+              </div>
+
+              {/* Credential summary card */}
+              <div className="rounded-2xl border border-white/[0.08] bg-slate-950/60 p-4 space-y-3 font-mono text-xs">
+                <div className="flex items-center justify-between py-1 border-b border-white/5">
+                  <span className="text-slate-400 font-sans">Full Name</span>
+                  <span className="text-white font-semibold">{onboardingCard.name}</span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-white/5">
+                  <span className="text-slate-400 font-sans">Username</span>
+                  <span className="text-emerald-300 font-bold">@{onboardingCard.username}</span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-white/5">
+                  <span className="text-slate-400 font-sans">Temporary Password</span>
+                  <span className="text-amber-300 font-bold select-all">{onboardingCard.password || '••••••••'}</span>
+                </div>
+                <div className="flex items-center justify-between py-1 border-b border-white/5">
+                  <span className="text-slate-400 font-sans">System Role</span>
+                  <span className="text-slate-200 capitalize font-sans">{onboardingCard.role}</span>
+                </div>
+                {onboardingCard.branchName && (
+                  <div className="flex items-center justify-between py-1 border-b border-white/5">
+                    <span className="text-slate-400 font-sans">Assigned Branch</span>
+                    <span className="text-slate-200 font-sans">{onboardingCard.branchName}</span>
+                  </div>
+                )}
+                {onboardingCard.zoneCode && (
+                  <div className="flex items-center justify-between py-1 border-b border-white/5">
+                    <span className="text-slate-400 font-sans">Field Zone</span>
+                    <span className="text-emerald-400 font-sans font-semibold">{onboardingCard.zoneCode} Zone</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between py-1">
+                  <span className="text-slate-400 font-sans">Portal URL</span>
+                  <a
+                    href={onboardingCard.portalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-emerald-400 hover:text-emerald-300 inline-flex items-center gap-1 font-sans underline"
+                  >
+                    <span>{onboardingCard.portalUrl.replace(/^https?:\/\//, '')}</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Share Actions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleCopyWelcomeCard}
+                  className="w-full"
+                >
+                  {cardCopied ? <Check className="w-4 h-4 mr-2 text-emerald-400" /> : <Copy className="w-4 h-4 mr-2" />}
+                  <span>{cardCopied ? 'Copied to Clipboard' : 'Copy Welcome Text'}</span>
+                </Button>
+                <button
+                  type="button"
+                  onClick={handleShareWhatsApp}
+                  className="w-full inline-flex items-center justify-center px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+                >
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  <span>Send via WhatsApp</span>
+                </button>
+              </div>
+
+              <div className="pt-2 text-center">
+                <button
+                  type="button"
+                  onClick={() => setOnboardingCard(null)}
+                  className="text-xs text-slate-400 hover:text-white transition-colors"
+                >
+                  Done, close window
+                </button>
+              </div>
+            </div>
+          )}
         </Modal>
 
         {/* Delete Confirmation Dialog */}

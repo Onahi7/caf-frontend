@@ -16,6 +16,7 @@ import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 import { OfflineIndicator, POSLayout } from '../../components/pos';
 import { OpenShiftModal, CloseShiftModal } from '../../components/pos/ShiftModals';
+import { QuickPriceLookupModal } from '../../components/pos/QuickPriceLookupModal';
 import { ExpenseModal } from '../../components/pos/ExpenseModal';
 import { Modal } from '../../components/ui/Modal';
 import { getErrorMessage } from '../../lib/error-utils';
@@ -49,6 +50,7 @@ import {
   User,
   UserCheck,
   UserPlus,
+  Tag,
 } from 'lucide-react';
 
 interface Shift {
@@ -209,6 +211,7 @@ export const POSPage = () => {
   const handleAddToCartRef = useRef<(product: Product, packSize?: PackSize, customQty?: number) => void>(() => {});
   const prevBranchIdRef = useRef<string | undefined>(selectedBranch?._id);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [showPriceLookupModal, setShowPriceLookupModal] = useState(false);
 
   // When branch changes, reset active cart to prevent cross-branch inventory conflicts
   useEffect(() => {
@@ -733,6 +736,13 @@ export const POSPage = () => {
         return;
       }
 
+      // Quick Price & Stock Lookup: F3 or Alt+P
+      if (e.key === 'F3' || (e.altKey && e.key.toLowerCase() === 'p')) {
+        e.preventDefault();
+        setShowPriceLookupModal((v) => !v);
+        return;
+      }
+
       // Quick checkout: F4 or (Ctrl+Enter / Cmd+Enter)
       if (e.key === 'F4' || ((e.ctrlKey || e.metaKey) && e.key === 'Enter')) {
         if (items.length > 0) {
@@ -1027,6 +1037,19 @@ export const POSPage = () => {
                   )}
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setShowPriceLookupModal(true)}
+                title="Quick Price & Stock Lookup (F3 / Alt+P)"
+                className="px-3 py-2.5 rounded-xl border border-white/10 bg-slate-900/80 hover:border-emerald-500/50 hover:bg-emerald-500/10 text-emerald-400 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
+              >
+                <Tag className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Price Check</span>
+                <kbd className="hidden md:inline-flex items-center px-1 text-[10px] font-mono text-emerald-400/70 bg-emerald-500/10 rounded">
+                  F3
+                </kbd>
+              </button>
 
               {/* Scan Mode Toggle - native only */}
               {cameraAvailable && (
@@ -1738,6 +1761,13 @@ export const POSPage = () => {
           </div>
         </div>
       )}
+
+      {/* Quick Price & Stock Lookup Modal (F3 / Alt+P) */}
+      <QuickPriceLookupModal
+        open={showPriceLookupModal}
+        onClose={() => setShowPriceLookupModal(false)}
+        branchId={getBranchId(selectedBranch)}
+      />
 
       {/* Open Shift Modal */}
       <OpenShiftModal

@@ -1,9 +1,112 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Modal } from '../ui/Modal';
 import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
 import { useCurrency } from '../../hooks/useCurrency';
-import { AlertTriangle, CheckCircle2, Eye, EyeOff, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Eye, EyeOff, ShieldCheck, Calculator } from 'lucide-react';
+
+const DENOMINATIONS = [100, 50, 20, 10, 5, 2, 1];
+
+interface DenominationCounterProps {
+  onTotalChange: (total: number) => void;
+  symbol: string;
+}
+
+const DenominationCounter = ({ onTotalChange, symbol }: DenominationCounterProps) => {
+  const [counts, setCounts] = useState<Record<number, string>>({
+    100: '',
+    50: '',
+    20: '',
+    10: '',
+    5: '',
+    2: '',
+    1: '',
+  });
+
+  const handleCountChange = (denom: number, val: string) => {
+    const updated = { ...counts, [denom]: val };
+    setCounts(updated);
+    let total = 0;
+    for (const [d, countStr] of Object.entries(updated)) {
+      const c = parseInt(countStr, 10);
+      if (!isNaN(c) && c > 0) {
+        total += Number(d) * c;
+      }
+    }
+    onTotalChange(total);
+  };
+
+  const handleClear = () => {
+    setCounts({ 100: '', 50: '', 20: '', 10: '', 5: '', 2: '', 1: '' });
+    onTotalChange(0);
+  };
+
+  const currentTotal = useMemo(() => {
+    let sum = 0;
+    for (const [d, countStr] of Object.entries(counts)) {
+      const c = parseInt(countStr, 10);
+      if (!isNaN(c) && c > 0) {
+        sum += Number(d) * c;
+      }
+    }
+    return sum;
+  }, [counts]);
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-3 space-y-2.5 text-xs">
+      <div className="flex items-center justify-between pb-1.5 border-b border-white/5">
+        <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+          <span>💵</span> Note Denomination Calculator
+        </span>
+        {currentTotal > 0 && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="text-[11px] text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+          >
+            Clear notes
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        {DENOMINATIONS.map((denom) => {
+          const count = counts[denom] || '';
+          const subtotal = (parseInt(count, 10) || 0) * denom;
+          return (
+            <div key={denom} className="flex items-center gap-1.5 bg-slate-900/60 p-1.5 rounded-xl border border-white/5">
+              <span className="font-mono text-emerald-400 font-bold shrink-0 w-12 text-[11px]">
+                {symbol}{denom}
+              </span>
+              <span className="text-slate-500 font-mono text-xs">×</span>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                placeholder="0"
+                value={count}
+                onChange={(e) => handleCountChange(denom, e.target.value)}
+                className="w-full min-w-0 bg-slate-950 px-2 py-1 rounded-lg text-white font-mono text-center text-xs border border-white/10 focus:border-emerald-500/50 focus:outline-none"
+              />
+              {subtotal > 0 && (
+                <span className="hidden sm:inline font-mono text-[10px] text-slate-400 shrink-0">
+                  ={subtotal}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="flex justify-between items-center pt-1 border-t border-white/5 text-slate-300">
+        <span>Calculated Total:</span>
+        <span className="font-mono font-bold text-emerald-400 text-sm">
+          {symbol} {currentTotal.toFixed(2)}
+        </span>
+      </div>
+    </div>
+  );
+};
 
 interface OpenShiftModalProps {
   isOpen: boolean;
@@ -15,9 +118,11 @@ interface OpenShiftModalProps {
 export const OpenShiftModal = ({ isOpen, onClose, onSubmit, isLoading }: OpenShiftModalProps) => {
   const { symbol } = useCurrency();
   const [openingCash, setOpeningCash] = useState('');
+  const [showDenominations, setShowDenominations] = useState(false);
 
   const handleClose = () => {
     setOpeningCash('');
+    setShowDenominations(false);
     onClose();
   };
 
@@ -27,6 +132,7 @@ export const OpenShiftModal = ({ isOpen, onClose, onSubmit, isLoading }: OpenShi
     if (isNaN(parsed) || parsed < 0) return;
     onSubmit(parsed);
     setOpeningCash('');
+    setShowDenominations(false);
   };
 
   return (
@@ -37,9 +143,20 @@ export const OpenShiftModal = ({ isOpen, onClose, onSubmit, isLoading }: OpenShi
         </p>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Opening Float ({symbol})
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-xs font-semibold text-slate-300">
+              Opening Float ({symbol})
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowDenominations((v) => !v)}
+              className="inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 font-medium cursor-pointer"
+            >
+              <Calculator className="w-3.5 h-3.5" />
+              <span>{showDenominations ? 'Simple Input' : 'Count Notes'}</span>
+            </button>
+          </div>
+
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-sm select-none">
               {symbol}
@@ -57,6 +174,14 @@ export const OpenShiftModal = ({ isOpen, onClose, onSubmit, isLoading }: OpenShi
             />
           </div>
         </div>
+
+        {/* Note Denomination Calculator */}
+        {showDenominations && (
+          <DenominationCounter
+            symbol={symbol}
+            onTotalChange={(total) => setOpeningCash(total > 0 ? total.toFixed(2) : '')}
+          />
+        )}
 
         <div className="flex gap-3 pt-2">
           <Button
@@ -109,10 +234,12 @@ export const CloseShiftModal = ({
   const [closingCash, setClosingCash] = useState('');
   const [notes, setNotes] = useState('');
   const [isBlindClose, setIsBlindClose] = useState(false);
+  const [showDenominations, setShowDenominations] = useState(false);
 
   const handleClose = () => {
     setClosingCash('');
     setNotes('');
+    setShowDenominations(false);
     onClose();
   };
 
@@ -123,6 +250,7 @@ export const CloseShiftModal = ({
     onSubmit(parsed, notes.trim());
     setClosingCash('');
     setNotes('');
+    setShowDenominations(false);
   };
 
   const parsedClosing = parseFloat(closingCash);
@@ -146,7 +274,7 @@ export const CloseShiftModal = ({
           <button
             type="button"
             onClick={() => setIsBlindClose((prev) => !prev)}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors cursor-pointer"
           >
             {isBlindClose ? (
               <>
@@ -205,9 +333,20 @@ export const CloseShiftModal = ({
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-            Actual Cash Counted ({symbol})
-          </label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-xs font-semibold text-slate-300">
+              Actual Cash Counted ({symbol})
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowDenominations((v) => !v)}
+              className="inline-flex items-center gap-1 text-[11px] text-emerald-400 hover:text-emerald-300 font-medium cursor-pointer"
+            >
+              <Calculator className="w-3.5 h-3.5" />
+              <span>{showDenominations ? 'Simple Input' : 'Count Notes'}</span>
+            </button>
+          </div>
+
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-sm select-none">
               {symbol}
@@ -226,7 +365,15 @@ export const CloseShiftModal = ({
           </div>
         </div>
 
-        {/* Discrepancy indicator (visible if not in blind mode, or if entered cash and blind mode was toggled off) */}
+        {/* Note Denomination Calculator */}
+        {showDenominations && (
+          <DenominationCounter
+            symbol={symbol}
+            onTotalChange={(total) => setClosingCash(total > 0 ? total.toFixed(2) : '')}
+          />
+        )}
+
+        {/* Discrepancy indicator */}
         {!isBlindClose && hasEnteredCash && (
           <div
             className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium border ${
@@ -240,7 +387,7 @@ export const CloseShiftModal = ({
             {Math.abs(discrepancy) < 0.01 ? (
               <>
                 <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                <span>Cash perfectly balanced with register.</span>
+                <span>Cash perfectly balanced with register drawer.</span>
               </>
             ) : (
               <>

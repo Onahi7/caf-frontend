@@ -7,3 +7,4 @@ export { POSSidebar } from './POSSidebar';
 export { POSLayout, usePOSLayout, POSLayoutContext } from './POSLayout';
 export { QRScannerModal } from './QRScannerModal';
 export { UserProfileModal } from './UserProfileModal';
+export { QuickPriceLookupModal } from './QuickPriceLookupModal';
