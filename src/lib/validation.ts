@@ -23,6 +23,14 @@ export const emailValidation = {
   },
 };
 
+// Optional email validation (for optional staff contact fields)
+export const optionalEmailValidation = {
+  pattern: {
+    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+    message: 'Invalid email address',
+  },
+};
+
 // Username validation
 export const usernameValidation = {
   required: 'Username is required',

@@ -33,6 +33,7 @@ import {
   passwordValidation,
   optionalPasswordValidation,
   emailValidation,
+  optionalEmailValidation,
   nameValidation,
   requiresBranchAssignment,
 } from '../../lib/validation';
@@ -65,7 +66,7 @@ interface Branch {
 interface UserFormData {
   username: string;
   password?: string;
-  email: string;
+  email?: string;
   firstName: string;
   lastName: string;
   role: string;
@@ -259,6 +260,7 @@ export const UserManagementPage = () => {
       const branchId = canChooseBranch ? data.branchId : outletBranchId;
       const payload = {
         ...data,
+        email: data.email?.trim() || undefined,
         branchId: branchId || undefined,
         fieldZoneCode: data.role === 'marketer' ? (data.fieldZoneCode || undefined) : undefined,
       };
@@ -551,7 +553,11 @@ export const UserManagementPage = () => {
     {
       key: 'email',
       header: 'Email',
-      render: (user: User) => <span className="text-slate-300 text-xs sm:text-sm font-mono">{user.email}</span>,
+      render: (user: User) => (
+        <span className="text-slate-300 text-xs sm:text-sm font-mono">
+          {!user.email || user.email.endsWith('@carefam.local') ? '—' : user.email}
+        </span>
+      ),
     },
     {
       key: 'role',
@@ -882,13 +888,17 @@ export const UserManagementPage = () => {
               />
             </div>
 
-            <Input
-              label="Email"
-              type="email"
-              {...register('email', emailValidation)}
-              error={errors.email?.message}
-              placeholder="user@pharmacy.com"
-            />
+            {/* Email is omitted during onboarding; only available as optional field when editing */}
+            {editingUser && (
+              <Input
+                label="Email (Optional)"
+                type="email"
+                {...register('email', optionalEmailValidation)}
+                error={errors.email?.message}
+                placeholder="user@pharmacy.com"
+                helperText="Optional email address for notifications"
+              />
+            )}
 
             {/* Role and Branch Assignment */}
             <div className="border-t border-white/[0.08] pt-4 mt-4">
