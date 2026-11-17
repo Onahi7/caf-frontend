@@ -124,7 +124,7 @@ export const POSSidebar = ({ isMobileOpen, onClose }: POSSidebarProps = {}) => {
     },
     {
       id: 'reports',
-      label: 'Reports',
+      label: 'Daily Summary',
       icon: <BarChart3 className="w-5 h-5" />,
       path: '/pos/reports',
     },

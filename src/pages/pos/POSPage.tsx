@@ -51,6 +51,7 @@ import {
   UserCheck,
   UserPlus,
   Tag,
+  Pencil,
 } from 'lucide-react';
 
 interface Shift {
@@ -214,6 +215,9 @@ export const POSPage = () => {
   const prevBranchIdRef = useRef<string | undefined>(selectedBranch?._id);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [showPriceLookupModal, setShowPriceLookupModal] = useState(false);
+  const [editingDrug, setEditingDrug] = useState<Product | null>(null);
+  const [editDrugName, setEditDrugName] = useState('');
+  const [editDrugBrand, setEditDrugBrand] = useState('');
 
   // When branch changes, reset active cart to prevent cross-branch inventory conflicts
   useEffect(() => {
@@ -605,6 +609,51 @@ export const POSPage = () => {
     },
     onError: (error: unknown) => {
       showError(getErrorMessage(error, 'Failed to record expense. Please try again.'));
+    },
+  });
+
+  const openEditDrugModal = (product: Product, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingDrug(product);
+    setEditDrugName(product.name);
+    setEditDrugBrand(product.brand && product.brand.toLowerCase() !== 'unknown' ? product.brand : '');
+  };
+
+  const editDrugMutation = useMutation({
+    mutationFn: async (data: { id: string; name: string; brand?: string }) => {
+      const response = await apiClient.patch(`/products/${data.id}`, {
+        name: data.name,
+        brand: data.brand,
+      });
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.products.all(), exact: false });
+      // Also update any matching item in the active cart
+      const matchingInCart = items.some((i) => i.productId === variables.id);
+      if (matchingInCart) {
+        restoreCart({
+          items: items.map((i) =>
+            i.productId === variables.id
+              ? {
+                  ...i,
+                  productName: i.packSize ? `${variables.name} (${i.packSize.name})` : variables.name,
+                  brand: variables.brand || i.brand,
+                }
+              : i,
+          ),
+          discount,
+          manualDiscount,
+          promotionId,
+          prescriptionUrl,
+          customer,
+        });
+      }
+      setEditingDrug(null);
+      showSuccess(`Updated drug name to "${variables.name}"`);
+    },
+    onError: (error: unknown) => {
+      showError(getErrorMessage(error, 'Failed to update drug name'));
     },
   });
 
@@ -1202,14 +1251,21 @@ export const POSPage = () => {
                 {productViewMode === 'grid' ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 gap-3 md:gap-4">
                 {displayedProducts.map((product) => (
-                  <button
+                  <div
                     key={product._id}
-                    onClick={() => handleAddToCart(product)}
-                    disabled={product.stock <= 0}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => product.stock > 0 && handleAddToCart(product)}
+                    onKeyDown={(e) => {
+                      if ((e.key === 'Enter' || e.key === ' ') && product.stock > 0) {
+                        e.preventDefault();
+                        handleAddToCart(product);
+                      }
+                    }}
                     className={`group rounded-2xl overflow-hidden bg-slate-900/80 border border-white/[0.08] text-left flex flex-col transition-all duration-150 ${
                       product.stock <= 0
-                        ? 'opacity-40 cursor-not-allowed'
-                        : 'hover:border-emerald-500/40 hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-0.5'
+                        ? 'opacity-60 cursor-not-allowed'
+                        : 'cursor-pointer hover:border-emerald-500/40 hover:shadow-xl hover:shadow-emerald-500/5 hover:-translate-y-0.5'
                     }`}
                   >
                     <div className="aspect-4/3 relative bg-slate-950 overflow-hidden">
@@ -1235,9 +1291,19 @@ export const POSPage = () => {
                     </div>
                     <div className="p-3 bg-slate-900/90 flex-1 flex flex-col justify-between border-t border-white/[0.06]">
                       <div>
-                        <h3 className="text-xs font-semibold leading-snug text-slate-100 line-clamp-2">
-                          {product.name}
-                        </h3>
+                        <div className="flex items-start justify-between gap-1.5">
+                          <h3 className="text-xs font-semibold leading-snug text-slate-100 line-clamp-2 flex-1">
+                            {product.name}
+                          </h3>
+                          <button
+                            type="button"
+                            onClick={(e) => openEditDrugModal(product, e)}
+                            title="Edit drug name"
+                            className="p-1 -mr-1 -mt-0.5 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors shrink-0 cursor-pointer"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                         <p className="mt-1.5 inline-block text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
                           {getDisplayBrand(product.brand)}
                         </p>
@@ -1282,21 +1348,27 @@ export const POSPage = () => {
                         </div>
                       )}
                     </div>
-                  </button>
+                  </div>
                 ))}
                 </div>
                 ) : (
                   <div className="space-y-2.5">
                     {displayedProducts.map((product) => (
-                      <button
+                      <div
                         key={product._id}
-                        type="button"
-                        onClick={() => handleAddToCart(product)}
-                        disabled={product.stock <= 0}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => product.stock > 0 && handleAddToCart(product)}
+                        onKeyDown={(e) => {
+                          if ((e.key === 'Enter' || e.key === ' ') && product.stock > 0) {
+                            e.preventDefault();
+                            handleAddToCart(product);
+                          }
+                        }}
                         className={`group flex w-full gap-3.5 rounded-2xl border border-white/[0.08] bg-slate-900/80 p-3 text-left transition-all duration-150 ${
                           product.stock <= 0
-                            ? 'cursor-not-allowed opacity-40'
-                            : 'hover:border-emerald-500/40 hover:bg-slate-800/80 hover:shadow-lg hover:shadow-emerald-500/5'
+                            ? 'cursor-not-allowed opacity-60'
+                            : 'cursor-pointer hover:border-emerald-500/40 hover:bg-slate-800/80 hover:shadow-lg hover:shadow-emerald-500/5'
                         }`}
                       >
                         <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-950 border border-white/[0.06] sm:h-24 sm:w-24">
@@ -1317,9 +1389,19 @@ export const POSPage = () => {
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
                             <div className="min-w-0">
-                              <h3 className="text-sm font-bold leading-snug text-slate-100 break-words">
-                                {product.name}
-                              </h3>
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-bold leading-snug text-slate-100 break-words">
+                                  {product.name}
+                                </h3>
+                                <button
+                                  type="button"
+                                  onClick={(e) => openEditDrugModal(product, e)}
+                                  title="Edit drug name"
+                                  className="p-1 rounded-lg text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors shrink-0 cursor-pointer"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                               <p className="mt-1 inline-flex rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">
                                 {getDisplayBrand(product.brand)}
                               </p>
@@ -1363,7 +1445,7 @@ export const POSPage = () => {
                             </div>
                           )}
                         </div>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -2194,6 +2276,73 @@ export const POSPage = () => {
               </button>
             </div>
           </div>
+        )}
+      </Modal>
+
+      {/* Edit Drug Name Modal */}
+      <Modal
+        isOpen={!!editingDrug}
+        onClose={() => setEditingDrug(null)}
+        title="Edit Drug Name"
+        size="sm"
+      >
+        {editingDrug && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!editDrugName.trim()) return;
+              editDrugMutation.mutate({
+                id: editingDrug._id,
+                name: editDrugName.trim(),
+                brand: editDrugBrand.trim() || undefined,
+              });
+            }}
+            className="space-y-4"
+          >
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Drug Name *
+              </label>
+              <input
+                type="text"
+                value={editDrugName}
+                onChange={(e) => setEditDrugName(e.target.value)}
+                placeholder="e.g. Paracetamol 500mg Tablets"
+                autoFocus
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Brand / Manufacturer (Optional)
+              </label>
+              <input
+                type="text"
+                value={editDrugBrand}
+                onChange={(e) => setEditDrugBrand(e.target.value)}
+                placeholder="e.g. GSK / Denk Pharma"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-white/[0.08]">
+              <button
+                type="button"
+                onClick={() => setEditingDrug(null)}
+                className="px-4 py-2 rounded-xl bg-white/[0.05] hover:bg-white/10 text-slate-300 text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!editDrugName.trim() || editDrugMutation.isPending}
+                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {editDrugMutation.isPending ? 'Saving…' : 'Save Drug Name'}
+              </button>
+            </div>
+          </form>
         )}
       </Modal>
 
