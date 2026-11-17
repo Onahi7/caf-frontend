@@ -118,6 +118,7 @@ export const POSPage = () => {
     total, 
     subtotal, 
     discount,
+    setDiscount,
     manualDiscount,
     promotionId,
     prescriptionUrl,
@@ -189,6 +190,7 @@ export const POSPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [inStockOnly, setInStockOnly] = useState(false);
   const [showShiftModal, setShowShiftModal] = useState(false);
   const [showCloseShiftModal, setShowCloseShiftModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -473,6 +475,34 @@ export const POSPage = () => {
     } else {
       removeItem(productId, packSize);
     }
+  };
+
+  const handleClearCartWithConfirm = async () => {
+    if (items.length === 0) return;
+    if (items.length > 1) {
+      const confirmed = await requestConfirmation({
+        title: 'Clear active order?',
+        message: `Remove all ${items.length} items from the current cart?`,
+        confirmLabel: 'Clear Cart',
+        variant: 'danger',
+      });
+      if (!confirmed) return;
+    }
+    clearCart();
+    showSuccess('Cart cleared');
+  };
+
+  const handleSwitchCartItemPack = (item: CartItem, targetPack?: PackSize) => {
+    const product = products.find((p) => p._id === item.productId);
+    if (!product) return;
+    const reqUnits = (targetPack ? targetPack.quantityPerPack : 1) * item.quantity;
+    const newQty = product.stock >= reqUnits ? item.quantity : 1;
+    if (product.stock < (targetPack ? targetPack.quantityPerPack : 1)) {
+      alertWarning(`Insufficient stock for ${targetPack ? targetPack.name : product.unit}`);
+      return;
+    }
+    removeItem(item.productId, item.packSize);
+    handleAddToCart(product, targetPack, newQty);
   };
 
   // Open shift mutation
@@ -767,12 +797,31 @@ export const POSPage = () => {
   }, [items, searchQuery, navigate, handleParkSale]);
 
 
-  const categories = [
-    { id: 'all', label: 'All' },
-    { id: 'otc', label: 'OTC' },
-    { id: 'prescription', label: 'Prescription' },
-    { id: 'vitamins', label: 'Vitamins' },
-  ];
+  const categories = useMemo(() => {
+    const base = [
+      { id: 'all', label: 'All' },
+      { id: 'otc', label: 'OTC' },
+      { id: 'prescription', label: 'Prescription' },
+      { id: 'vitamins', label: 'Vitamins' },
+    ];
+    const seen = new Set(base.map((c) => c.id.toLowerCase()));
+    for (const p of products) {
+      const cat = p.category?.trim();
+      if (cat && !seen.has(cat.toLowerCase())) {
+        seen.add(cat.toLowerCase());
+        base.push({
+          id: cat,
+          label: cat.charAt(0).toUpperCase() + cat.slice(1),
+        });
+      }
+    }
+    return base;
+  }, [products]);
+
+  const displayedProducts = useMemo(
+    () => (inStockOnly ? products.filter((p) => p.stock > 0) : products),
+    [products, inStockOnly],
+  );
 
   const expenseCategories = [
     { value: 'utilities', label: 'Utilities' },
@@ -1084,6 +1133,19 @@ export const POSPage = () => {
                     {cat.label}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => setInStockOnly((v) => !v)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition-all flex items-center gap-1.5 ${
+                    inStockOnly
+                      ? 'bg-teal-500/20 text-teal-300 font-semibold border border-teal-500/35 shadow-xs'
+                      : 'bg-slate-900/80 border border-white/[0.08] text-slate-400 hover:text-slate-200 hover:border-white/15'
+                  }`}
+                  title="Hide out-of-stock products"
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${inStockOnly ? 'bg-teal-400' : 'bg-slate-500'}`} />
+                  <span>In Stock Only</span>
+                </button>
               </div>
 
               <div className="flex rounded-xl border border-white/[0.08] bg-slate-900/90 p-1">
@@ -1129,17 +1191,17 @@ export const POSPage = () => {
                 ))}
                 <span className="sr-only">Loading products…</span>
               </div>
-            ) : products.length > 0 ? (
+            ) : displayedProducts.length > 0 ? (
               <div className="space-y-4">
                 {productsPagination && (
                   <div className="rounded-xl border border-white/[0.08] bg-slate-900/60 px-4 py-2.5 text-xs text-slate-400">
-                    Showing {products.length} of {productsPagination.total} products
+                    Showing {displayedProducts.length} of {productsPagination.total} products
                   </div>
                 )}
 
                 {productViewMode === 'grid' ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-3 gap-3 md:gap-4">
-                {products.map((product) => (
+                {displayedProducts.map((product) => (
                   <button
                     key={product._id}
                     onClick={() => handleAddToCart(product)}
@@ -1225,7 +1287,7 @@ export const POSPage = () => {
                 </div>
                 ) : (
                   <div className="space-y-2.5">
-                    {products.map((product) => (
+                    {displayedProducts.map((product) => (
                       <button
                         key={product._id}
                         type="button"
@@ -1359,13 +1421,25 @@ export const POSPage = () => {
               </div>
               <div>
                 <h2 className="text-sm font-bold text-slate-100 tracking-tight">Order</h2>
-                <p className="text-[11px] text-slate-400">{items.length} item{items.length !== 1 ? 's' : ''}</p>
+                <p className="text-[11px] text-slate-400">
+                  {items.length} item{items.length !== 1 ? 's' : ''} · {cartItemCount} unit{cartItemCount !== 1 ? 's' : ''}
+                </p>
               </div>
             </div>
             {items.length > 0 && (
-              <span className="px-2.5 py-1 bg-slate-800 border border-white/10 rounded-full text-slate-300 text-xs font-semibold tabular-nums">
-                {items.length}
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleClearCartWithConfirm}
+                  className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-rose-300 text-[11px] font-semibold transition-colors cursor-pointer"
+                  title="Clear all items from cart"
+                >
+                  Clear
+                </button>
+                <span className="px-2.5 py-1 bg-slate-800 border border-white/10 rounded-full text-slate-300 text-xs font-semibold tabular-nums">
+                  {cartItemCount}
+                </span>
+              </div>
             )}
           </div>
           {/* Active Customer Strip */}
@@ -1455,8 +1529,8 @@ export const POSPage = () => {
                     <div className="flex items-center space-x-1 bg-slate-950/80 rounded-xl p-0.5 border border-white/[0.06]">
                       <button
                         onClick={() => handleQuantityDecrement(item.productId, item.packSize, item.quantity)}
-                        className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white disabled:opacity-30"
-                        disabled={item.quantity <= 1}
+                        className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                        title={item.quantity <= 1 ? 'Remove item' : 'Decrease quantity'}
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
@@ -1475,6 +1549,43 @@ export const POSPage = () => {
                     </div>
                     <p className="text-emerald-400 font-bold text-xs tabular-nums font-mono">{format(item.unitPrice * item.quantity)}</p>
                   </div>
+                  {(() => {
+                    const catalogProduct = products.find((p) => p._id === item.productId);
+                    if (!catalogProduct?.packSizes?.length) return null;
+                    return (
+                      <div className="mt-2 pt-1.5 border-t border-white/[0.04] flex items-center gap-1 flex-wrap">
+                        <span className="text-[10px] text-slate-500 mr-0.5">Unit:</span>
+                        <button
+                          type="button"
+                          onClick={() => item.packSize && handleSwitchCartItemPack(item, undefined)}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                            !item.packSize
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold'
+                              : 'bg-white/[0.04] text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Single {catalogProduct.unit || 'unit'}
+                        </button>
+                        {catalogProduct.packSizes.map((pk) => {
+                          const isCurrent = item.packSize?.name === pk.name;
+                          return (
+                            <button
+                              key={pk.name}
+                              type="button"
+                              onClick={() => !isCurrent && handleSwitchCartItemPack(item, pk)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                                isCurrent
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold'
+                                  : 'bg-white/[0.04] text-slate-400 hover:text-white'
+                              }`}
+                            >
+                              {pk.name} ({format(pk.sellingPrice)})
+                            </button>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
                 </div>
               ))
             )}
@@ -1488,9 +1599,49 @@ export const POSPage = () => {
                   <span>Subtotal</span>
                   <span className="text-slate-200 font-medium tabular-nums">{format(subtotal)}</span>
                 </div>
+                <div className="flex items-center justify-between gap-1 pt-0.5">
+                  <span className="text-[11px] text-slate-400">Quick Discount</span>
+                  <div className="flex items-center gap-1">
+                    {[5, 10].map((pct) => {
+                      const targetDisc = Math.round(subtotal * (pct / 100) * 100) / 100;
+                      const isActive = subtotal > 0 && Math.abs(discount - targetDisc) < 0.05;
+                      return (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() => setDiscount(isActive ? 0 : targetDisc)}
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border transition-colors cursor-pointer ${
+                            isActive
+                              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                              : 'bg-white/[0.04] border-white/10 text-slate-300 hover:text-white'
+                          }`}
+                        >
+                          {pct}%
+                        </button>
+                      );
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => navigate('/pos/discounts')}
+                      className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-white/[0.04] border border-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                    >
+                      Custom
+                    </button>
+                  </div>
+                </div>
                 {discount > 0 && (
                   <div className="flex items-center justify-between text-rose-400">
-                    <span>Discount</span>
+                    <span className="flex items-center gap-1.5">
+                      <span>Discount</span>
+                      <button
+                        type="button"
+                        onClick={() => setDiscount(0)}
+                        className="text-[10px] px-1.5 py-0.2 rounded bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 font-semibold cursor-pointer"
+                        title="Remove discount"
+                      >
+                        Clear ×
+                      </button>
+                    </span>
                     <span className="font-semibold tabular-nums">-{format(discount)}</span>
                   </div>
                 )}
@@ -1564,16 +1715,29 @@ export const POSPage = () => {
               </div>
               <div>
                 <h2 className="text-sm font-bold text-slate-100 tracking-tight">Your Order</h2>
-                <p className="text-[11px] text-slate-400">{items.length} item{items.length !== 1 ? 's' : ''}</p>
+                <p className="text-[11px] text-slate-400">
+                  {items.length} item{items.length !== 1 ? 's' : ''} · {cartItemCount} unit{cartItemCount !== 1 ? 's' : ''}
+                </p>
               </div>
             </div>
-            <button
-              onClick={() => setShowMobileCart(false)}
+            <div className="flex items-center gap-2">
+              {items.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearCartWithConfirm}
+                  className="px-2.5 py-1.5 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs font-semibold"
+                >
+                  Clear
+                </button>
+              )}
+              <button
+                onClick={() => setShowMobileCart(false)}
               className="w-11 h-11 flex items-center justify-center rounded-xl bg-white/[0.05] border border-white/10 text-slate-400 hover:text-white transition-colors"
               aria-label="Close cart"
-            >
-              <X className="w-4 h-4" />
-            </button>
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           {/* Mobile Customer Strip */}
           <div className="px-4 py-2.5 bg-slate-950/80 border-b border-white/[0.06]">
@@ -1657,8 +1821,7 @@ export const POSPage = () => {
                   <div className="flex items-center space-x-1 bg-slate-950/80 rounded-xl p-0.5 border border-white/[0.06]">
                     <button
                       onClick={() => handleQuantityDecrement(item.productId, item.packSize, item.quantity)}
-                      className="w-11 h-11 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white disabled:opacity-30"
-                      disabled={item.quantity <= 1}
+                      className="w-11 h-11 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
                       aria-label="Decrease quantity"
                     >
                       <Minus className="w-3.5 h-3.5" />

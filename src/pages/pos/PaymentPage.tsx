@@ -250,19 +250,31 @@ export const PaymentPage = () => {
     }
   }, [paymentMethod]);
 
-  // Smart quick amounts based on total
+  // Smart quick amounts based on total (New Leone SLE & USD)
   const getSmartQuickAmounts = useCallback(() => {
-    if (isUSD) {
-      const base = [5, 10, 20, 50, 100];
-      if (total > 100) return [50, 100, 200, 500];
-      if (total > 50) return [20, 50, 100, 200];
-      return base;
-    } else {
-      const base = [10000, 20000, 50000, 100000, 200000];
-      if (total > 200000) return [100000, 200000, 500000, 1000000];
-      if (total > 100000) return [50000, 100000, 200000, 500000];
-      return base;
+    const t = Math.ceil(total);
+    if (t <= 0) return isUSD ? [5, 10, 20, 50, 100] : [10, 20, 50, 100, 200];
+
+    const candidates = new Set<number>();
+    const roundUp = (val: number, step: number) => Math.ceil(val / step) * step;
+
+    for (const step of [5, 10, 20, 50, 100, 200, 500]) {
+      const rounded = roundUp(t, step);
+      if (rounded > total) {
+        candidates.add(rounded);
+      }
     }
+
+    const standardNotes = isUSD ? [5, 10, 20, 50, 100, 200] : [10, 20, 50, 100, 200, 500, 1000];
+    for (const note of standardNotes) {
+      if (note > total) {
+        candidates.add(note);
+      }
+    }
+
+    return Array.from(candidates)
+      .sort((a, b) => a - b)
+      .slice(0, 4);
   }, [total, isUSD]);
 
   const quickAmounts = getSmartQuickAmounts();
@@ -527,7 +539,11 @@ export const PaymentPage = () => {
           (paymentMethod !== 'cash' && paymentMethod !== 'credit' && paymentMethod !== 'split');
         
         if (canPay && currentShift?.status === 'open') {
-          setShowConfirmModal(true);
+          if (paymentMethod === 'credit') {
+            setShowConfirmModal(true);
+          } else {
+            checkoutMutation.mutate();
+          }
         }
       }
 
@@ -1189,7 +1205,11 @@ export const PaymentPage = () => {
                   type="button"
                   onClick={() => {
                     haptic('medium');
-                    setShowConfirmModal(true);
+                    if (paymentMethod === 'credit') {
+                      setShowConfirmModal(true);
+                    } else {
+                      checkoutMutation.mutate();
+                    }
                   }}
                   disabled={!canCompleteSale}
                   className="flex-1 sm:flex-none px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold rounded-xl hover:shadow-lg hover:shadow-emerald-500/25 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed text-sm flex items-center justify-center gap-2 shadow-md cursor-pointer min-w-[210px]"
@@ -1203,7 +1223,7 @@ export const PaymentPage = () => {
                   ) : (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Complete Sale ({format(total)})</span>
+                      <span>{checkoutMutation.isPending ? 'Processing Sale…' : `Complete Sale (${format(total)})`}</span>
                     </>
                   )}
                 </button>

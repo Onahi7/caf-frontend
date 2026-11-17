@@ -50,7 +50,16 @@ export const CustomerLookupPage = () => {
 
   const createCustomerMutation = useMutation({
     mutationFn: async (data: typeof newCustomer) => {
-      const response = await apiClient.post('/customers', data);
+      const parts = data.firstName.trim().split(/\s+/);
+      const resolvedFirstName = parts[0] || 'Customer';
+      const resolvedLastName = data.lastName.trim() || (parts.length > 1 ? parts.slice(1).join(' ') : '-');
+      const payload: Record<string, string> = {
+        firstName: resolvedFirstName,
+        lastName: resolvedLastName,
+      };
+      if (data.phone.trim()) payload.phone = data.phone.trim();
+      if (data.email.trim()) payload.email = data.email.trim();
+      const response = await apiClient.post('/customers', payload);
       return response.data;
     },
     onSuccess: (response: { data?: Customer; _id?: string; firstName?: string; lastName?: string; phone?: string; email?: string; loyaltyPoints?: number }) => {
@@ -293,51 +302,41 @@ export const CustomerLookupPage = () => {
         <Modal
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
-          title="Add New Customer"
+          title="Quick Add Customer"
           size="md"
         >
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-300 text-xs font-semibold mb-1.5">First Name *</label>
+                <label className="block text-slate-300 text-xs font-semibold mb-1.5">First / Full Name *</label>
                 <input
                   type="text"
                   value={newCustomer.firstName}
                   onChange={(e) => setNewCustomer({ ...newCustomer, firstName: e.target.value })}
-                  placeholder="e.g. John"
+                  placeholder="e.g. Mariama Kamara"
+                  autoFocus
                   className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
               </div>
               <div>
-                <label className="block text-slate-300 text-xs font-semibold mb-1.5">Last Name *</label>
+                <label className="block text-slate-300 text-xs font-semibold mb-1.5">Last Name (Optional)</label>
                 <input
                   type="text"
                   value={newCustomer.lastName}
                   onChange={(e) => setNewCustomer({ ...newCustomer, lastName: e.target.value })}
-                  placeholder="e.g. Doe"
+                  placeholder="Auto-filled if full name typed"
                   className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-300 text-xs font-semibold mb-1.5">Phone Number</label>
+              <label className="block text-slate-300 text-xs font-semibold mb-1.5">Phone Number (WhatsApp / Mobile)</label>
               <input
                 type="tel"
                 value={newCustomer.phone}
                 onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })}
-                placeholder="e.g. +232 76 123456"
-                className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-300 text-xs font-semibold mb-1.5">Email Address</label>
-              <input
-                type="email"
-                value={newCustomer.email}
-                onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })}
-                placeholder="e.g. customer@example.com"
+                placeholder="e.g. 076 123456"
                 className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
               />
             </div>
@@ -351,7 +350,7 @@ export const CustomerLookupPage = () => {
               </Button>
               <Button
                 onClick={() => createCustomerMutation.mutate(newCustomer)}
-                disabled={!newCustomer.firstName.trim() || !newCustomer.lastName.trim() || createCustomerMutation.isPending}
+                disabled={!newCustomer.firstName.trim() || createCustomerMutation.isPending}
                 isLoading={createCustomerMutation.isPending}
               >
                 Save & Attach to Sale

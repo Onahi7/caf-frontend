@@ -1,6 +1,6 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import apiClient from '../../lib/api-client';
 import { useCurrency } from '../../hooks/useCurrency';
 import { useToast } from '../../hooks/useToast';
@@ -15,7 +15,8 @@ import {
   CheckCircle2, 
   AlertTriangle,
   Receipt,
-  ArrowLeft
+  ArrowLeft,
+  MessageCircle
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 
@@ -121,6 +122,51 @@ export const ReceiptPage = () => {
       setEmailSending(false);
     }
   };
+
+  const handleWhatsAppShare = () => {
+    if (!sale) return;
+    const itemLines = sale.items
+      .map((item: SaleItem) => {
+        const name = item.productName?.trim() || (typeof item.productId === 'object' ? item.productId?.name : '') || 'Item';
+        const pack = item.packSize ? ` (${item.packSize.name})` : '';
+        return `• ${item.quantity}x ${name}${pack}: ${format(item.subtotal)}`;
+      })
+      .join('\n');
+
+    const text =
+      `🧾 *${sale.branchName || 'CareFarm Pharmacy'}*\n` +
+      `Receipt #${sale.receiptNumber}\n` +
+      `Date: ${formatDateTime(sale.createdAt)}\n` +
+      (sale.customerName ? `Customer: ${sale.customerName}\n` : '') +
+      `--------------------------------\n` +
+      `${itemLines}\n` +
+      `--------------------------------\n` +
+      (sale.discount > 0 ? `Subtotal: ${format(sale.subtotal)}\nDiscount: -${format(sale.discount)}\n` : '') +
+      `*TOTAL: ${format(sale.total)}*\n` +
+      `Payment: ${sale.paymentMethod.replace('_', ' ').toUpperCase()}\n\n` +
+      `Thank you for choosing CareFarm!`;
+
+    const rawPhone = (sale.customerPhone || '').replace(/[^0-9]/g, '');
+    const normalizedPhone = rawPhone.startsWith('0') && rawPhone.length === 9
+      ? `232${rawPhone.slice(1)}`
+      : rawPhone;
+    const waUrl = normalizedPhone
+      ? `https://wa.me/${normalizedPhone}?text=${encodeURIComponent(text)}`
+      : `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(waUrl, '_blank', 'noopener,noreferrer');
+  };
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (showEmailModal) return;
+      if (e.key === 'Enter' || e.key === 'Escape') {
+        e.preventDefault();
+        navigate('/pos');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showEmailModal, navigate]);
 
   if (isLoading) {
     return (
@@ -295,19 +341,26 @@ export const ReceiptPage = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
               <button
                 onClick={() => window.print()}
-                className="py-3 px-4 bg-slate-900 hover:bg-slate-800 border border-white/10 rounded-xl text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-sm"
+                className="py-3 px-4 bg-slate-900 hover:bg-slate-800 border border-white/10 rounded-xl text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-sm cursor-pointer"
               >
                 <Printer className="w-4 h-4 text-emerald-400" />
                 <span>Print Thermal</span>
               </button>
               <button
-                onClick={() => setShowEmailModal(true)}
-                className="py-3 px-4 bg-slate-900 hover:bg-slate-800 border border-white/10 rounded-xl text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-sm"
+                onClick={handleWhatsAppShare}
+                className="py-3 px-4 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-xl text-emerald-300 font-semibold text-xs flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-sm cursor-pointer"
               >
-                <Mail className="w-4 h-4 text-emerald-400" />
+                <MessageCircle className="w-4 h-4 text-emerald-400" />
+                <span>WhatsApp Receipt</span>
+              </button>
+              <button
+                onClick={() => setShowEmailModal(true)}
+                className="py-3 px-4 bg-slate-900 hover:bg-slate-800 border border-white/10 rounded-xl text-white font-semibold text-xs flex items-center justify-center gap-2 transition-colors active:scale-95 shadow-sm cursor-pointer"
+              >
+                <Mail className="w-4 h-4 text-slate-400" />
                 <span>Email Receipt</span>
               </button>
             </div>
@@ -317,7 +370,7 @@ export const ReceiptPage = () => {
               className="w-full py-3.5 mt-2 text-sm font-bold shadow-lg shadow-emerald-500/20"
               size="lg"
             >
-              Start New Sale
+              Start New Sale (Enter)
             </Button>
           </div>
         </div>
