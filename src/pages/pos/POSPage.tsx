@@ -92,6 +92,7 @@ interface Product {
   category: string;
   brand?: string;
   price: number;
+  wholesalePrice?: number;
   imageUrl?: string;
   stock: number;
   requiresPrescription: boolean;
@@ -115,7 +116,8 @@ export const POSPage = () => {
     items, 
     addItem, 
     removeItem, 
-    updateQuantity, 
+    updateQuantity,
+    updateItemPrice,
     total, 
     subtotal, 
     discount,
@@ -218,6 +220,8 @@ export const POSPage = () => {
   const [editingDrug, setEditingDrug] = useState<Product | null>(null);
   const [editDrugName, setEditDrugName] = useState('');
   const [editDrugBrand, setEditDrugBrand] = useState('');
+  const [editDrugWholesalePrice, setEditDrugWholesalePrice] = useState('');
+  const [isWholesaleMode, setIsWholesaleMode] = useState(false);
 
   // When branch changes, reset active cart to prevent cross-branch inventory conflicts
   useEffect(() => {
@@ -612,18 +616,64 @@ export const POSPage = () => {
     },
   });
 
+  const handleToggleWholesaleMode = (nextWholesale: boolean) => {
+    setIsWholesaleMode(nextWholesale);
+    if (items.length > 0) {
+      let updatedAny = false;
+      const updatedItems = items.map((item) => {
+        if (item.packSize) return item;
+        const prod = products.find((p) => p._id === item.productId);
+        if (!prod) return item;
+        if (nextWholesale && (prod.wholesalePrice ?? 0) > 0) {
+          updatedAny = true;
+          return {
+            ...item,
+            unitPrice: prod.wholesalePrice!,
+            subtotal: item.quantity * prod.wholesalePrice!,
+          };
+        }
+        if (!nextWholesale && prod.price > 0 && item.unitPrice !== prod.price) {
+          updatedAny = true;
+          return {
+            ...item,
+            unitPrice: prod.price,
+            subtotal: item.quantity * prod.price,
+          };
+        }
+        return item;
+      });
+      if (updatedAny) {
+        restoreCart({
+          items: updatedItems,
+          discount,
+          manualDiscount,
+          promotionId,
+          prescriptionUrl,
+          customer,
+        });
+      }
+    }
+    showSuccess(
+      nextWholesale
+        ? 'Wholesale Mode active: you can edit unit prices & add bulk quantities (+5, +10, +20, +50)'
+        : 'Switched back to Retail Mode',
+    );
+  };
+
   const openEditDrugModal = (product: Product, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setEditingDrug(product);
     setEditDrugName(product.name);
     setEditDrugBrand(product.brand && product.brand.toLowerCase() !== 'unknown' ? product.brand : '');
+    setEditDrugWholesalePrice(product.wholesalePrice && product.wholesalePrice > 0 ? String(product.wholesalePrice) : '');
   };
 
   const editDrugMutation = useMutation({
-    mutationFn: async (data: { id: string; name: string; brand?: string }) => {
+    mutationFn: async (data: { id: string; name: string; brand?: string; wholesalePrice?: number }) => {
       const response = await apiClient.patch(`/products/${data.id}`, {
         name: data.name,
         brand: data.brand,
+        wholesalePrice: data.wholesalePrice,
       });
       return response.data;
     },
@@ -727,7 +777,9 @@ export const POSPage = () => {
       return;
     }
 
-    const unitPrice = packSize?.sellingPrice ?? product.price;
+    const unitPrice =
+      packSize?.sellingPrice ??
+      (isWholesaleMode && (product.wholesalePrice ?? 0) > 0 ? product.wholesalePrice! : product.price);
     const quantityPerPack = packSize?.quantityPerPack ?? 1;
     const baseUnit = product.unit || 'unit';
 
@@ -1524,6 +1576,43 @@ export const POSPage = () => {
               </div>
             )}
           </div>
+          {/* Retail / Wholesale Mode Switcher */}
+          <div className="px-4 py-2 bg-slate-950/80 border-b border-white/[0.06] flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isWholesaleMode ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'
+                }`}
+              />
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+                {isWholesaleMode ? 'Wholesale Order' : 'Retail Order'}
+              </span>
+            </div>
+            <div className="inline-flex rounded-xl bg-slate-900 p-0.5 border border-white/10">
+              <button
+                type="button"
+                onClick={() => isWholesaleMode && handleToggleWholesaleMode(false)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                  !isWholesaleMode
+                    ? 'bg-emerald-500 text-slate-950 font-bold shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Retail
+              </button>
+              <button
+                type="button"
+                onClick={() => !isWholesaleMode && handleToggleWholesaleMode(true)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                  isWholesaleMode
+                    ? 'bg-amber-500 text-slate-950 font-bold shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Wholesale
+              </button>
+            </div>
+          </div>
           {/* Active Customer Strip */}
           <div className="px-4 py-2.5 bg-slate-950/60 border-b border-white/[0.06]">
             {customer ? (
@@ -1629,8 +1718,43 @@ export const POSPage = () => {
                         <Plus className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                    <p className="text-emerald-400 font-bold text-xs tabular-nums font-mono">{format(item.unitPrice * item.quantity)}</p>
+                    <div className="flex items-center gap-1.5">
+                      <div className="flex items-center bg-slate-950/90 border border-white/10 focus-within:border-amber-500/60 rounded-lg px-1.5 py-0.5" title="Edit unit price (Wholesale / Custom rate)">
+                        <span className="text-[10px] text-slate-500 mr-1">@ {symbol}</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={item.unitPrice}
+                          onChange={(e) => {
+                            const nextPrice = parseFloat(e.target.value);
+                            if (!isNaN(nextPrice) && nextPrice >= 0) {
+                              updateItemPrice(item.productId, nextPrice, item.packSize);
+                            }
+                          }}
+                          className="w-14 bg-transparent text-right text-[11px] font-mono font-semibold text-amber-300 focus:outline-none tabular-nums"
+                        />
+                      </div>
+                      <p className="text-emerald-400 font-bold text-xs tabular-nums font-mono">{format(item.unitPrice * item.quantity)}</p>
+                    </div>
                   </div>
+                  {isWholesaleMode && (
+                    <div className="mt-2 pt-1.5 border-t border-white/[0.04] flex items-center justify-between gap-1">
+                      <span className="text-[10px] font-semibold text-amber-400/90">Bulk Qty:</span>
+                      <div className="flex items-center gap-1">
+                        {[5, 10, 20, 50].map((addAmt) => (
+                          <button
+                            key={addAmt}
+                            type="button"
+                            onClick={() => updateQuantity(item.productId, item.quantity + addAmt, item.packSize)}
+                            className="px-1.5 py-0.5 rounded bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 text-[10px] font-mono font-bold transition-colors cursor-pointer"
+                          >
+                            +{addAmt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {(() => {
                     const catalogProduct = products.find((p) => p._id === item.productId);
                     if (!catalogProduct?.packSizes?.length) return null;
@@ -1821,6 +1945,32 @@ export const POSPage = () => {
               </button>
             </div>
           </div>
+          {/* Mobile Retail / Wholesale Mode Switcher */}
+          <div className="px-4 py-2 bg-slate-950 border-b border-white/[0.06] flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-300">
+              {isWholesaleMode ? 'Wholesale Pricing Mode' : 'Retail Pricing Mode'}
+            </span>
+            <div className="inline-flex rounded-xl bg-slate-900 p-0.5 border border-white/10">
+              <button
+                type="button"
+                onClick={() => isWholesaleMode && handleToggleWholesaleMode(false)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+                  !isWholesaleMode ? 'bg-emerald-500 text-slate-950 font-bold' : 'text-slate-400'
+                }`}
+              >
+                Retail
+              </button>
+              <button
+                type="button"
+                onClick={() => !isWholesaleMode && handleToggleWholesaleMode(true)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+                  isWholesaleMode ? 'bg-amber-500 text-slate-950 font-bold' : 'text-slate-400'
+                }`}
+              >
+                Wholesale
+              </button>
+            </div>
+          </div>
           {/* Mobile Customer Strip */}
           <div className="px-4 py-2.5 bg-slate-950/80 border-b border-white/[0.06]">
             {customer ? (
@@ -1922,8 +2072,43 @@ export const POSPage = () => {
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <p className="text-emerald-400 font-bold text-sm tabular-nums font-mono">{format(item.unitPrice * item.quantity)}</p>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center bg-slate-950 border border-white/10 rounded-lg px-2 py-1">
+                      <span className="text-[10px] text-slate-400 mr-1">@ {symbol}</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={item.unitPrice}
+                        onChange={(e) => {
+                          const nextPrice = parseFloat(e.target.value);
+                          if (!isNaN(nextPrice) && nextPrice >= 0) {
+                            updateItemPrice(item.productId, nextPrice, item.packSize);
+                          }
+                        }}
+                        className="w-16 bg-transparent text-right text-xs font-mono font-bold text-amber-300 focus:outline-none tabular-nums"
+                      />
+                    </div>
+                    <p className="text-emerald-400 font-bold text-sm tabular-nums font-mono">{format(item.unitPrice * item.quantity)}</p>
+                  </div>
                 </div>
+                {isWholesaleMode && (
+                  <div className="mt-2 pt-2 border-t border-white/[0.04] flex items-center justify-between">
+                    <span className="text-xs font-semibold text-amber-400">Add Bulk Qty:</span>
+                    <div className="flex items-center gap-1.5">
+                      {[5, 10, 20, 50].map((addAmt) => (
+                        <button
+                          key={addAmt}
+                          type="button"
+                          onClick={() => updateQuantity(item.productId, item.quantity + addAmt, item.packSize)}
+                          className="px-2.5 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold"
+                        >
+                          +{addAmt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -2291,10 +2476,12 @@ export const POSPage = () => {
             onSubmit={(e) => {
               e.preventDefault();
               if (!editDrugName.trim()) return;
+              const parsedWholesale = parseFloat(editDrugWholesalePrice);
               editDrugMutation.mutate({
                 id: editingDrug._id,
                 name: editDrugName.trim(),
                 brand: editDrugBrand.trim() || undefined,
+                wholesalePrice: !isNaN(parsedWholesale) && parsedWholesale >= 0 ? parsedWholesale : undefined,
               });
             }}
             className="space-y-4"
@@ -2323,6 +2510,21 @@ export const POSPage = () => {
                 onChange={(e) => setEditDrugBrand(e.target.value)}
                 placeholder="e.g. GSK / Denk Pharma"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                Default Wholesale Unit Price ({symbol}) — Optional
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editDrugWholesalePrice}
+                onChange={(e) => setEditDrugWholesalePrice(e.target.value)}
+                placeholder={`Retail is ${format(editingDrug.price)}`}
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/15 text-white text-sm font-mono focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
               />
             </div>
 
